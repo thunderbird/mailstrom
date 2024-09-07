@@ -1,1 +1,1 @@
-# mailstrom
+# Thunderbird Pro Mail Service Prototype
