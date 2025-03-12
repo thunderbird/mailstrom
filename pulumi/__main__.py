@@ -2,6 +2,7 @@
 
 import tb_pulumi
 import tb_pulumi.network
+import stalwart
 
 
 # Create a project to aggregate resources. This will allow consistent tagging, resource protection,
@@ -21,3 +22,12 @@ vpc = tb_pulumi.network.MultiCidrVpc(
     project,
     # Map the rest of the config file directly into this function call, separating code from config
     **vpc_opts)
+
+# Build a Stalwart cluster
+stalwart_opts = resources['tb:mailstrom:StalwartCluster']['thundermail']
+stalwart_cluster = stalwart.StalwartCluster(
+    f'{project.name_prefix}-stalwart',
+    project=project,
+    vpc_id=vpc.id,
+    **stalwart_opts
+)

@@ -8,3 +8,30 @@ resources:
           - 10.1.0.0/17
         us-east-1b:
           - 10.1.128.0/17
+
+  tb:mailstrom:StalwartCluster:
+    thundermail:
+      nodes:
+        all-001:
+          instance_type: t2.micro
+          storage_capacity: 20
+          cluster_services:
+            - all
+          node_roles:
+            - all
+      services:
+        http:
+          source_security_group_ids: []
+        imap:
+          source_cidrs: ['0.0.0.0/0']
+        imaps:
+          source_cidrs: ['0.0.0.0/0']
+        lmtp:
+          source_cidrs: ['0.0.0.0/0']
+        managesieve:
+          source_cidrs: ['0.0.0.0/0']
+        smtp:
+          source_cidrs: ['0.0.0.0/0']
+        smtps:
+          source_cidrs: ['0.0.0.0/0']
+        
