@@ -1,0 +1,10 @@
+---
+resources:
+  tb:network:MultiCidrVpc:
+    vpc:
+      cidr_block: 10.1.0.0/16
+      subnets:
+        us-east-1a:
+          - 10.1.0.0/17
+        us-east-1b:
+          - 10.1.128.0/17

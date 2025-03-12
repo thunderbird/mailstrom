@@ -1,11 +1,12 @@
 name: mailstrom
-description: Thunderbird Mail
 runtime:
   name: python
   options:
     toolchain: pip
     virtualenv: venv
+description: Development infrastructure for Stalwart mail server.
 config:
+  aws:region: us-east-1
   pulumi:tags:
     value:
       pulumi:template: aws-python

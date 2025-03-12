@@ -1,3 +1,1 @@
-pulumi>=3.0.0,<4.0.0
-pulumi-aws>=6.0.2,<7.0.0
-pulumi-cloudflare>=5.37.0
+tb_pulumi @ git+https://github.com/thunderbird/pulumi.git@fix-aws-client-cre
