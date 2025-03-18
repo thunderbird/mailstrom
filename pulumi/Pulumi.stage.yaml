@@ -1,2 +1,4 @@
 config:
   aws:region: eu-central-1
+  mailstrom:stalwart-postgres-settings:
+    secure: AAABAB7KmSN3+bQ3A9K1gaWKKDdR8evhNM6NqHLOJjPnXnZ32deDgMkHEf2hnQb2K5s8Ecidl+sBWs3POJIS7G18zEQNGMlnyo2MOMytG9nP12KzPZuvvtfLmm+UHv0CsDd6yv3Y6Aki2PoLeTZWYIojGacgUDZnyrns6e6W2qAjddNT3T0qrHR8BmX/kKGularrURGdhifprar9XjhqoZmdjwOAHtaQSd5j7MH6ToLXpMhneKo9Mp2SFyD2xScrbTu+tQ==

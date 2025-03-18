@@ -1,0 +1,18 @@
+[project]
+name = "thundermail-pulumi"
+version = "0.0.1"
+description = "Pulumi-built infrastructure for Mailstrom/Thundermail"
+requires-python = ">=3.12"
+dynamic = ["dependencies"]
+
+[project.urls]
+repository = "https://github.com/thunderbird/mailstrom.git"
+issues = "https://github.com/thunderbird/mailstrom/issues"
+
+[tool.setuptools.dynamic]
+dependencies = { file = ["requirements.txt"] }
+
+[project.optional-dependencies]
+dev = [
+    "ruff"
+]

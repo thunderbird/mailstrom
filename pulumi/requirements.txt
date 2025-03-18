@@ -1,2 +1,2 @@
 Jinja2>=3.1,<4.0
-tb_pulumi @ git+https://github.com/thunderbird/pulumi.git@amz2023
+tb_pulumi @ git+https://github.com/thunderbird/pulumi.git@main

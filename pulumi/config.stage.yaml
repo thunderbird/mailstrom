@@ -1,5 +1,10 @@
 ---
 resources:
+  tb:secrets:PulumiSecretsManager:
+    secrets:
+      secret_names:
+        - stalwart-postgres-settings
+
   tb:network:MultiCidrVpc:
     vpc:
       cidr_block: 10.1.0.0/16
@@ -12,25 +17,42 @@ resources:
       egress_via_internet_gateway: True
       enable_dns_hostnames: True
       endpoint_interfaces:
-        - ecr.api
-        - ecr.dkr
         - secretsmanager
+
+  tb:elasticache:ElastiCacheReplicationGroup:
+    stalwart:
+      description: Redis memory cache for Stalwart
+      engine: redis
+      engine_version: 7.1
+      node_type: cachhe.t3.micro
+      num_cache_nodes: 1
+      automatic_failover_enabled: False # Must be false when num_cache_nodes is 1
+      parameter_group_family: redis7
+      parameter_group_params: {}
+      port: 6379
+      # Dynamic values set in code, or not at all:
+      # source_cidrs: []
+      # source_sgids: []
+      # subnets: []
 
   tb:mailstrom:StalwartCluster:
     thundermail:
+      # stores:
+      #   postgresql: mailstrom/stage/stalwart-postgres-settings
+      #   redis: mailstrom/stage/stalwart-redis-settings
+      #   s3: mailstrom/stage/stalwart-s3-settings
       nodes:
-        all-001:
-          disable_api_termination: True
+        sancus:
+          disable_api_termination: False
           ignore_ami_changes: True
-          ignore_user_data_changes: True
+          ignore_user_data_changes: False
           instance_type: t2.micro
           storage_capacity: 20
           cluster_services:
             - all
           node_roles:
             - all
-          key_name: mailstrom-stage-jumphost-keypair
-          
+          key_name: rjung-churro
       cluster_services:
         all:
           source_cidrs: ['0.0.0.0/0']
@@ -50,8 +72,8 @@ resources:
         #   source_cidrs: ['0.0.0.0/0']
         
   tb:ec2:SshableInstance:
-    jumphost:
+    sancus-jump:
       public_key: |
-        ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDLQc8Fo31m9n7vdIjMBMadZ2rWaFSBcsDgbAu9fbbpYjcgSgXv2XOEy5mP23psSgZbiYr5TW9NXITq25Y1RUCbZs4JekoYcgvdhbi4I6ru0VxBgfLJmJyQuPBG1QRMs+TpG8eBPY2RCUjCKlDslOJodRjjGRpauvEHSKKiqueByXydM9Cp+57T14ldnEs5/pB3yx3F9tv61Uf8mrZAkTj/l0bhnqoj8RAK+I3XKQuWoUpai+rvRkxzhzHHVaIr8VxkC5ChZ30o1El8UnKWJRaGQpPoZVs6t4lsMCxBIHg2ZM4BSgPQbNsEdx2K/lc4TDUEnokbFkzigF+vAfr1Ic/wKr7aP4xXnPCnaeqVi1+uNVTYfcTOeRgMpwQJRxTm1G8STccPfyM/FraFlKpQk4u/qRuKf5QDo4LEKFGbHx+7D8BYjO9QIZ4qSJxAtk5JIQ8vs4vEn7Ss4pjayu5iqcK0I+7syBQ92dYorUMKddcD1cwtTqCqST4RqHsEOjMGxcgSuFaozDGrqUgd21S0BOuYeZ9IN1OMrzRnytNMf0bTWnD0ukxDVXbO+WJuq6Ry8fnj+/S/tNuLRrxy0hQ77QGpkt+RmcZzWDA2JNF3O6aJcC8IwMKliAE+F01Yd72zyS0iCiGI2YQ6b6l7Og9XpRShk8vEMuluxslY0u77rY09Pw== rjung@churro
+        ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGNaLOahjbg0qX7HVTKq2Akd8IXrf7TNVTwdgt2zKM1g sancus@thunderbird.net
       source_cidrs:
-        - 38.15.46.29/32
+        - 216.232.234.246/32

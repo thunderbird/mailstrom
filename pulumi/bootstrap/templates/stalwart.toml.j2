@@ -1,0 +1,49 @@
+{#- Configuration file for Stalwart Mail Server -#}
+{%- extends "ports.j2" %}
+{% block with_service_ports %}
+[config]
+local-keys = [ "cluster.node-id", "store.*", "tracer.*", "authentication.fallback-admin"]
+
+[cluster]
+node-id={{ node_id }}
+
+{# Set up a listener for every service #}
+{% for service in node_services.split(',') %}
+[server.listener."{{ service_ports[service]['listener'] }}"]
+bind = ["[::]:{{ service_ports[service]['port'] }}"]
+protocol = "{{ service_ports[service]['protocol'] }}"
+{% endfor %}
+
+[storage]
+data = "postgresql"
+fts = "postgresql"
+blob = "s3"
+lookup = "redis"
+directory = "internal"
+
+[store."postgresql"]
+type = "postgresql"
+host = "{{ postgresql_backend['host'] }}"
+port = {{ postgresql_backend['port'] if 'port' in postgresql_backend else 5432 }}
+database = "{{ postgresql_backend['database'] }}"
+user = "{{ postgresql_backend['user'] }}"
+password = "{{ postgresql_backend['password'] }}"
+timeout = "{{ postgresql_backend['timeout'] if 'timeout' in postgresql_backend else '15s' }}"
+
+# [store."s3"]
+# ...
+# 
+# [store."redis"]
+# ...
+
+
+[tracer."stdout"]
+type = "stdout"
+level = "info"
+ansi = false
+enable = true
+
+[authentication.fallback-admin]
+user = "admin"
+secret = "a_bad_password"
+{% endblock %}

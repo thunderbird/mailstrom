@@ -1,28 +1,32 @@
-"""Infrastructural patterns related to `Stalwart Mail Server <https://stalw.art/docs/get-started/>`_"""
+"""A tb_pulumi extension that builds a `Stalwart cluster <https://stalw.art/docs/get-started/>`_."""
 
 import base64
+import json
 import pulumi
 import pulumi_aws as aws
 import tb_pulumi
 import tb_pulumi.network
+import tb_pulumi.s3
 
 from enum import Enum
+from functools import cached_property
 from jinja2 import Template
+from tb_pulumi.constants import ASSUME_ROLE_POLICY, IAM_POLICY_DOCUMENT
 from zipfile import ZipFile
 
 
-#: Mapping of supported cluster services and their associated ports
+#: Mapping of supported cluster services to their associated ports
 STALWART_CLUSTER_SERVICES = {
-    "all": None,
-    "http": 8080,
-    "imap": 143,
-    "imaps": 993,
-    "lmtp": 24,
-    "managesieve": 4190,
-    "pop3": 110,
-    "pop3s": 995,
-    "smtp": 25,
-    "smtps": 587,
+    'all': None,
+    'http': 8080,
+    'imap': 143,
+    'imaps': 993,
+    'lmtp': 24,
+    'managesieve': 4190,
+    'pop3': 110,
+    'pop3s': 995,
+    'smtp': 25,
+    'smtps': 587,
 }
 
 
@@ -44,7 +48,85 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
 
     Produces the following ``resources``:
 
-        - *whatever* - Something
+        - *lb_sg* - Security group attached to the cluster's load balancer.
+        - *node_sgs* - Dict of :py:class:`tb_pulumi.network.SecurityGroupWithRule`s created for each node to support its
+          enabled services, identified by their node_id.
+        - *instances* - Dict of :py:class:`StalwartClusterNode`s, identified by their node_id.
+        - *redis* - :py:class:`tb_pulumi.elasticache.ElastiCacheReplicationGroup` which Stalwart uses for its in-
+          memory store.
+        - *s3* - :py:class:`tb_pulumi.s3.S3Bucket` which Stalwart uses for its blob store.
+
+    :param name: A string identifying this set of resources.
+    :type name: str
+
+    :param project: The ThunderbirdPulumiProject to add these resources to.
+    :type project: tb_pulumi.ThunderbirdPulumiProject
+
+    :param subnets: List of `aws.ec2.Subnet <https://www.pulumi.com/registry/packages/aws/api-docs/ec2/subnet/>`_ s
+        in which to build cluster nodes.
+    :type subnets: list[aws.ec2.Subnet]
+
+    :param cache_node_count: Number of Redis cluster nodes to build. This must be at least 1. When greater than 1, one
+        primary "write" node will be created with (n - 1) read-only replicas. Defaults to 1.
+    :type cache_node_count: int, optional
+
+    :param cache_node_type: The `ElastiCache instance type
+        <https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/CacheNodes.SupportedTypes.html>`_ to use when building
+        Redis cache nodes.
+
+    :param load_balancer: Configuration for the load balancer, listing services to expose and to what other components
+        to expose them to. Must contain a `services` dict, whose keys must be valid
+        :py:data:`STALWART_CLUSTER_SERVICES`s. Those values must contain at least one (or both) of a list of
+        ``source_cidrs`` or a list of ``source_security_group_ids``. For example:
+
+        .. code-block:: yaml
+            :linenos:
+
+            load_balancer:
+                services:
+                    imap:
+                        source_cidrs: ['0.0.0.0/0']
+                    http:
+                        source_security_group_ids: ['sg-abcdef0123456789']
+                        source_cidrs: ['10.0.0.0/8']
+
+    :param nodes: Dict describing the individual nodes of the cluster. Each key is a node_id and each value is a dict of
+        supported values describing a node configuration. The configuration is composed of inputs to the
+        :py:meth:`StalwartCluster.node`. The values listed below are described in more detail alongside that function.
+        The set of valid values is:
+
+        - disable_api_stop: bool (False)
+        - disable_api_termination: bool (False)
+        - ignore_ami_changes: bool (True)
+        - ignore_user_data_changes: bool (True)
+        - instance_type: str (t3.micro)
+        - node_roles: list[str] (['all'])
+        - storage_capacity: int (20)
+
+        Any additional arguments will be passed as inputs into the `aws.ec2.Instance
+        <https://www.pulumi.com/registry/packages/aws/api-docs/ec2/instance/#inputs>`_ resource.
+    :type nodes: dict, optional
+
+    :param user_data_archive: File on disk in which to store the zip file for the user data bootstrapping stage. This is
+        a temporary file which can be safely deleted after a Pulumi run. This file is intentionally not deleted, as it
+        is valuable for debugging the bootstrapping process. However, any Pulumi command that uses this module will
+        cause the creation of a new archive. This will overwrite any previously existing archive. Use this parameter to
+        specify a different filename if you want to produce a special artifact for some reason. Defaults to
+        "bootstrap.zip".
+    :type user_data_archive: str
+
+    :param user_data_template: File on disk in which to find the Jinja2 template used to generate user data for each
+        node in the cluster. Defaults to "stalwart_instance_user_data.sh.j2".
+    :type user_data_template: str
+
+    :param opts: Additional pulumi.ResourceOptions to apply to these resources. Defaults to None.
+    :type opts: pulumi.ResourceOptions, optional
+
+    :param tags: Key/value pairs to merge with the default tags which get applied to all resources in this group.
+        Defaults to {}.
+    :type tags: dict, optional
+
+    :raises ValueError: When an empty list of subnets is provided.
     """
 
     def __init__(
@@ -52,289 +134,481 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         name: str,
         project: tb_pulumi.ThunderbirdPulumiProject,
         subnets: list[aws.ec2.Subnet],
-        cluster_services: dict = {},
+        cache_node_count: int = 1,
+        cache_node_type: str = 'cache.t3.micro',
+        cache_parameters: list = [],
+        load_balancer: dict = {},
         nodes: dict = {},
-        exclude_from_project: bool = False,
+        user_data_archive: str = 'bootstrap.zip',
+        user_data_template: str = 'stalwart_instance_user_data.sh.j2',
         opts: pulumi.ResourceOptions = None,
         tags: dict = {},
-        **kwargs,
     ):
         super().__init__(
-            "tb:accounts:StalwartCluster",
+            'tb:accounts:StalwartCluster',
             name=name,
             project=project,
             opts=opts,
             tags=tags,
         )
 
-        # Sanity check some inputs
+        # Sanity check the subnets list
         if len(subnets) == 0:
-            raise ValueError("You must provide at least one subnet.")
-        if len(cluster_services) > 1 and "all" in cluster_services:
-            raise ValueError(
-                'If the "all" cluster service is set for a node, no other services may be set.'
-            )
+            raise ValueError('You must provide at least one subnet.')
 
-        __handle_all_services = (
-            True if len(cluster_services) == 1 and "all" in cluster_services else False
-        )
+        # Internalize some vars we need in the other functions and properties
+        self.load_balancer = load_balancer
+        self.nodes = nodes
+        self.subnets = subnets
+        self.user_data_archive = user_data_archive
+        self.user_data_template = user_data_template
 
         # All subnets must be in the same VPC. For convenience, we grab the ID from the first subnet.
-        vpc_id = subnets[0].vpc_id
+        self.vpc_id = self.subnets[0].vpc_id
 
-        # First build the security group we will use on our load balancer
-        lb_sg_rules = {
-            "egress": [
-                {
-                    "description": "Allow traffic outbound from the load balancer",
-                    "protocol": "tcp",
-                    "from_port": 0,
-                    "to_port": 65535,
-                    "cidr_blocks": ["0.0.0.0/0"],
-                }
-            ],
-            "ingress": [],
-        }
+        # Build custom security groups per node depending on cluster service config
+        self.node_sgs = {node: self.node_security_group(node_id=node) for node in nodes}
 
-        # Build a list of security group rules for the load balancer based on the config
-        if __handle_all_services:
-            __cluster_services = STALWART_CLUSTER_SERVICES.copy()
-            del (__cluster_services)["all"]
-        else:
-            __cluster_services = cluster_services
+        # Build a Redis cluster for Stalwart's in-memory store
+        redis = tb_pulumi.elasticache.ElastiCacheReplicationGroup(
+            name=f'{self.name}-redis',
+            project=self.project,
+            subnets=self.subnets,
+            description=f'Redis cluster for {self.name}',
+            engine='redis',
+            engine_version='7.1',
+            node_type=cache_node_type,
+            num_cache_nodes=cache_node_count,
+            parameter_group_family='redis7',
+            parameter_group_params=cache_parameters,
+            source_cidrs=[],
+            source_sgids=[self.node_sgs[sg].resources['sg'].id for sg in self.node_sgs],
+            opts=pulumi.ResourceOptions(parent=self, depends_on=[*self.node_sgs.values()]),
+            tags=self.tags,
+        )
 
-        for service in __cluster_services:
-            if service not in STALWART_CLUSTER_SERVICES:
-                raise ValueError(f"{service} is not a valid Stalwart cluster service.")
-
-            if __handle_all_services:
-                __service_config = cluster_services["all"]
-            else:
-                __service_config = cluster_services[service]
-
-            if "source_cidrs" in __service_config:
-                lb_sg_rules["ingress"].append(
-                    {
-                        "description": f"Allow {service} traffic by IP",
-                        "protocol": "tcp",
-                        "from_port": STALWART_CLUSTER_SERVICES[service],
-                        "to_port": STALWART_CLUSTER_SERVICES[service],
-                        "cidr_blocks": __service_config["source_cidrs"],
-                    }
-                )
-            if "source_security_group_ids" in __service_config:
-                for sgid in __cluster_services[service]["source_security_group_ids"]:
-                    lb_sg_rules["ingress"].append(
-                        {
-                            "description": f"Allow {service} traffic from {sgid}",
-                            "protocol": "tcp",
-                            "from_port": STALWART_CLUSTER_SERVICES[service],
-                            "to_port": STALWART_CLUSTER_SERVICES[service],
-                            "source_security_group_id": sgid,
-                        }
-                    )
-
-        lb_sg = tb_pulumi.network.SecurityGroupWithRules(
-            name=f"{name}-lbsg",
-            project=project,
-            rules=lb_sg_rules,
-            vpc_id=vpc_id,
+        # Build an S3 bucket for Stalwart's blob storage
+        s3 = tb_pulumi.s3.S3Bucket(
+            name=f'{self.name}-s3',
+            project=self.project,
+            bucket_name=f'{self.name}-s3-store',
+            enable_server_side_encryption=True,
+            enable_versioning=True,
             opts=pulumi.ResourceOptions(parent=self),
             tags=self.tags,
         )
 
+        node_profile_policy, node_profile_role, node_profile_attachment, node_profile = (
+            self.node_instance_profile_resources
+        )
+        # Pipe the node configs into a series of StalwartClusterNodes
         instances = {}
         for idx, node_id in enumerate(nodes):
-            instances[node_id] = StalwartClusterNode(
-                name=f"{name}-{node_id}",
-                project=project,
-                load_balancer_security_group_id=lb_sg.resources["sg"].id,
+            instances[node_id] = self.node(
                 node_id=node_id,
-                subnet=subnets[idx % len(subnets)],
-                opts=opts,
-                tags=tags,
-                exclude_from_project=True,
+                subnet=self.subnets[idx % len(self.subnets)],
+                iam_instance_profile=node_profile.name,
                 **nodes[node_id],
-                **kwargs,
             )
 
-        self.finish(resources={"lb_sg": lb_sg, "instances": instances})
+        self.finish(
+            resources={
+                'lb_sg': self.load_balancer_security_group,
+                'node_sgs': self.node_sgs,
+                'instances': instances,
+                'redis': redis,
+                's3': s3,
+            }
+        )
 
+    # Cache this property because it produces a Pulumi resource. We don't want to define that multiple times.
+    @cached_property
+    def load_balancer_security_group(self):
+        """Defines a security group for the load balancer based on the load_balancer config options."""
 
-class StalwartClusterNode(tb_pulumi.ThunderbirdComponentResource):
-    """**Pulumi Type:** ``tb:accounts:StalwartClusterNode``
+        # Build a skeleton for the security group rules, allowing all egress
+        lb_sg_rules = {
+            'egress': [
+                {
+                    'description': 'Allow traffic outbound from the load balancer',
+                    'protocol': 'tcp',
+                    'from_port': 0,
+                    'to_port': 65535,
+                    'cidr_blocks': ['0.0.0.0/0'],
+                }
+            ],
+            'ingress': [],
+        }
 
-    Builds an EC2 instance and a security group setup for a single cluster instance's needs.
+        # Determine an explicit list of services, expanding the "all" shorthand into a complete list
+        if self.expose_all_services:
+            # "All services" means everything in the list except for "all" itself
+            exposed_services = STALWART_CLUSTER_SERVICES.copy()
+            del (exposed_services)['all']
+        else:
+            exposed_services = self.load_balancer['services'].keys()
 
-    Produces the following ``resources``:
+        for service in exposed_services:
+            # Validate each exposed service's name
+            if service not in STALWART_CLUSTER_SERVICES:
+                raise ValueError(f'{service} is not a valid Stalwart cluster service.')
 
-        - *whatever* - Something
+            # Determine which service config to use; the "all" service applies to all services
+            if self.expose_all_services:
+                service_config = self.load_balancer['services']['all']
+            else:
+                service_config = self.load_balancer['services'][service]
 
-    :param exclude_from_project: When ``True`` , this prevents this component resource from being registered directly
-        with the project. This does not prevent the component resource from being discovered by the project's
-        ``flatten`` function, provided that it is nested within some resource that is not excluded from the project.
-    :type exclude_from_project: bool, optional
+            # Create one rule including all source_cidrs we need to open access to
+            if 'source_cidrs' in service_config:
+                lb_sg_rules['ingress'].append(
+                    {
+                        'description': f'Allow {service} traffic by IP',
+                        'protocol': 'tcp',
+                        'from_port': STALWART_CLUSTER_SERVICES[service],
+                        'to_port': STALWART_CLUSTER_SERVICES[service],
+                        'cidr_blocks': service_config['source_cidrs'],
+                    }
+                )
 
-    """
+            # Create one rule for each source security group since AWS doesn't allow lists of them
+            if 'source_security_group_ids' in service_config:
+                for sgid in self.load_balancer['services'][service]['source_security_group_ids']:
+                    lb_sg_rules['ingress'].append(
+                        {
+                            'description': f'Allow {service} traffic from {sgid}',
+                            'protocol': 'tcp',
+                            'from_port': STALWART_CLUSTER_SERVICES[service],
+                            'to_port': STALWART_CLUSTER_SERVICES[service],
+                            'source_security_group_id': sgid,
+                        }
+                    )
 
-    def __init__(
+        # Pipe the whole rule config into a SecurityGroupWithRules pattern
+        return tb_pulumi.network.SecurityGroupWithRules(
+            name=f'{self.name}-lbsg',
+            project=self.project,
+            rules=lb_sg_rules,
+            vpc_id=self.vpc_id,
+            opts=pulumi.ResourceOptions(parent=self),
+            tags=self.tags,
+        )
+
+    @cached_property
+    def node_instance_profile_resources(self):
+        # Build the instance profile to use on the nodes
+        bootstrap_secret_arns = (
+            'arn:aws:secretsmanager:'
+            + f'{self.project.aws_region}:{self.project.aws_account_id}'
+            + f':secret:mailstrom/{self.project.stack}/stalwart.postboot.*'
+        )
+        policy_doc = IAM_POLICY_DOCUMENT.copy()
+        policy_doc['Statement'][0].update(
+            {
+                'Sid': 'AllowPostbootSecretAccess',
+                'Action': ['secretsmanager:GetSecretValue'],
+                'Resource': [bootstrap_secret_arns],
+            }
+        )
+        policy = aws.iam.Policy(
+            f'{self.name}-policy-nodeprofile',
+            path='/',
+            description='Policy for the Stalwart node instance profile',
+            policy=json.dumps(policy_doc),
+        )
+
+        arp = ASSUME_ROLE_POLICY.copy()
+        arp['Statement'][0]['Principal']['Service'] = 'ec2.amazonaws.com'
+        role = aws.iam.Role(
+            f'{self.name}-role-nodeprofile',
+            name=f'{self.name}-stalwart-node-profile',
+            assume_role_policy=json.dumps(arp),
+            path='/',
+        )
+
+        attachment = aws.iam.RolePolicyAttachment(
+            f'{self.name}-rpa-nodeprofile',
+            role=role.name,
+            policy_arn=policy.arn,
+        )
+
+        profile = aws.iam.InstanceProfile(
+            f'{self.name}-ip-nodeprofile', name=f'{self.name}-nodeprofile', role=role.name
+        )
+
+        return policy, role, attachment, profile
+
+    def node_security_group(self, node_id: str) -> tb_pulumi.network.SecurityGroupWithRules:
+        """Build an instance-dedicated security group with rules specific to the services available on the machine.
+
+        :param node_id: The node_id of the node to build a security group for.
+        :type node_id: str
+
+        :return: A :py:class:`tb_pulumi.network.SecurityGroupWithRules` for the node.
+        :rtype: tb_pulumi.network.SecurityGroupWithRules
+        """
+
+        # Start with a skeleton for the security group rules, allowing all egress
+        sg_rules = {
+            'egress': [
+                {
+                    'description': 'Allow traffic from the instance out to the Internet',
+                    'protocol': 'tcp',
+                    'from_port': 0,
+                    'to_port': 65535,
+                    'cidr_blocks': ['0.0.0.0/0'],
+                }
+            ],
+            'ingress': [],
+        }
+
+        # Expand "all" services into an explicit list of services
+        if self.expose_all_services:
+            # "All" services means everything except "all" itself
+            exposed_services = STALWART_CLUSTER_SERVICES.copy()
+            del exposed_services['all']
+        else:
+            # Build for whatever more specific services the user supplied
+            exposed_services = self.load_balancer['services'].keys()
+
+        # Expose each service port, but only to the load balancer
+        for service in exposed_services:
+            sg_rules['ingress'].append(
+                {
+                    'description': f'Allow {service} traffic',
+                    'protocol': 'tcp',
+                    'from_port': STALWART_CLUSTER_SERVICES[service],
+                    'to_port': STALWART_CLUSTER_SERVICES[service],
+                    'source_security_group_id': self.load_balancer_security_group.resources['sg'].id,
+                }
+            )
+
+        # Feed the rules config into a SecurityGroupWithRules pattern
+        return tb_pulumi.network.SecurityGroupWithRules(
+            name=f'{self.name}-{node_id}-sg',
+            project=self.project,
+            rules=sg_rules,
+            vpc_id=self.vpc_id,
+        )
+
+    def node(
         self,
-        name: str,
-        project: tb_pulumi.ThunderbirdPulumiProject,
-        load_balancer_security_group_id: str,
         node_id: str,
-        subnet: str,
-        cluster_services: list[str] = ["all"],
+        subnet: aws.ec2.Subnet,
         disable_api_stop: bool = False,
         disable_api_termination: bool = False,
         ignore_ami_changes: bool = True,
         ignore_user_data_changes: bool = True,
-        instance_type: str = "t2.micro",
+        instance_type: str = 't3.micro',
+        node_roles: list[str] = ['all'],
+        services: list[str] = ['all'],
         storage_capacity: int = 20,
-        node_roles: list[str] = ["all"],
-        user_data_archive: str = "bootstrap.zip",
-        user_data_template: str = "stalwart_instance_user_data.sh.j2",
-        exclude_from_project: bool = False,
-        opts: pulumi.ResourceOptions = None,
-        tags: dict = {},
         **kwargs,
-    ):
-        super().__init__(
-            "tb:accounts:StalwartClusterNode",
-            name=name,
-            project=project,
-            opts=opts,
-            tags=tags,
-        )
+    ) -> aws.ec2.Instance:
+        """Builds a Stalwart node represented by the configuration for the given node_id.
 
-        # Sanity check the node role values
-        if len(node_roles) > 1 and "all" in node_roles:
-            raise ValueError(
-                'If the "all" node role is set for a node, no other roles may be set.'
-            )
-        for role in node_roles:
-            if role.upper() not in StalwartNodeRoles.__members__.keys():
-                raise ValueError(f'"{role}" is not a valid node role.')
+        :param node_id: The unique node_id to identify the node in the cluster.
+        :type node_id: str
 
-        # Sanity check the node service values
-        if len(cluster_services) > 1 and "all" in cluster_services:
-            raise ValueError(
-                'If the "all" node service is set for a node, no other services may be set.'
-            )
-        for service in cluster_services:
-            if service.lower() not in STALWART_CLUSTER_SERVICES.keys():
-                raise ValueError(f'"{service}" is not a valid node service.')
+        :param subnet: The subnet to build the node in.
+        :type subnet: aws.ec2.Subnet
 
-        __handle_all_services = (
-            True if len(cluster_services) == 1 and "all" in cluster_services else False
-        )
+        :param disable_api_stop: When True, prevents AWS API calls from stopping the instance. Defaults to False.
+        :type disable_api_stop: bool, optional
 
-        # Build an instance-dedicated security group with rules specific to the services available on the machine
-        sg_rules = {
-            "egress": [
-                {
-                    "description": "Allow traffic from the instance out to the Internet",
-                    "protocol": "tcp",
-                    "from_port": 0,
-                    "to_port": 65535,
-                    "cidr_blocks": ["0.0.0.0/0"],
-                }
-            ],
-            "ingress": [],
-        }
+        :param disable_api_termination: When True, prevents AWS API calls from terminating the instance. Defaults to
+            False.
+        :type disable_api_termination: bool, optional
 
-        if __handle_all_services:
-            # Build for all services except the special "all" service
-            __cluster_services = STALWART_CLUSTER_SERVICES.copy()
-            del __cluster_services["all"]
+        :param ignore_ami_changes: When True, changes to the instance's AMI will not be applied. This prevents unwanted
+            rebuilding of cluster nodes, potentially causing downtime. Set to False if the AMI has changed and you
+            intend on rebuilding the node. Defaults to True.
+        :type ignore_ami_changes: bool, optional
+
+        :param ignore_user_data_changes: When True, changes to the instance's user data will not be applied. In order to
+            apply user data, the instance must be stopped and later restarted. This means that changes to the bootstrap
+            process could lead to entire environments being turned off and back on again if this setting is not enabled.
+            To prevent unwanted downtime, keep this enabled. Defaults to True.
+        :type ignore_user_data_changes: bool, optional
+
+        :param instance_type: `AWS EC2 instance type <https://aws.amazon.com/ec2/instance-types/>`_ to build the node
+            on. Defaults to 't3.micro'.
+        :type instance_type: str, optional
+
+        :param node_roles: List of :py:class:`StalwartNodeRoles` to enable on the node. Defaults to ['all'].
+        :type node_roles: list[str], optional
+
+        :param storage_capacity: Size of the ephemeral disk on the node in GB. Defaults to 20.
+        :type storage_capacity: int, optional
+
+        :return: The EC2 instance running the Stalwart node.
+        :rtype: aws.ec2.Instance
+        """
+
+        # Expand the "all" cluster service into an explicit list of services to run on the node
+        if node_handles_all_services(services=services):
+            node_services = STALWART_CLUSTER_SERVICES.copy()
+            del node_services['all']
+            node_services_tag = ','.join(node_services.keys())
         else:
-            # Build for whatever more specific services the user supplied
-            __cluster_services = cluster_services
+            node_services_tag = ','.join(self.nodes[node_id]['services'])
 
-        # Instances only ever receive traffic from load balancers
-        for service in __cluster_services:
-            sg_rules["ingress"].append(
-                {
-                    "description": f"Allow {service} traffic",
-                    "protocol": "tcp",
-                    "from_port": STALWART_CLUSTER_SERVICES[service],
-                    "to_port": STALWART_CLUSTER_SERVICES[service],
-                    "source_security_group_id": load_balancer_security_group_id,
-                }
-            )
+        # Expand the "all" node role into an explicit list
+        if node_handles_all_roles(node_roles=node_roles):
+            node_roles_tag = ','.join([key.lower() for key in StalwartNodeRoles.__members__.keys() if key != 'ALL'])
+        else:
+            node_roles_tag = ','.join([role.lower() for role in self.nodes[node_id]['node_roles']])
 
-        sg = tb_pulumi.network.SecurityGroupWithRules(
-            name=f"{name}-sg",
-            project=project,
-            rules=sg_rules,
-            vpc_id=subnet.vpc_id,
-        )
-
-        # Tags for the instance that inform behavior in the postboot playbook
+        # These tags will later get read back when the instance comes online by the postboot process
         postboot_tags = {
-            "postboot.stalwart.cluster_services": ",".join(cluster_services),
-            "postboot.stalwart.node_id": node_id,
-            "postboot.stalwart.node_roles": ",".join(node_roles),
+            'postboot.stalwart.aws_region': self.project.aws_region,
+            'postboot.stalwart.env': self.project.stack,
+            'postboot.stalwart.node_services': node_services_tag,
+            'postboot.stalwart.node_id': node_id,
+            'postboot.stalwart.node_roles': node_roles_tag,
         }
 
+        # Combine all the tags
         instance_tags = self.tags
-        instance_tags.update({"Name": name})
+        instance_tags.update({'Name': f'{self.name}-{node_id}'})
         instance_tags.update(postboot_tags)
-
-        # User data includes a base64-encoded zip file. We must first produce that zip file.
-        __archive_files = [
-            "bootstrap.py",
-            "templates/stalwart.toml.j2",
-            "templates/thundermail.service.j2",
-            "requirements.txt",
-        ]
-        with ZipFile(user_data_archive, "w") as archive:
-            for file in __archive_files:
-                archive.write(file)
-
-        # Now read that file back in and base64-encode it
-        with open(user_data_archive, "rb") as archive_fh:
-            archive_data = archive_fh.read()
-
-        encoded_archive = base64.encodebytes(archive_data)
-
-        with open(user_data_template, "r") as fh:
-            user_data_jinja = fh.read()
-            user_data_values = {"bootstrap_zip_base64": encoded_archive}
-            template = Template(user_data_jinja)
-            user_data = template.render(user_data_values)
-
-        # pulumi.info(f'USER DATA: {user_data}')
 
         # Sometimes we want to not apply changes to the AMI or user data, which would cause downtime. These features are
         # exposed through the component resource so users can more carefully control deployments.
         instance_ignores = []
         if ignore_ami_changes:
-            instance_ignores.append("ami")
+            instance_ignores.append('ami')
         if ignore_user_data_changes:
-            instance_ignores.append("user_data")
+            instance_ignores.append('user_data')
 
-        instance = aws.ec2.Instance(
-            f"{name}-instance",
-            ami=project.get_latest_amazon_linux_ami(),
-            associate_public_ip_address=True,
+        return aws.ec2.Instance(
+            f'{self.name}-{node_id}-instance',
+            ami=self.project.get_latest_amazon_linux_ami(),
+            associate_public_ip_address=True,  # These are private, but a public IP assignment is required for egress
             disable_api_stop=disable_api_stop,
             disable_api_termination=disable_api_termination,
             instance_type=instance_type,
+            metadata_options={  # Enabling this allows us to access tags via the instance metadata service
+                'instance_metadata_tags': 'enabled',
+            },
             root_block_device={
-                "delete_on_termination": False,  # TODO: What get stored here? Any reason to keep these?
-                # "device_name": "/dev/xvda",
-                "encrypted": True,
-                "tags": self.tags,
-                "volume_size": storage_capacity,
-                "volume_type": "gp2",
+                'delete_on_termination': True,
+                'encrypted': True,
+                'tags': self.tags,
+                'volume_size': storage_capacity,
+                'volume_type': 'gp2',
             },
             subnet_id=subnet.id,
             tags=instance_tags,
-            user_data=user_data,
-            vpc_security_group_ids=[sg.resources["sg"].id],
+            user_data=self.user_data,
+            vpc_security_group_ids=[self.node_sgs[node_id].resources['sg'].id],
             opts=pulumi.ResourceOptions(parent=self, ignore_changes=instance_ignores),
             **kwargs,
         )
 
-        self.finish(resources={"sg": sg, "instance": instance})
+    @property
+    def user_data(self):
+        """So called "user data" is a script or cloud-init config that will get run on an EC2 instance right as it boots
+        for the first time. This can be used to bootstrap a server, as we do here. This property injects a base64-
+        encoded zip file of all the things the instance needs for bootstrapping into a user data script used to
+        configure a new Stalwart node.
+        """
+
+        # Produce a zip file containing the contents of the bootstrap directory. "arcname" is used to prevent the
+        # creation of a "bootstrap" subdirectory.
+        archive_file_base = './bootstrap'
+        archive_files = [
+            'bootstrap.py',
+            # 'templates/debug.md.j2',
+            'templates/ports.j2',
+            'templates/stalwart.toml.j2',
+            'templates/thundermail.service.j2',
+            'requirements.txt',
+        ]
+        with ZipFile(self.user_data_archive, 'w') as archive:
+            for file in archive_files:
+                source_name = f'{archive_file_base}/{file}'
+                archive.write(source_name, arcname=file)
+
+        # Now read that file back in and base64-encode it
+        with open(self.user_data_archive, 'rb') as archive_fh:
+            archive_data = archive_fh.read()
+        encoded_archive = base64.b64encode(archive_data).decode('utf8')
+
+        # Do a minimal-effort Jinja template rendering of the user data
+        with open(self.user_data_template, 'r') as fh:
+            user_data_jinja = fh.read()
+            user_data_values = {'bootstrap_zip_base64': encoded_archive}
+            template = Template(user_data_jinja)
+            user_data = template.render(user_data_values)
+
+        return user_data
+
+    # Cache this property because we don't need to validate/calculate this ever time we call it, just once
+    @cached_property
+    def expose_all_services(self) -> bool:
+        """Determines if the load balancer configuration is set to expose all services uniformly.
+
+        :raises ValueError: When an invalid load balancer configuration is provided for the node.
+
+        :rtype: bool
+        """
+
+        # Get the list of exposed services
+        if 'services' not in self.load_balancer:
+            raise ValueError('`load_balancer` option must contain a `services` entry.')
+        services = self.load_balancer['services']
+
+        # Determine if all services are exposed
+        all_services = False
+        if 'all' in services:
+            if len(services) > 1:
+                raise ValueError('When the "all" service is enabled, no other services may be.')
+            all_services = True
+
+        # Validate the rest of the config while we're at it
+        for service in services:
+            svc = services[service]
+            if 'source_cidrs' not in svc and 'source_security_group_ids' not in svc:
+                raise ValueError(
+                    f'At least one of `source_cidrs` or `source_security_group_ids` must be set for service {service}.'
+                )
+
+        return all_services
+
+
+def node_handles_all_roles(node_roles: list[str]) -> bool:
+    """Determines if the given node is configured to handle all node roles.
+
+    :param node_id: The node_id of the node to check.
+    :type node_id: str
+
+    :raises ValueError: When an invalid node role configuration is provided for the node.
+
+    :rtype: bool
+    """
+
+    if len(node_roles) > 1 and 'all' in node_roles:
+        raise ValueError('If the "all" node role is set for a node, no other roles may be set.')
+
+    return True if len(node_roles) == 1 and 'all' in node_roles else False
+
+
+def node_handles_all_services(services: list[str]) -> bool:
+    """Determines if the given node is configured to handle all node services.
+
+    :param node_id: The node_id of the node to check.
+    :type node_id: str
+
+    :raises ValueError: When an invalid cluster service configuration is provided for the node.
+
+    :rtype: bool
+    """
+
+    if len(services) > 1 and 'all' in services:
+        raise ValueError('If the "all" cluster service is set for a node, no other services may be set.')
+    for service in services:
+        if service.lower() not in STALWART_CLUSTER_SERVICES.keys():
+            raise ValueError(f'"{service}" is not a valid cluster service.')
+
+    return True if len(services) == 1 and 'all' in services else False

@@ -1,0 +1,50 @@
+{#- Service port data common to other templates -#}
+{%- set service_ports = {
+    'http': {
+        'listener': 'management',
+        'protocol': 'http',
+        'port': 8080,
+    },
+    'imap': {
+        'listener': 'imap',
+        'protocol': 'imap',
+        'port': 143,
+    },
+    'imaps': {
+        'listener': 'imaptls',
+        'protocol': 'imap',
+        'port': 993,
+    },
+    'lmtp': {
+        'listener': 'lmtp',
+        'protocol': 'lmtp',
+        'port': 24,
+    },
+    'managesieve': {
+        'listener': 'sieve',
+        'protocol': 'managesieve',
+        'port': 4190,
+    },
+    'pop3': {
+        'listener': 'pop3',
+        'protocol': 'pop3',
+        'port': 110,
+    },
+    'pop3s': {
+        'listener': 'pop3s',
+        'protocol': 'pop3',
+        'port': 995,
+    },
+    'smtp': {
+        'listener': 'smtp',
+        'protocol': 'smtp',
+        'port': 25,
+    },
+    'smtps': {
+        'listener': 'submission',
+        'protocol': 'smtp',
+        'port': 587
+    }
+}
+-%}
+{% block with_service_ports %}{% endblock %}
