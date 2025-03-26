@@ -1,0 +1,82 @@
+---
+resources:
+  tb:secrets:PulumiSecretsManager:
+    secrets:
+      secret_names:
+        - stalwart.postboot.postgresql_backend
+      recovery_window_in_days: 0
+
+  tb:network:MultiCidrVpc:
+    vpc:
+      cidr_block: 10.1.0.0/16
+      subnets:
+        eu-central-1a:
+          - 10.1.0.0/17
+        eu-central-1b:
+          - 10.1.128.0/17
+      enable_internet_gateway: True
+      egress_via_internet_gateway: True
+      enable_dns_hostnames: True
+      endpoint_interfaces:
+        - secretsmanager
+
+  tb:elasticache:ElastiCacheReplicationGroup:
+    stalwart:
+      description: Redis memory cache for Stalwart
+      engine: redis
+      engine_version: 7.1
+      node_type: cachhe.t3.micro
+      num_cache_nodes: 1
+      automatic_failover_enabled: False # Must be false when num_cache_nodes is 1
+      parameter_group_family: redis7
+      parameter_group_params: {}
+      port: 6379
+      # Dynamic values set in code, or not at all:
+      # source_cidrs: []
+      # source_sgids: []
+      # subnets: []
+
+  tb:mailstrom:StalwartCluster:
+    thundermail:
+      # stores:
+      #   postgresql: mailstrom/stage/stalwart-postgres-settings
+      #   redis: mailstrom/stage/stalwart-redis-settings
+      #   s3: mailstrom/stage/stalwart-s3-settings
+      nodes:
+        all-001:
+          disable_api_termination: False
+          ignore_ami_changes: True
+          ignore_user_data_changes: True
+          instance_type: t3.micro
+          key_name: rjung-burrito
+          node_roles:
+            - all
+          services:
+            - all
+          storage_capacity: 20
+          
+      load_balancer:
+        services:
+          all:
+            source_cidrs: ['0.0.0.0/0']
+          # http:
+          #   source_security_group_ids: []
+          # imap:
+          #   source_cidrs: ['0.0.0.0/0']
+          # imaps:
+          #   source_cidrs: ['0.0.0.0/0']
+          # lmtp:
+          #   source_cidrs: ['0.0.0.0/0']
+          # managesieve:
+          #   source_cidrs: ['0.0.0.0/0']
+          # smtp:
+          #   source_cidrs: ['0.0.0.0/0']
+          # smtps:
+          #   source_cidrs: ['0.0.0.0/0']
+        
+  tb:ec2:SshableInstance:
+    rjung-jump:
+      public_key: |
+        ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDLQc8Fo31m9n7vdIjMBMadZ2rWaFSBcsDgbAu9fbbpYjcgSgXv2XOEy5mP23psSgZbiYr5TW9NXITq25Y1RUCbZs4JekoYcgvdhbi4I6ru0VxBgfLJmJyQuPBG1QRMs+TpG8eBPY2RCUjCKlDslOJodRjjGRpauvEHSKKiqueByXydM9Cp+57T14ldnEs5/pB3yx3F9tv61Uf8mrZAkTj/l0bhnqoj8RAK+I3XKQuWoUpai+rvRkxzhzHHVaIr8VxkC5ChZ30o1El8UnKWJRaGQpPoZVs6t4lsMCxBIHg2ZM4BSgPQbNsEdx2K/lc4TDUEnokbFkzigF+vAfr1Ic/wKr7aP4xXnPCnaeqVi1+uNVTYfcTOeRgMpwQJRxTm1G8STccPfyM/FraFlKpQk4u/qRuKf5QDo4LEKFGbHx+7D8BYjO9QIZ4qSJxAtk5JIQ8vs4vEn7Ss4pjayu5iqcK0I+7syBQ92dYorUMKddcD1cwtTqCqST4RqHsEOjMGxcgSuFaozDGrqUgd21S0BOuYeZ9IN1OMrzRnytNMf0bTWnD0ukxDVXbO+WJuq6Ry8fnj+/S/tNuLRrxy0hQ77QGpkt+RmcZzWDA2JNF3O6aJcC8IwMKliAE+F01Yd72zyS0iCiGI2YQ6b6l7Og9XpRShk8vEMuluxslY0u77rY09Pw==
+      source_cidrs:
+        - 38.15.46.29/32

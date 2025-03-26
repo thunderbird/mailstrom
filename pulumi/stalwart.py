@@ -5,6 +5,7 @@ import json
 import pulumi
 import pulumi_aws as aws
 import tb_pulumi
+import tb_pulumi.iam
 import tb_pulumi.network
 import tb_pulumi.s3
 
@@ -188,7 +189,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         )
 
         # Build an S3 bucket for Stalwart's blob storage
-        s3 = tb_pulumi.s3.S3Bucket(
+        s3_bucket = tb_pulumi.s3.S3Bucket(
             name=f'{self.name}-s3',
             project=self.project,
             bucket_name=f'{self.name}-s3-store',
@@ -196,6 +197,37 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
             enable_versioning=True,
             opts=pulumi.ResourceOptions(parent=self),
             tags=self.tags,
+        )
+
+        def __s3_policy(bucket_arn: str, bucket_name: str):
+            policy_doc = IAM_POLICY_DOCUMENT.copy()
+            policy_doc['Statement'][0]['Sid'] = 'AllowFullS3Access'
+            policy_doc['Statement'][0].update(
+                {
+                    'Action': ['s3:*'],
+                    'Resource': [bucket_arn, f'{bucket_arn}*'],
+                }
+            )
+            return aws.iam.Policy(
+                f'{self.name}-policy-s3',
+                name=f's3{bucket_name}',
+                path='/',
+                description=f'Grants full acccess to the {bucket_name} S3 bucket and its contents',
+                policy=json.dumps(policy_doc),
+            )
+
+        # Build an IAM policy granting bucket access
+        s3_policy = pulumi.Output.all(bucket_arn=s3_bucket.resources['bucket'].arn, bucket_name=s3_bucket.name).apply(
+            lambda outputs: __s3_policy(bucket_arn=outputs['bucket_arn'], bucket_name=outputs['bucket_name'])
+        )
+
+        iam_user = tb_pulumi.iam.UserWithAccessKey(
+            name=f'{name}-user',
+            project=self.project,
+            exclude_from_project=True,
+            user_name=f'{self.project.name_prefix}-stalwart',
+            policies=[s3_policy],
+            opts=pulumi.ResourceOptions(parent=self, depends_on=[s3_policy]),
         )
 
         node_profile_policy, node_profile_role, node_profile_attachment, node_profile = (
@@ -217,7 +249,9 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
                 'node_sgs': self.node_sgs,
                 'instances': instances,
                 'redis': redis,
-                's3': s3,
+                's3': s3_bucket,
+                's3_policy': s3_policy,
+                'user': iam_user,
             }
         )
 

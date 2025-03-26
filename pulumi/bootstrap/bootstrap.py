@@ -133,6 +133,7 @@ def render_templates(template_values: dict) -> None:
             log.info(f'Writing {target_file} to disk...')
             fh.write(rendered_template)
 
+
 def main():
     log.info('Bootstrapping begins now...')
 
