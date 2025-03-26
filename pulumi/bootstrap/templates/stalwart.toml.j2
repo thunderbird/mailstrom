@@ -18,7 +18,7 @@ protocol = "{{ service_ports[service]['protocol'] }}"
 data = "postgresql"
 fts = "postgresql"
 blob = "s3"
-lookup = "redis"
+# lookup = "redis"
 directory = "internal"
 
 [store."postgresql"]
@@ -30,9 +30,13 @@ user = "{{ postgresql_backend['user'] }}"
 password = "{{ postgresql_backend['password'] }}"
 timeout = "{{ postgresql_backend['timeout'] if 'timeout' in postgresql_backend else '15s' }}"
 
-# [store."s3"]
-# ...
-# 
+[store."s3"]
+type = "s3"
+bucket = "{{ s3_backend['bucket'] }}"
+region = "{{ s3_backend['region'] }}"
+access-key = "{{ s3_iam_access_key['access_key_id'] }}"
+secret-key = "{{ s3_iam_access_key['secret_access_key'] }}"
+
 # [store."redis"]
 # ...
 

@@ -95,8 +95,13 @@ def get_secrets(env: str, aws_region: str) -> dict:
     :return: Mapping of template variable names to the secret values they represent.
     :rtype: dict
     """
+
     # Mapping where keys are template variable names and values are the IDs of the secrets containing the secret value
-    secret_value_map = {'postgresql_backend': f'mailstrom/{env}/stalwart.postboot.postgresql_backend'}
+    secret_value_map = {
+        'postgresql_backend': f'mailstrom/{env}/stalwart.postboot.postgresql_backend',
+        's3_iam_access_key': f'mailstrom/{env}/iam.user.mailstrom-{env}-stalwart.access_key',
+        's3_backend': f'mailstrom/{env}/stalwart.postboot.s3_backend',
+    }
     secrets = {}
     sm_client = boto3.client('secretsmanager', region_name=aws_region)
     for template_key, secret_id in secret_value_map.items():

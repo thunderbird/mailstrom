@@ -8,6 +8,7 @@ import tb_pulumi
 import tb_pulumi.iam
 import tb_pulumi.network
 import tb_pulumi.s3
+import tb_pulumi.secrets
 
 from enum import Enum
 from functools import cached_property
@@ -189,8 +190,9 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         )
 
         # Build an S3 bucket for Stalwart's blob storage
+        bucket_name = f'{self.name}-s3'
         s3_bucket = tb_pulumi.s3.S3Bucket(
-            name=f'{self.name}-s3',
+            name=bucket_name,
             project=self.project,
             bucket_name=f'{self.name}-s3-store',
             enable_server_side_encryption=True,
@@ -221,36 +223,98 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
             lambda outputs: __s3_policy(bucket_arn=outputs['bucket_arn'], bucket_name=outputs['bucket_name'])
         )
 
+        iam_user_name = f'{self.project.name_prefix}-stalwart'
         iam_user = tb_pulumi.iam.UserWithAccessKey(
             name=f'{name}-user',
             project=self.project,
             exclude_from_project=True,
-            user_name=f'{self.project.name_prefix}-stalwart',
+            user_name=iam_user_name,
             policies=[s3_policy],
             opts=pulumi.ResourceOptions(parent=self, depends_on=[s3_policy]),
         )
 
-        node_profile_policy, node_profile_role, node_profile_attachment, node_profile = (
-            self.node_instance_profile_resources
+        # Build a secret to store te Stalwart S3 config details in
+        s3_secret = tb_pulumi.secrets.SecretsManagerSecret(
+            name=f'{name}-secret-s3',
+            project=self.project,
+            exclude_from_project=True,
+            secret_name=f'mailstrom/{self.project.stack}/stalwart.postboot.s3_backend',
+            secret_value=json.dumps(
+                {
+                    'bucket': bucket_name,
+                    'region': self.project.aws_region,
+                }
+            ),
         )
+
+        bootstrap_secret_arns = [
+            (
+                'arn:aws:secretsmanager:'
+                + f'{self.project.aws_region}:{self.project.aws_account_id}'
+                + f':secret:mailstrom/{self.project.stack}/stalwart.postboot.*'
+            ), (
+                'arn:aws:secretsmanager:'
+                + f'{self.project.aws_region}:{self.project.aws_account_id}'
+                + f':secret:mailstrom/{self.project.stack}/iam.user.{iam_user_name}.access_key*'
+            )
+        ]
+        profile_policy_doc = IAM_POLICY_DOCUMENT.copy()
+        profile_policy_doc['Statement'][0].update(
+            {
+                'Sid': 'AllowPostbootSecretAccess',
+                'Action': ['secretsmanager:GetSecretValue'],
+                'Resource': bootstrap_secret_arns,
+            }
+        )
+        pulumi.info(f'DEBUG -- profile policy: {json.dumps(profile_policy_doc, indent=2)}')
+        profile_policy = aws.iam.Policy(
+            f'{self.name}-policy-nodeprofile',
+            path='/',
+            description='Policy for the Stalwart node instance profile',
+            policy=json.dumps(profile_policy_doc),
+        )
+
+        arp = ASSUME_ROLE_POLICY.copy()
+        arp['Statement'][0]['Principal']['Service'] = 'ec2.amazonaws.com'
+        role = aws.iam.Role(
+            f'{self.name}-role-nodeprofile',
+            name=f'{self.name}-stalwart-node-profile',
+            assume_role_policy=json.dumps(arp),
+            path='/',
+        )
+
+        profile_attachment = aws.iam.RolePolicyAttachment(
+            f'{self.name}-rpa-nodeprofile',
+            role=role.name,
+            policy_arn=profile_policy.arn,
+        )
+
+        profile = aws.iam.InstanceProfile(
+            f'{self.name}-ip-nodeprofile', name=f'{self.name}-nodeprofile', role=role.name
+        )
+
         # Pipe the node configs into a series of StalwartClusterNodes
         instances = {}
         for idx, node_id in enumerate(nodes):
             instances[node_id] = self.node(
                 node_id=node_id,
                 subnet=self.subnets[idx % len(self.subnets)],
-                iam_instance_profile=node_profile.name,
+                iam_instance_profile=profile.name,
                 **nodes[node_id],
             )
 
         self.finish(
             resources={
                 'lb_sg': self.load_balancer_security_group,
+                'node_profile': profile,
+                'node_profile_policy': profile_policy,
+                'node_profile_policy_attachment': profile_attachment,
                 'node_sgs': self.node_sgs,
                 'instances': instances,
                 'redis': redis,
                 's3': s3_bucket,
                 's3_policy': s3_policy,
+                's3_secret': s3_secret,
                 'user': iam_user,
             }
         )
@@ -327,50 +391,6 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
             opts=pulumi.ResourceOptions(parent=self),
             tags=self.tags,
         )
-
-    @cached_property
-    def node_instance_profile_resources(self):
-        # Build the instance profile to use on the nodes
-        bootstrap_secret_arns = (
-            'arn:aws:secretsmanager:'
-            + f'{self.project.aws_region}:{self.project.aws_account_id}'
-            + f':secret:mailstrom/{self.project.stack}/stalwart.postboot.*'
-        )
-        policy_doc = IAM_POLICY_DOCUMENT.copy()
-        policy_doc['Statement'][0].update(
-            {
-                'Sid': 'AllowPostbootSecretAccess',
-                'Action': ['secretsmanager:GetSecretValue'],
-                'Resource': [bootstrap_secret_arns],
-            }
-        )
-        policy = aws.iam.Policy(
-            f'{self.name}-policy-nodeprofile',
-            path='/',
-            description='Policy for the Stalwart node instance profile',
-            policy=json.dumps(policy_doc),
-        )
-
-        arp = ASSUME_ROLE_POLICY.copy()
-        arp['Statement'][0]['Principal']['Service'] = 'ec2.amazonaws.com'
-        role = aws.iam.Role(
-            f'{self.name}-role-nodeprofile',
-            name=f'{self.name}-stalwart-node-profile',
-            assume_role_policy=json.dumps(arp),
-            path='/',
-        )
-
-        attachment = aws.iam.RolePolicyAttachment(
-            f'{self.name}-rpa-nodeprofile',
-            role=role.name,
-            policy_arn=policy.arn,
-        )
-
-        profile = aws.iam.InstanceProfile(
-            f'{self.name}-ip-nodeprofile', name=f'{self.name}-nodeprofile', role=role.name
-        )
-
-        return policy, role, attachment, profile
 
     def node_security_group(self, node_id: str) -> tb_pulumi.network.SecurityGroupWithRules:
         """Build an instance-dedicated security group with rules specific to the services available on the machine.
