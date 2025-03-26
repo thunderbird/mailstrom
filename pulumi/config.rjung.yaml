@@ -36,48 +36,61 @@ resources:
       # source_sgids: []
       # subnets: []
 
+  tb:ec2:SshableInstance:
+    rjung-jump:
+        # churro: # ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDLQc8Fo31m9n7vdIjMBMadZ2rWaFSBcsDgbAu9fbbpYjcgSgXv2XOEy5mP23psSgZbiYr5TW9NXITq25Y1RUCbZs4JekoYcgvdhbi4I6ru0VxBgfLJmJyQuPBG1QRMs+TpG8eBPY2RCUjCKlDslOJodRjjGRpauvEHSKKiqueByXydM9Cp+57T14ldnEs5/pB3yx3F9tv61Uf8mrZAkTj/l0bhnqoj8RAK+I3XKQuWoUpai+rvRkxzhzHHVaIr8VxkC5ChZ30o1El8UnKWJRaGQpPoZVs6t4lsMCxBIHg2ZM4BSgPQbNsEdx2K/lc4TDUEnokbFkzigF+vAfr1Ic/wKr7aP4xXnPCnaeqVi1+uNVTYfcTOeRgMpwQJRxTm1G8STccPfyM/FraFlKpQk4u/qRuKf5QDo4LEKFGbHx+7D8BYjO9QIZ4qSJxAtk5JIQ8vs4vEn7Ss4pjayu5iqcK0I+7syBQ92dYorUMKddcD1cwtTqCqST4RqHsEOjMGxcgSuFaozDGrqUgd21S0BOuYeZ9IN1OMrzRnytNMf0bTWnD0ukxDVXbO+WJuq6Ry8fnj+/S/tNuLRrxy0hQ77QGpkt+RmcZzWDA2JNF3O6aJcC8IwMKliAE+F01Yd72zyS0iCiGI2YQ6b6l7Og9XpRShk8vEMuluxslY0u77rY09Pw== rjung@churro
+      public_key: |
+        ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDLQc8Fo31m9n7vdIjMBMadZ2rWaFSBcsDgbAu9fbbpYjcgSgXv2XOEy5mP23psSgZbiYr5TW9NXITq25Y1RUCbZs4JekoYcgvdhbi4I6ru0VxBgfLJmJyQuPBG1QRMs+TpG8eBPY2RCUjCKlDslOJodRjjGRpauvEHSKKiqueByXydM9Cp+57T14ldnEs5/pB3yx3F9tv61Uf8mrZAkTj/l0bhnqoj8RAK+I3XKQuWoUpai+rvRkxzhzHHVaIr8VxkC5ChZ30o1El8UnKWJRaGQpPoZVs6t4lsMCxBIHg2ZM4BSgPQbNsEdx2K/lc4TDUEnokbFkzigF+vAfr1Ic/wKr7aP4xXnPCnaeqVi1+uNVTYfcTOeRgMpwQJRxTm1G8STccPfyM/FraFlKpQk4u/qRuKf5QDo4LEKFGbHx+7D8BYjO9QIZ4qSJxAtk5JIQ8vs4vEn7Ss4pjayu5iqcK0I+7syBQ92dYorUMKddcD1cwtTqCqST4RqHsEOjMGxcgSuFaozDGrqUgd21S0BOuYeZ9IN1OMrzRnytNMf0bTWnD0ukxDVXbO+WJuq6Ry8fnj+/S/tNuLRrxy0hQ77QGpkt+RmcZzWDA2JNF3O6aJcC8IwMKliAE+F01Yd72zyS0iCiGI2YQ6b6l7Og9XpRShk8vEMuluxslY0u77rY09Pw==
+      source_cidrs:
+        - 38.15.46.29/32
+
   tb:mailstrom:StalwartCluster:
     thundermail:
-      # stores:
-      #   postgresql: mailstrom/stage/stalwart-postgres-settings
-      #   redis: mailstrom/stage/stalwart-redis-settings
-      #   s3: mailstrom/stage/stalwart-s3-settings
       nodes:
-        all-002:
+        "0":
           disable_api_termination: False
           ignore_ami_changes: True
           ignore_user_data_changes: True
           instance_type: t3.micro
-          key_name: rjung-churro
+          key_name: rjung-burrito
+          node_roles: []
+          services:
+            - http
+          storage_capacity: 20
+        "1":
+          disable_api_termination: False
+          ignore_ami_changes: True
+          ignore_user_data_changes: True
+          instance_type: t3.micro
+          key_name: rjung-burrito
           node_roles:
             - all
           services:
-            - all
+            - imap
+            - imaps
+            - lmtp
+            - managesieve
+            - pop3
+            - pop3s
+            - smtp
+            - smtps
           storage_capacity: 20
-          
       load_balancer:
         services:
-          all:
+          # all:
+          #   source_cidrs: ['0.0.0.0/0']
+          http:
+            source_cidrs: ['10.1.0.0/16']
+          imap:
             source_cidrs: ['0.0.0.0/0']
-          # http:
-          #   source_security_group_ids: []
-          # imap:
-          #   source_cidrs: ['0.0.0.0/0']
-          # imaps:
-          #   source_cidrs: ['0.0.0.0/0']
-          # lmtp:
-          #   source_cidrs: ['0.0.0.0/0']
-          # managesieve:
-          #   source_cidrs: ['0.0.0.0/0']
-          # smtp:
-          #   source_cidrs: ['0.0.0.0/0']
-          # smtps:
-          #   source_cidrs: ['0.0.0.0/0']
+          imaps:
+            source_cidrs: ['0.0.0.0/0']
+          lmtp:
+            source_cidrs: ['0.0.0.0/0']
+          managesieve:
+            source_cidrs: ['0.0.0.0/0']
+          smtp:
+            source_cidrs: ['0.0.0.0/0']
+          smtps:
+            source_cidrs: ['0.0.0.0/0']
         
-  tb:ec2:SshableInstance:
-    rjung-jump:
-      public_key: |
-        ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDLQc8Fo31m9n7vdIjMBMadZ2rWaFSBcsDgbAu9fbbpYjcgSgXv2XOEy5mP23psSgZbiYr5TW9NXITq25Y1RUCbZs4JekoYcgvdhbi4I6ru0VxBgfLJmJyQuPBG1QRMs+TpG8eBPY2RCUjCKlDslOJodRjjGRpauvEHSKKiqueByXydM9Cp+57T14ldnEs5/pB3yx3F9tv61Uf8mrZAkTj/l0bhnqoj8RAK+I3XKQuWoUpai+rvRkxzhzHHVaIr8VxkC5ChZ30o1El8UnKWJRaGQpPoZVs6t4lsMCxBIHg2ZM4BSgPQbNsEdx2K/lc4TDUEnokbFkzigF+vAfr1Ic/wKr7aP4xXnPCnaeqVi1+uNVTYfcTOeRgMpwQJRxTm1G8STccPfyM/FraFlKpQk4u/qRuKf5QDo4LEKFGbHx+7D8BYjO9QIZ4qSJxAtk5JIQ8vs4vEn7Ss4pjayu5iqcK0I+7syBQ92dYorUMKddcD1cwtTqCqST4RqHsEOjMGxcgSuFaozDGrqUgd21S0BOuYeZ9IN1OMrzRnytNMf0bTWnD0ukxDVXbO+WJuq6Ry8fnj+/S/tNuLRrxy0hQ77QGpkt+RmcZzWDA2JNF3O6aJcC8IwMKliAE+F01Yd72zyS0iCiGI2YQ6b6l7Og9XpRShk8vEMuluxslY0u77rY09Pw== rjung@churro
-      # burrito: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDLQc8Fo31m9n7vdIjMBMadZ2rWaFSBcsDgbAu9fbbpYjcgSgXv2XOEy5mP23psSgZbiYr5TW9NXITq25Y1RUCbZs4JekoYcgvdhbi4I6ru0VxBgfLJmJyQuPBG1QRMs+TpG8eBPY2RCUjCKlDslOJodRjjGRpauvEHSKKiqueByXydM9Cp+57T14ldnEs5/pB3yx3F9tv61Uf8mrZAkTj/l0bhnqoj8RAK+I3XKQuWoUpai+rvRkxzhzHHVaIr8VxkC5ChZ30o1El8UnKWJRaGQpPoZVs6t4lsMCxBIHg2ZM4BSgPQbNsEdx2K/lc4TDUEnokbFkzigF+vAfr1Ic/wKr7aP4xXnPCnaeqVi1+uNVTYfcTOeRgMpwQJRxTm1G8STccPfyM/FraFlKpQk4u/qRuKf5QDo4LEKFGbHx+7D8BYjO9QIZ4qSJxAtk5JIQ8vs4vEn7Ss4pjayu5iqcK0I+7syBQ92dYorUMKddcD1cwtTqCqST4RqHsEOjMGxcgSuFaozDGrqUgd21S0BOuYeZ9IN1OMrzRnytNMf0bTWnD0ukxDVXbO+WJuq6Ry8fnj+/S/tNuLRrxy0hQ77QGpkt+RmcZzWDA2JNF3O6aJcC8IwMKliAE+F01Yd72zyS0iCiGI2YQ6b6l7Og9XpRShk8vEMuluxslY0u77rY09Pw==
-      source_cidrs:
-        - 76.155.125.135/32

@@ -141,6 +141,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         cache_parameters: list = [],
         load_balancer: dict = {},
         nodes: dict = {},
+        node_additional_ingress_rules: list[dict] = [],
         user_data_archive: str = 'bootstrap.zip',
         user_data_template: str = 'stalwart_instance_user_data.sh.j2',
         opts: pulumi.ResourceOptions = None,
@@ -169,7 +170,10 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         self.vpc_id = self.subnets[0].vpc_id
 
         # Build custom security groups per node depending on cluster service config
-        self.node_sgs = {node: self.node_security_group(node_id=node) for node in nodes}
+        self.node_sgs = {
+            node: self.node_security_group(node_id=node, additional_rules=node_additional_ingress_rules)
+            for node in nodes
+        }
 
         # Build a Redis cluster for Stalwart's in-memory store
         redis = tb_pulumi.elasticache.ElastiCacheReplicationGroup(
@@ -189,12 +193,27 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
             tags=self.tags,
         )
 
+        def __redis_secret(address: str):
+            return tb_pulumi.secrets.SecretsManagerSecret(
+                name=f'{name}-secret-redis',
+                project=self.project,
+                exclude_from_project=True,
+                secret_name=f'mailstrom/{self.project.stack}/stalwart.postboot.redis_backend',
+                secret_value=json.dumps({'urls': f'redis://{address}#insecure'}),
+            )
+
+        redis_secret = pulumi.Output.all(**redis.resources).apply(
+            lambda redis_resources: redis_resources['replication_group'].primary_endpoint_address.apply(
+                lambda address: __redis_secret(address=address)
+            )
+        )
+
         # Build an S3 bucket for Stalwart's blob storage
-        bucket_name = f'{self.name}-s3'
+        bucket_name = f'{self.name}-s3-store'
         s3_bucket = tb_pulumi.s3.S3Bucket(
             name=bucket_name,
             project=self.project,
-            bucket_name=f'{self.name}-s3-store',
+            bucket_name=bucket_name,
             enable_server_side_encryption=True,
             enable_versioning=True,
             opts=pulumi.ResourceOptions(parent=self),
@@ -212,7 +231,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
             )
             return aws.iam.Policy(
                 f'{self.name}-policy-s3',
-                name=f's3{bucket_name}',
+                name=f's3-full-access-{bucket_name}',
                 path='/',
                 description=f'Grants full acccess to the {bucket_name} S3 bucket and its contents',
                 policy=json.dumps(policy_doc),
@@ -252,11 +271,12 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
                 'arn:aws:secretsmanager:'
                 + f'{self.project.aws_region}:{self.project.aws_account_id}'
                 + f':secret:mailstrom/{self.project.stack}/stalwart.postboot.*'
-            ), (
+            ),
+            (
                 'arn:aws:secretsmanager:'
                 + f'{self.project.aws_region}:{self.project.aws_account_id}'
                 + f':secret:mailstrom/{self.project.stack}/iam.user.{iam_user_name}.access_key*'
-            )
+            ),
         ]
         profile_policy_doc = IAM_POLICY_DOCUMENT.copy()
         profile_policy_doc['Statement'][0].update(
@@ -266,7 +286,6 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
                 'Resource': bootstrap_secret_arns,
             }
         )
-        pulumi.info(f'DEBUG -- profile policy: {json.dumps(profile_policy_doc, indent=2)}')
         profile_policy = aws.iam.Policy(
             f'{self.name}-policy-nodeprofile',
             path='/',
@@ -312,6 +331,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
                 'node_sgs': self.node_sgs,
                 'instances': instances,
                 'redis': redis,
+                'redis_secret': redis_secret,
                 's3': s3_bucket,
                 's3_policy': s3_policy,
                 's3_secret': s3_secret,
@@ -392,7 +412,9 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
             tags=self.tags,
         )
 
-    def node_security_group(self, node_id: str) -> tb_pulumi.network.SecurityGroupWithRules:
+    def node_security_group(
+        self, node_id: str, additional_rules: list[dict]
+    ) -> tb_pulumi.network.SecurityGroupWithRules:
         """Build an instance-dedicated security group with rules specific to the services available on the machine.
 
         :param node_id: The node_id of the node to build a security group for.
@@ -413,20 +435,28 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
                     'cidr_blocks': ['0.0.0.0/0'],
                 }
             ],
-            'ingress': [],
+            'ingress': [
+                {
+                    'description': 'Allow the nodes to speak the Stalwart gossip protocol amongst themselves',
+                    'protocol': 'udp',
+                    'from_port': 1179,
+                    'to_port': 1179,
+                    'self': True,
+                }
+            ],
         }
 
         # Expand "all" services into an explicit list of services
-        if self.expose_all_services:
+        if node_handles_all_services(services=self.nodes[node_id]['services']):
             # "All" services means everything except "all" itself
-            exposed_services = STALWART_CLUSTER_SERVICES.copy()
-            del exposed_services['all']
+            handled_services = STALWART_CLUSTER_SERVICES.copy()
+            del handled_services['all']
         else:
             # Build for whatever more specific services the user supplied
-            exposed_services = self.load_balancer['services'].keys()
+            handled_services = self.load_balancer['services'].keys()
 
         # Expose each service port, but only to the load balancer
-        for service in exposed_services:
+        for service in handled_services:
             sg_rules['ingress'].append(
                 {
                     'description': f'Allow {service} traffic',
@@ -436,6 +466,8 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
                     'source_security_group_id': self.load_balancer_security_group.resources['sg'].id,
                 }
             )
+
+        sg_rules['ingress'].extend(additional_rules)
 
         # Feed the rules config into a SecurityGroupWithRules pattern
         return tb_pulumi.network.SecurityGroupWithRules(
@@ -523,7 +555,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         }
 
         # Combine all the tags
-        instance_tags = self.tags
+        instance_tags = self.tags.copy()
         instance_tags.update({'Name': f'{self.name}-{node_id}'})
         instance_tags.update(postboot_tags)
 

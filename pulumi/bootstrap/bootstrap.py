@@ -99,6 +99,7 @@ def get_secrets(env: str, aws_region: str) -> dict:
     # Mapping where keys are template variable names and values are the IDs of the secrets containing the secret value
     secret_value_map = {
         'postgresql_backend': f'mailstrom/{env}/stalwart.postboot.postgresql_backend',
+        'redis_backend': f'mailstrom/{env}/stalwart.postboot.redis_backend',
         's3_iam_access_key': f'mailstrom/{env}/iam.user.mailstrom-{env}-stalwart.access_key',
         's3_backend': f'mailstrom/{env}/stalwart.postboot.s3_backend',
     }

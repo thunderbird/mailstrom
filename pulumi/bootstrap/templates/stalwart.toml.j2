@@ -2,10 +2,12 @@
 {%- extends "ports.j2" %}
 {% block with_service_ports %}
 [config]
-local-keys = [ "cluster.node-id", "store.*", "tracer.*", "authentication.fallback-admin"]
+local-keys = [ "cluster.node-id", "cluster.bind-addr", "cluster.bind-port", "store.*", "tracer.*", "authentication.fallback-admin"]
 
 [cluster]
-node-id={{ node_id }}
+node-id = {{ node_id }}
+bind-addr = "[::]"
+bind-port = 1179
 
 {# Set up a listener for every service #}
 {% for service in node_services.split(',') %}
@@ -18,8 +20,12 @@ protocol = "{{ service_ports[service]['protocol'] }}"
 data = "postgresql"
 fts = "postgresql"
 blob = "s3"
-# lookup = "redis"
+lookup = "redis"
 directory = "internal"
+
+[directory."internal"]
+type = "internal"
+store = "postgresql"
 
 [store."postgresql"]
 type = "postgresql"
@@ -30,6 +36,14 @@ user = "{{ postgresql_backend['user'] }}"
 password = "{{ postgresql_backend['password'] }}"
 timeout = "{{ postgresql_backend['timeout'] if 'timeout' in postgresql_backend else '15s' }}"
 
+{% if 'tls' in postgresql_backend %}
+{% set tls_enable = "true" if 'enable' in postgresql_backend['tls'] and postgresql_backend['tls']['enable'] else "false"  %}
+{% set tls_invalid_certs = "true" if 'allow-invalid-certs' in postgresql_backend['tls'] and postgresql_backend['tls']['allow-invalid-certs'] else "false" %}
+[store."postgresql".tls]
+enable = {{ tls_enable }}
+allow-invalid-certs = {{ tls_invalid_certs }}
+{% endif %}
+
 [store."s3"]
 type = "s3"
 bucket = "{{ s3_backend['bucket'] }}"
@@ -37,8 +51,14 @@ region = "{{ s3_backend['region'] }}"
 access-key = "{{ s3_iam_access_key['access_key_id'] }}"
 secret-key = "{{ s3_iam_access_key['secret_access_key'] }}"
 
-# [store."redis"]
-# ...
+[store."redis"]
+type = "redis"
+redis-type = "single"
+urls = "{{ redis_backend['urls'] }}"
+timeout = "{{ redis_backend['timeout'] if 'timeout' in redis_backend else '15s' }}"
+{#- TODO: Support Redis clusters.
+redis-type = "cluster"
+urls = ["url_1", "url_2", "etc"] #}
 
 [tracer."stdout"]
 type = "stdout"
