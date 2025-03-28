@@ -77,7 +77,7 @@ def get_secrets(env: str, aws_region: str) -> dict:
         's3_backend': f'mailstrom/{env}/stalwart.postboot.s3_backend',
     }
     sm_client = boto3.client('secretsmanager', region_name=aws_region)
-    
+
     secrets = {}
     for template_key, secret_id in secret_value_map.items():
         try:

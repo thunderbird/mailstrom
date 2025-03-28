@@ -40,18 +40,22 @@ for bastion in resources['tb:ec2:SshableInstance'].keys():
         **bastion_opts,
     )
 
-def __jumphost_rules(jumphosts):
-    return [{
-        'description': 'Allow SSH traffic from a jumphost',
-        'protocol': 'tcp',
-        'from_port': 22,
-        'to_port': 22,
-        'source_security_group_id': sgid
-    } for sgid in [jumphosts[jumphost].resources['security_group'].resources['sg'].id for jumphost in jumphosts]]
 
-jumphost_rules = pulumi.Output.all(**bastions).apply(
-    lambda jumphosts: __jumphost_rules(jumphosts=jumphosts)
-)
+def __jumphost_rules(jumphosts):
+    return [
+        {
+            'description': 'Allow SSH traffic from a jumphost',
+            'protocol': 'tcp',
+            'from_port': 22,
+            'to_port': 22,
+            'source_security_group_id': sgid,
+        }
+        for sgid in [jumphosts[jumphost].resources['security_group'].resources['sg'].id for jumphost in jumphosts]
+    ]
+
+
+jumphost_rules = pulumi.Output.all(**bastions).apply(lambda jumphosts: __jumphost_rules(jumphosts=jumphosts))
+
 
 # Build a Stalwart cluster
 def __stalwart_cluster(jumphost_rules: list[dict]):
@@ -64,4 +68,6 @@ def __stalwart_cluster(jumphost_rules: list[dict]):
         opts=pulumi.ResourceOptions(depends_on=[vpc]),
         **stalwart_opts,
     )
+
+
 stalwart_cluster = jumphost_rules.apply(lambda jumphost_rules: __stalwart_cluster(jumphost_rules=jumphost_rules))
