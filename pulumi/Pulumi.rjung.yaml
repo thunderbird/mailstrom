@@ -1,4 +1,0 @@
-config:
-  aws:region: eu-central-1
-  mailstrom:stalwart.postboot.postgresql_backend:
-    secure: AAABADLGzebYtXRkJtL05uygb5yzJcSsr7JtJft57cMoJyNGOiuOWSHWJUtkDbnb9gHoc5PD2cm/HPf0BULhSpyb0NE3FXpLBfOEd5WNlellvuEyPDHb6QLf1X5G/dMjdYi0DraqSMudWzDZ+NoSoZI414YNWQgWZG8axzO/p8dN0M/gHQYx3UjoFXkG5feP0xcZ3+NRo6X6JU7zav9eIoBN1l+qn/AERljdE75N/C0ru3SVxd0QJWGtD0PmvuQTcCpV1MRwub3eOkiiTGMzIjrc3ydibRUdGcnjQrqodR297UoB3b06SCAp7cNdWYGk72gYFDNCCm6svW/C8g==

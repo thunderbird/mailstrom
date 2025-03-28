@@ -27,17 +27,17 @@ vpc = tb_pulumi.network.MultiCidrVpc(
     **vpc_opts,
 )
 
-# Build a jumphost so I can test things
-jumphosts = {}
-for jumphost in resources['tb:ec2:SshableInstance'].keys():
-    jumphost_opts = resources['tb:ec2:SshableInstance'][jumphost]
-    jumphosts[jumphost] = tb_pulumi.ec2.SshableInstance(
-        f'{project.name_prefix}-{jumphost}',
+# Uncomment to build out SSH bastions
+bastions = {}
+for bastion in resources['tb:ec2:SshableInstance'].keys():
+    bastion_opts = resources['tb:ec2:SshableInstance'][bastion]
+    bastions[bastion] = tb_pulumi.ec2.SshableInstance(
+        f'{project.name_prefix}-{bastion}',
         project=project,
         subnet_id=vpc.resources['subnets'][0].id,
         vpc_id=vpc.resources['vpc'].id,
         opts=pulumi.ResourceOptions(depends_on=[vpc]),
-        **jumphost_opts,
+        **bastion_opts,
     )
 
 def __jumphost_rules(jumphosts):
