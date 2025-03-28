@@ -1,14 +1,14 @@
-# Thunderbird Pro Mail Service
+# Thunderbird Pro Mail Service Infrastructure Documentation
 
-This project aims to deploy Stalwart Mail Server in a scalable way using Pulumi and
-[tb_pulumi](https://github.com/thunderbird/pulumi/).
+This project aims to deploy [Stalwart Mail Server](https://stalw.art/) in a scalable way using
+[Pulumi](https://www.pulumi.com/) and [tb_pulumi](https://github.com/thunderbird/pulumi/).
 
 Some terminology for clarity:
 
 - **Thundermail:** The marketing name of an email service provided by Thunderbird.
 - **Mailstrom:** The name of the infrastructure-as-code project which builds/manages Thundermail's infrastructure.
-- **Stalwart:** An open source email platform ([stalw.art](https://stalw.art/)) deployed by Mailstrom.
-- **Pulumi:** An infrastructure-as-code library and platform ([pulumi.com](https://www.pulumi.com/)).
+- **Stalwart:** An open source email platform deployed by Mailstrom.
+- **Pulumi:** An infrastructure-as-code library and platform.
 - **tb_pulumi:** An extension of Pulumi defining some common infrastructure patterns at Thunderbird.
 
 
@@ -17,7 +17,7 @@ Some terminology for clarity:
 In the broadest strokes:
 
 - The `bootstrap` directory contains a script and related files that will eventually run on a Stalwart node at launch
-  time.
+  time to configure a running Stalwart instance there.
 - The `stalwart.StalwartCluster` class zips up these bootstrapping files, base64-encodes the zip, and injects that
   string into a Bash script template (stalwart_instance_user_data.sh.j2).
 - That script gets set as the instance's user data script, such that when the instance is first launched, the script
@@ -34,10 +34,11 @@ In this way, a `pulumi up` with a proper node configuration can bootstrap a func
 
 ### YAML Config
 
-This project follows the conventions outlined in
-[tb_pulumi documentation](https://thunderbird.github.io/pulumi/patterns.html#patterns-for-managing-projects). The
-Stalwart cluster is declared in the `pulumi/__main__.py` file, but the configuration for that resource is mostly
-contained in the `config.$env.yaml` file. Begin with this config shell:
+This project follows the conventions outlined in the
+[tb_pulumi documentation](https://thunderbird.github.io/pulumi/patterns.html#patterns-for-managing-projects). All code
+related to infrastructure lives in the `pulumi/` directory. The Stalwart cluster is declared in the `__main__.py` file,
+but the configuration for that resource is mostly contained in the `config.$env.yaml` file. Begin with this config
+shell:
 
 ```yaml
 resources:
@@ -87,7 +88,7 @@ resources:
           #   source_cidrs:
           #     - 10.1.0.0/16
           #   source_security_group_ids:
-          #     - your-jumphosts-id-maybe
+          #     - your-ssh-bastions-id-maybe
 ```
 
 Adjust these values to your liking, adding additional nodes as needed.
@@ -135,7 +136,7 @@ resources:
 This ensures the secret is populated with your connection details at the time the instances bootstrap and retrieve it.
 
 The Redis and S3 storage backends are created by this module. Their connection details are stored in secrets
-automatically by the `StalwartCluster` module.
+automatically by the `StalwartCluster` module; you need take no additional action regarding those stores.
 
 
 ## Debugging
@@ -145,11 +146,11 @@ automatically by the `StalwartCluster` module.
 You may need to gain SSH access to the Stalwart nodes to debug problems. The nodes are all built in private network
 space with no external access, though, which prevents this. To get around this, you will need to build an SSH bastion —
 a server that exposes private SSH connections through a single public interface — by adding a
-`tb_pulumi.ec2.SshableInstance` to the project in `pulumi/__main__.py`.
+`tb_pulumi.ec2.SshableInstance` to the project in `__main__.py`.
 
 ```python
 tb_pulumi.ec2.SshableInstance(
-    f'{project.name_prefix}-{jumphost}',
+    f'{project.name_prefix}-bastion',
     project=project,
     subnet_id=vpc.resources['subnets'][0].id,
     vpc_id=vpc.resources['vpc'].id,
@@ -180,7 +181,7 @@ Host 10.1.*
 ```
 
 In AWS, add a rule to the Stalwart node's security group allowing SSH (22/tcp) access from your bastion's security
-group. You should now be able to SSH directly into the node, punching into the private network via the bastion.
+group. You should now be able to SSH directly into the node, punching through to the private network via the bastion.
 
 ```
 # ssh $node_ip
@@ -215,33 +216,45 @@ ssh -L 8080:$node_ip:8080 $node_ip
 
 Now you have access to the admin panel by pointing a browser on your local machine to http://localhost:8080/
 
-### Bootstrapping
+### Bootstrapping a Stalwart Node
 
-The bootstrapping process begins at the instance's user data. This contains a base64-encoded zip file embedded as a
+A Stalwart node is an EC2 instance running Stalwart Mail as a Docker service. It runs Amazon Linux 2023 as an operating
+system. The bootstrapping process begins as instance user data. This contains a base64-encoded zip file embedded as a
 string in a Bash script. The user data script unpacks this into `/opt/stalwart-bootstrap`. It then builds a Python
 virtual environment and installs dependencies for the second stage. The output from this script can be found among other
 startup logs in `/var/log/cloud-init-output.log`.
-
-The content of the user data script can be gathered from the AWS EC2 web console.
-
-- Locate your instance and right-click it.
-- Click "Instance settings"
-- Click "Edit user data"
-
-**Note:** You cannot change the user data without stopping the instance. You obviously do not want to do this with any
-instance that is running an essential service. The `ignore_user_data_changes` option prevents accidental restarting of
-nodes in the `StalwartCluster` due to changes in automatically generated user data.
 
 The Bash script will then run the second stage Python script. This gathers instance tag data from the internal instance
 [metadata service](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/work-with-tags-in-IMDS.html) and secret info like
 database credentials from AWS Secrets Manager. It compiles this data into a mapping of template variables to their
 values and feeds that into the templates for rendering.
 
+**Note:** You cannot change the user data without stopping the instance. You obviously do not want to do this with any
+instance that is running an essential service. The `ignore_user_data_changes` option to a node's configuration prevents
+accidental restarting of nodes in the `StalwartCluster` due to changes in automatically generated user data. It is
+strongly recommended to keep this set to `True` anytime you are not deliberately performing maintenance.
+
+**Another Note:** This user data *only* runs on the first launch of an instance. It *does not* run on subsequent reboots
+or instance stop/starts. If you want to re-run the bootstrapping process as a means of updating the server's config, you
+will need to manually re-run the bootstrapping process. This is described below.
+
+**And One More Note:** We use tb_pulumi's
+[`get_latest_amazon_linux_ami`](https://thunderbird.github.io/pulumi/tb_pulumi.html#tb_pulumi.ThunderbirdPulumiProject.get_latest_amazon_linux_ami)
+function to get the most recent Amazon Linux 2023 image. This will change automatically whenever AWS releases a new AMI.
+An instance cannot simply change its AMI; you must destroy it and replace the whole server. This is another thing you
+don't want to do to an essential server. To prevent this, it is strongly recommended that you set `ignore_ami_changes`
+to `True` on each node.
+
 
 ### Re-Running Bootstrapping
 
 The user data script is not available as a file on the system to run, but you can copy and paste it out of the web
-console if you need to do that.
+console if you need to do that:
+
+1. Locate your instance and right-click it.
+2. Click "Instance settings"
+3. Click "Edit user data"
+
 
 To re-run the second phase, activate the bootstrap virtual environment and run the script:
 
@@ -256,6 +269,18 @@ command to keep your output fresh with every run:
 
 ```bash
 > /var/log/stalwart-bootstrap.log; python bootstrap.py & tail -f /var/log/stalwart-bootstrap.log
+```
+
+A typical run will look something like this (except with prepended timestamps, which have been removed for readability,
+and your instance's actual tags and configuration listed):
+
+```
+INFO - Bootstrapping begins now...
+INFO - Retrieved instance tags: {'Name': 'mailstrom-yourstack-stalwart-1', 'environment': 'yourstack', 'postboot.stalwart.aws_region': 'eu-central-1', 'postboot.stalwart.env': 'yourstack', 'postboot.stalwart.node_id': '1', 'postboot.stalwart.node_roles': 'acme_renew,metrics_calculate,metrics_push,purge_accounts,purge_stores', 'postboot.stalwart.node_services': 'imap,imaps,lmtp,managesieve,pop3,pop3s,smtp,smtps', 'project': 'mailstrom', 'pulumi_last_run_by': 'yourstack@yourmachine', 'pulumi_project': 'mailstrom', 'pulumi_stack': 'yourstack'}
+INFO - Found credentials from IAM Role: mailstrom-yourstack-stalwart-stalwart-node-profile
+INFO - Writing /opt/stalwart-mail/etc/config.toml to disk...
+INFO - Writing /usr/lib/systemd/system/thundermail.service to disk...
+INFO - Bootstrapping complete!
 ```
 
 
@@ -290,7 +315,7 @@ systemctl start/stop/restart thundermail
 If the service is running, you should also be able to see the container with `docker ps`.
 
 
-### Logs
+### Logs and Docker Stuff
 
 You can access the logs from the current Stalwart session with Docker:
 
@@ -302,4 +327,30 @@ You can access historical logs from the current and previous Stalwart sessions w
 
 ```bash
 journalctl -fu thundermail | less
+```
+
+If you want to run the container in the foreground, you can run the Docker command found in the service file. Because
+nodes can be configured to run different sets of services, this command may be different on different nodes. It will
+look something like this:
+
+```bash
+docker run --rm --name stalwart-mail \ # Name this container, delete stopped containers of the same name before running
+  -v /opt/stalwart-mail:/opt/stalwart-mail \ # Mount /opt/stalwart-mail on the host machine into the container
+  -p 8080:8080 \ # List of ports to expose on the host
+  -p 143:143 \   # One for each service
+  -p 993:993 \
+  -p 25:25 \
+  -p 587:587 \
+  # -p etc:etc \
+  stalwartlabs/mail-server:v0.11 # Use the latest revision of v0.11
+```
+
+If you want to run the container in the foreground *with an interactive shell prompt* you must additionally override the
+entrypoint and set up an interactive TTY:
+
+```bash
+docker run \ # ...other options...
+  -it --entrypoint bash \
+  # ...other options...
+  stalwartlabs/mail-server:v0.11
 ```
