@@ -71,9 +71,3 @@ resources:
         # smtps:
         #   source_cidrs: ['0.0.0.0/0']
         
-  tb:ec2:SshableInstance:
-    sancus-jump:
-      public_key: |
-        ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGNaLOahjbg0qX7HVTKq2Akd8IXrf7TNVTwdgt2zKM1g sancus@thunderbird.net
-      source_cidrs:
-        - 216.232.234.246/32
