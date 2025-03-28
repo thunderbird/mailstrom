@@ -49,7 +49,7 @@ def __jumphost_rules(jumphosts):
         'source_security_group_id': sgid
     } for sgid in [jumphosts[jumphost].resources['security_group'].resources['sg'].id for jumphost in jumphosts]]
 
-jumphost_rules = pulumi.Output.all(**jumphosts).apply(
+jumphost_rules = pulumi.Output.all(**bastions).apply(
     lambda jumphosts: __jumphost_rules(jumphosts=jumphosts)
 )
 

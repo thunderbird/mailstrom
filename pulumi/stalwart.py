@@ -614,7 +614,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         with ZipFile(self.user_data_archive, 'w') as archive:
             for file in archive_files:
                 source_name = f'{archive_file_base}/{file}'
-                archive.write(source_name, arcname=file)
+                archive.write(source_name, arcname=file, compresslevel=9)
 
         # Now read that file back in and base64-encode it
         with open(self.user_data_archive, 'rb') as archive_fh:

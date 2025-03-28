@@ -93,7 +93,7 @@ resources:
 
 Adjust these values to your liking, adding additional nodes as needed.
 
-### Database Config
+### Additional Secrets
 
 This project uses [Neon Databases](https://neon.tech/) as a Postgres backend. There is currently no Neon provider in the
 Pulumi registry, so this resource is managed manually. The details of the database connection must nevertheless be
@@ -122,7 +122,10 @@ Paste that into a config command:
 pulumi config set --secret stalwart.postboot.postgresql_backend '$all_that_json'
 ```
 
-Ensure that secret is pushed to AWS by the `PulumiSecretsManager`:
+You'll also need to set the web admin panel's password by setting `stalwart.postboot.fallback_admin_password` to some
+secure string.
+
+Ensure these secrets are pushed to AWS by the `PulumiSecretsManager`:
 
 ```yaml
 resources:
@@ -130,12 +133,14 @@ resources:
   tb:secrets:PulumiSecretsManager:
     secrets:
       secret_names:
+        - stalwart.postboot.fallback_admin_password
         - stalwart.postboot.postgresql_backend
 ```
 
-This ensures the secret is populated with your connection details at the time the instances bootstrap and retrieve it.
+This ensures the secrets are populated with your connection details at the time the instances bootstrap and retrieve
+them.
 
-The Redis and S3 storage backends are created by this module. Their connection details are stored in secrets
+**Note:** The Redis and S3 storage backends are created by this module. Their connection details are stored in secrets
 automatically by the `StalwartCluster` module; you need take no additional action regarding those stores.
 
 

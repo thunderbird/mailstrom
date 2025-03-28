@@ -4,16 +4,17 @@ resources:
     secrets:
       secret_names:
         - stalwart.postboot.postgresql_backend
+        - stalwart.postboot.fallback_admin_password
       recovery_window_in_days: 0
 
   tb:network:MultiCidrVpc:
     vpc:
-      cidr_block: 10.1.0.0/16
+      cidr_block: 10.2.0.0/16
       subnets:
         eu-central-1a:
-          - 10.1.0.0/17
+          - 10.2.0.0/17
         eu-central-1b:
-          - 10.1.128.0/17
+          - 10.2.128.0/17
       enable_internet_gateway: True
       egress_via_internet_gateway: True
       enable_dns_hostnames: True
@@ -37,8 +38,12 @@ resources:
       # subnets: []
 
   tb:ec2:SshableInstance:
-    rjung-jump:
-        # churro: # ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDLQc8Fo31m9n7vdIjMBMadZ2rWaFSBcsDgbAu9fbbpYjcgSgXv2XOEy5mP23psSgZbiYr5TW9NXITq25Y1RUCbZs4JekoYcgvdhbi4I6ru0VxBgfLJmJyQuPBG1QRMs+TpG8eBPY2RCUjCKlDslOJodRjjGRpauvEHSKKiqueByXydM9Cp+57T14ldnEs5/pB3yx3F9tv61Uf8mrZAkTj/l0bhnqoj8RAK+I3XKQuWoUpai+rvRkxzhzHHVaIr8VxkC5ChZ30o1El8UnKWJRaGQpPoZVs6t4lsMCxBIHg2ZM4BSgPQbNsEdx2K/lc4TDUEnokbFkzigF+vAfr1Ic/wKr7aP4xXnPCnaeqVi1+uNVTYfcTOeRgMpwQJRxTm1G8STccPfyM/FraFlKpQk4u/qRuKf5QDo4LEKFGbHx+7D8BYjO9QIZ4qSJxAtk5JIQ8vs4vEn7Ss4pjayu5iqcK0I+7syBQ92dYorUMKddcD1cwtTqCqST4RqHsEOjMGxcgSuFaozDGrqUgd21S0BOuYeZ9IN1OMrzRnytNMf0bTWnD0ukxDVXbO+WJuq6Ry8fnj+/S/tNuLRrxy0hQ77QGpkt+RmcZzWDA2JNF3O6aJcC8IwMKliAE+F01Yd72zyS0iCiGI2YQ6b6l7Og9XpRShk8vEMuluxslY0u77rY09Pw== rjung@churro
+    # yourname-bastion:
+    #   public_key: |
+    #     ssh-rsa your_public_key_here== user@machine
+    #   source_cidrs:
+    #     - your.public.ip.address/32
+    rjung-bastion:
       public_key: |
         ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDLQc8Fo31m9n7vdIjMBMadZ2rWaFSBcsDgbAu9fbbpYjcgSgXv2XOEy5mP23psSgZbiYr5TW9NXITq25Y1RUCbZs4JekoYcgvdhbi4I6ru0VxBgfLJmJyQuPBG1QRMs+TpG8eBPY2RCUjCKlDslOJodRjjGRpauvEHSKKiqueByXydM9Cp+57T14ldnEs5/pB3yx3F9tv61Uf8mrZAkTj/l0bhnqoj8RAK+I3XKQuWoUpai+rvRkxzhzHHVaIr8VxkC5ChZ30o1El8UnKWJRaGQpPoZVs6t4lsMCxBIHg2ZM4BSgPQbNsEdx2K/lc4TDUEnokbFkzigF+vAfr1Ic/wKr7aP4xXnPCnaeqVi1+uNVTYfcTOeRgMpwQJRxTm1G8STccPfyM/FraFlKpQk4u/qRuKf5QDo4LEKFGbHx+7D8BYjO9QIZ4qSJxAtk5JIQ8vs4vEn7Ss4pjayu5iqcK0I+7syBQ92dYorUMKddcD1cwtTqCqST4RqHsEOjMGxcgSuFaozDGrqUgd21S0BOuYeZ9IN1OMrzRnytNMf0bTWnD0ukxDVXbO+WJuq6Ry8fnj+/S/tNuLRrxy0hQ77QGpkt+RmcZzWDA2JNF3O6aJcC8IwMKliAE+F01Yd72zyS0iCiGI2YQ6b6l7Og9XpRShk8vEMuluxslY0u77rY09Pw==
       source_cidrs:
@@ -47,16 +52,6 @@ resources:
   tb:mailstrom:StalwartCluster:
     thundermail:
       nodes:
-        "0":
-          disable_api_termination: False
-          ignore_ami_changes: True
-          ignore_user_data_changes: True
-          instance_type: t3.micro
-          key_name: rjung-burrito
-          node_roles: []
-          services:
-            - http
-          storage_capacity: 20
         "1":
           disable_api_termination: False
           ignore_ami_changes: True
@@ -66,31 +61,9 @@ resources:
           node_roles:
             - all
           services:
-            - imap
-            - imaps
-            - lmtp
-            - managesieve
-            - pop3
-            - pop3s
-            - smtp
-            - smtps
+            - all
           storage_capacity: 20
       load_balancer:
         services:
-          # all:
-          #   source_cidrs: ['0.0.0.0/0']
-          http:
-            source_cidrs: ['10.1.0.0/16']
-          imap:
-            source_cidrs: ['0.0.0.0/0']
-          imaps:
-            source_cidrs: ['0.0.0.0/0']
-          lmtp:
-            source_cidrs: ['0.0.0.0/0']
-          managesieve:
-            source_cidrs: ['0.0.0.0/0']
-          smtp:
-            source_cidrs: ['0.0.0.0/0']
-          smtps:
-            source_cidrs: ['0.0.0.0/0']
-        
+          all:
+            source_cidrs: ['10.2.0.0/16']
