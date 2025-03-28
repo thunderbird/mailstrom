@@ -44,19 +44,27 @@ class StalwartNodeRoles(Enum):
 
 
 class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
-    """**Pulumi Type:** ``tb:accounts:StalwartCluster``
+    """**Pulumi Type:** ``tb:mailstrom:StalwartCluster``
 
     Builds EC2 instances which operate as a Stalwart Mail Server cluster.
 
     Produces the following ``resources``:
 
-        - *lb_sg* - Security group attached to the cluster's load balancer.
+        - *instances* - Dict of :py:class:`StalwartClusterNode`s, identified by their node_id.
+        - *lb_sg* - :py:class:`tb_pulumi.network.SecurityGroupWithRule` created for the cluster's load balancer.
+        - *node_profile* - The instance profile used for each cluster node.
+        - *node_profile_policy* - The `aws.iam.Policy
+          <https://www.pulumi.com/registry/packages/aws/api-docs/iam/policy/>`_ attached to the instance profile.
+        - *node_profile_policy_attachment* - The `aws.iam.PolicyAttachment
+          <https://www.pulumi.com/registry/packages/aws/api-docs/iam/policyattachment/>`_ resource between the the
+          policy and the instance profile.
         - *node_sgs* - Dict of :py:class:`tb_pulumi.network.SecurityGroupWithRule`s created for each node to support its
           enabled services, identified by their node_id.
-        - *instances* - Dict of :py:class:`StalwartClusterNode`s, identified by their node_id.
         - *redis* - :py:class:`tb_pulumi.elasticache.ElastiCacheReplicationGroup` which Stalwart uses for its in-
           memory store.
+        - *redis_secret* - :py:class:`tb_pulumi.secrets.SecretsManagerSecret` containing the Redis connection details.
         - *s3* - :py:class:`tb_pulumi.s3.S3Bucket` which Stalwart uses for its blob store.
+        - *s3_secret* - :py:class:`tb_pulumi.secrets.SecretsManagerSecret` containing the S3 bucket details.
 
     :param name: A string identifying this set of resources.
     :type name: str
@@ -74,7 +82,11 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
 
     :param cache_node_type: The `ElastiCache instance type
         <https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/CacheNodes.SupportedTypes.html>`_ to use when building
-        Redis cache nodes.
+        Redis cache nodes. Defaults to "cache.t3.micro".
+    :type cache_node_type: str, optional
+
+    :param cache_parameters: Dictionary of parameters in the parameter group to override.
+    :type cache_parameters: dict, optional
 
     :param load_balancer: Configuration for the load balancer, listing services to expose and to what other components
         to expose them to. Must contain a `services` dict, whose keys must be valid
@@ -92,10 +104,11 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
                         source_security_group_ids: ['sg-abcdef0123456789']
                         source_cidrs: ['10.0.0.0/8']
 
-    :param nodes: Dict describing the individual nodes of the cluster. Each key is a node_id and each value is a dict of
-        supported values describing a node configuration. The configuration is composed of inputs to the
-        :py:meth:`StalwartCluster.node`. The values listed below are described in more detail alongside that function.
-        The set of valid values is:
+    :param nodes: Dict describing the individual nodes of the cluster. Each key is a node_id, which must be a
+        stringified integer (a restriction imposed by Stalwart), and each value is a dict of supported values describing
+        a node configuration. The configuration is composed of inputs to the :py:meth:`StalwartCluster.node`. The values
+        listed below are described in more detail alongside that function. The set of valid values is:
+
 
         - disable_api_stop: bool (False)
         - disable_api_termination: bool (False)
@@ -103,11 +116,16 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         - ignore_user_data_changes: bool (True)
         - instance_type: str (t3.micro)
         - node_roles: list[str] (['all'])
+        - services: list[str] (['all'])
         - storage_capacity: int (20)
 
         Any additional arguments will be passed as inputs into the `aws.ec2.Instance
         <https://www.pulumi.com/registry/packages/aws/api-docs/ec2/instance/#inputs>`_ resource.
     :type nodes: dict, optional
+
+    :param node_additional_ingress_rules: Dict describing additional ingress rules to apply to the node. This is useful
+        for when you need to punch a hole for testing purposes. Defaults to {}.
+    :type node_additional_ingress_rules: dict, optional
 
     :param user_data_archive: File on disk in which to store the zip file for the user data bootstrapping stage. This is
         a temporary file which can be safely deleted after a Pulumi run. This file is intentionally not deleted, as it
@@ -148,7 +166,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         tags: dict = {},
     ):
         super().__init__(
-            'tb:accounts:StalwartCluster',
+            'tb:mailstrom:StalwartCluster',
             name=name,
             project=project,
             opts=opts,
@@ -193,6 +211,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
             tags=self.tags,
         )
 
+        # Store Redis config details in Secrets Manager
         def __redis_secret(address: str):
             return tb_pulumi.secrets.SecretsManagerSecret(
                 name=f'{name}-secret-redis',
@@ -220,6 +239,21 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
             tags=self.tags,
         )
 
+        # Build a secret to store the Stalwart S3 config details in
+        s3_secret = tb_pulumi.secrets.SecretsManagerSecret(
+            name=f'{name}-secret-s3',
+            project=self.project,
+            exclude_from_project=True,
+            secret_name=f'mailstrom/{self.project.stack}/stalwart.postboot.s3_backend',
+            secret_value=json.dumps(
+                {
+                    'bucket': bucket_name,
+                    'region': self.project.aws_region,
+                }
+            ),
+        )
+
+        # Build an IAM policy granting bucket access
         def __s3_policy(bucket_arn: str, bucket_name: str):
             policy_doc = IAM_POLICY_DOCUMENT.copy()
             policy_doc['Statement'][0]['Sid'] = 'AllowFullS3Access'
@@ -252,20 +286,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
             opts=pulumi.ResourceOptions(parent=self, depends_on=[s3_policy]),
         )
 
-        # Build a secret to store te Stalwart S3 config details in
-        s3_secret = tb_pulumi.secrets.SecretsManagerSecret(
-            name=f'{name}-secret-s3',
-            project=self.project,
-            exclude_from_project=True,
-            secret_name=f'mailstrom/{self.project.stack}/stalwart.postboot.s3_backend',
-            secret_value=json.dumps(
-                {
-                    'bucket': bucket_name,
-                    'region': self.project.aws_region,
-                }
-            ),
-        )
-
+        # Build a policy which will grant the nodes access to their own configuration data
         bootstrap_secret_arns = [
             (
                 'arn:aws:secretsmanager:'
@@ -292,7 +313,6 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
             description='Policy for the Stalwart node instance profile',
             policy=json.dumps(profile_policy_doc),
         )
-
         arp = ASSUME_ROLE_POLICY.copy()
         arp['Statement'][0]['Principal']['Service'] = 'ec2.amazonaws.com'
         role = aws.iam.Role(
@@ -301,13 +321,11 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
             assume_role_policy=json.dumps(arp),
             path='/',
         )
-
         profile_attachment = aws.iam.RolePolicyAttachment(
             f'{self.name}-rpa-nodeprofile',
             role=role.name,
             policy_arn=profile_policy.arn,
         )
-
         profile = aws.iam.InstanceProfile(
             f'{self.name}-ip-nodeprofile', name=f'{self.name}-nodeprofile', role=role.name
         )
@@ -420,6 +438,10 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         :param node_id: The node_id of the node to build a security group for.
         :type node_id: str
 
+        :param additional_rules: List of security group rule configurations to apply to the node in addition to the ones
+            opened for the Stalwart services.
+        :type additional_rules: list[dict]
+
         :return: A :py:class:`tb_pulumi.network.SecurityGroupWithRules` for the node.
         :rtype: tb_pulumi.network.SecurityGroupWithRules
         """
@@ -493,7 +515,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
     ) -> aws.ec2.Instance:
         """Builds a Stalwart node represented by the configuration for the given node_id.
 
-        :param node_id: The unique node_id to identify the node in the cluster.
+        :param node_id: The unique node_id to identify the node in the cluster. This must be a stringified integer.
         :type node_id: str
 
         :param subnet: The subnet to build the node in.
@@ -523,6 +545,9 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
 
         :param node_roles: List of :py:class:`StalwartNodeRoles` to enable on the node. Defaults to ['all'].
         :type node_roles: list[str], optional
+
+        :param services: List of services to run on the node. Defaults to ['all'].
+        :type services: list[str]
 
         :param storage_capacity: Size of the ephemeral disk on the node in GB. Defaults to 20.
         :type storage_capacity: int, optional
@@ -575,7 +600,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
             disable_api_termination=disable_api_termination,
             instance_type=instance_type,
             metadata_options={  # Enabling this allows us to access tags via the instance metadata service
-                'instance_metadata_tags': 'enabled',
+                'instance_metadata_tags': 'enabled',  # This is a hard requirement for the bootstrap process
             },
             root_block_device={
                 'delete_on_termination': True,
@@ -601,7 +626,8 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         """
 
         # Produce a zip file containing the contents of the bootstrap directory. "arcname" is used to prevent the
-        # creation of a "bootstrap" subdirectory.
+        # creation of a "bootstrap" subdirectory. We also choose the highest compression level because user data can't
+        # exceed a certain size.
         archive_file_base = './bootstrap'
         archive_files = [
             'bootstrap.py',
