@@ -1,8 +1,9 @@
 #!/bin/bash
 
-# This is a first-stage bootstrapping script which mostly serves to build an environment in which the second-stage
-# bootstrapping script can run. The second stage content is contained in the base64-encoded zip file which is templated
-# into place by the mailstrom Pulumi code.
+{#  This is a first-stage bootstrapping script which mostly serves to build an environment in which the second-stage
+    bootstrapping script can run. The second stage content is contained in the base64-encoded zip file which is
+    templated into place by the mailstrom Pulumi code. The bootstrapping process is documented in the readme. Because
+    user data must be small, these files are intentionally not heavy on internal documentation. #}
 
 set -x
 set -e
@@ -11,35 +12,25 @@ BOOTSTRAP_DIR=/opt/stalwart-bootstrap
 BOOTSTRAP_ZIP=/root/bootstrap.zip
 STALWART_DIR=/opt/stalwart-mail
 
-# Run updates
 dnf update -y
+dnf install -y docker python3.12 unzip
 
-# Make a home for Stalwart's config
 mkdir -p $STALWART_DIR/etc
 
-# Install dependencies; set up Python toolchain
-dnf install -y \
-    docker \
-    python3.12 \
-    unzip
 python3.12 -m ensurepip
 pip3.12 install virtualenv
 /usr/local/bin/virtualenv -p python3.12 $BOOTSTRAP_DIR
 
-# Start docker by default
 systemctl start docker
 systemctl enable docker
 
-# Unpack our bootstrap script and related artifacts
 echo '{{ bootstrap_zip_base64 }}' | base64 -d > $BOOTSTRAP_ZIP
 unzip -d $BOOTSTRAP_DIR $BOOTSTRAP_ZIP
 
-# Set up the virtualenv and run the bootstrap command
 source $BOOTSTRAP_DIR/bin/activate
 pip install -r $BOOTSTRAP_DIR/requirements.txt
 python $BOOTSTRAP_DIR/bootstrap.py
 
-# We install a systemd service with the Python script, so get that loaded and running
 systemctl daemon-reload
 systemctl enable thundermail
 systemctl start thundermail
