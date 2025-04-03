@@ -428,7 +428,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
             if 'source_cidrs' in service_config:
                 lb_sg_rules['ingress'].append(
                     {
-                        'description': f'Allow {service} traffic by IP',
+                        'description': f'Allow {service} traffic',
                         'protocol': 'tcp',
                         'from_port': STALWART_CLUSTER_SERVICES[service],
                         'to_port': STALWART_CLUSTER_SERVICES[service],
@@ -441,7 +441,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
                 for sgid in self.load_balancer_config['services'][service]['source_security_group_ids']:
                     lb_sg_rules['ingress'].append(
                         {
-                            'description': f'Allow {service} traffic from {sgid}',
+                            'description': f'Allow {service} traffic',
                             'protocol': 'tcp',
                             'from_port': STALWART_CLUSTER_SERVICES[service],
                             'to_port': STALWART_CLUSTER_SERVICES[service],
