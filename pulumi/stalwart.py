@@ -178,7 +178,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
             raise ValueError('You must provide at least one subnet.')
 
         # Internalize some vars we need in the other functions and properties
-        self.load_balancer = load_balancer
+        self.load_balancer_config = load_balancer
         self.nodes = nodes
         self.subnets = subnets
         self.user_data_archive = user_data_archive
@@ -340,8 +340,37 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
                 **nodes[node_id],
             )
 
+        lb_sg_id = pulumi.Output.all(**self.load_balancer_security_group.resources).apply(
+            lambda resources: resources['sg'].id
+        )
+        if self.expose_all_services:
+            lb_services = {
+                service: self.load_balancer_config['services']['all']
+                for service, port in STALWART_CLUSTER_SERVICES.items()
+                if port is not None
+            }
+        else:
+            lb_services = self.load_balancer_config['services']
+
+        lb = StalwartLoadBalancer(
+            name=f'{self.project.project}-{self.project.stack}',  # AWS imposes a 32-character max on this
+            project=self.project,
+            instances=instances,
+            node_config=self.nodes,
+            security_group_ids=[lb_sg_id],
+            service_config=lb_services,
+            subnets=self.subnets,
+            vpc_id=self.vpc_id,
+            excluded_nodes=self.load_balancer_config['excluded_nodes']
+            if 'excluded_nodes' in self.load_balancer_config
+            else None,
+            opts=pulumi.ResourceOptions(parent=self, depends_on=[self.load_balancer_security_group]),
+            tags=self.tags,
+        )
+
         self.finish(
             resources={
+                'lb': lb,
                 'lb_sg': self.load_balancer_security_group,
                 'node_profile': profile,
                 'node_profile_policy': profile_policy,
@@ -382,7 +411,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
             exposed_services = STALWART_CLUSTER_SERVICES.copy()
             del (exposed_services)['all']
         else:
-            exposed_services = self.load_balancer['services'].keys()
+            exposed_services = self.load_balancer_config['services'].keys()
 
         for service in exposed_services:
             # Validate each exposed service's name
@@ -391,9 +420,9 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
 
             # Determine which service config to use; the "all" service applies to all services
             if self.expose_all_services:
-                service_config = self.load_balancer['services']['all']
+                service_config = self.load_balancer_config['services']['all']
             else:
-                service_config = self.load_balancer['services'][service]
+                service_config = self.load_balancer_config['services'][service]
 
             # Create one rule including all source_cidrs we need to open access to
             if 'source_cidrs' in service_config:
@@ -409,7 +438,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
 
             # Create one rule for each source security group since AWS doesn't allow lists of them
             if 'source_security_group_ids' in service_config:
-                for sgid in self.load_balancer['services'][service]['source_security_group_ids']:
+                for sgid in self.load_balancer_config['services'][service]['source_security_group_ids']:
                     lb_sg_rules['ingress'].append(
                         {
                             'description': f'Allow {service} traffic from {sgid}',
@@ -475,7 +504,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
             del handled_services['all']
         else:
             # Build for whatever more specific services the user supplied
-            handled_services = self.load_balancer['services'].keys()
+            handled_services = self.load_balancer_config['services'].keys()
 
         # Expose each service port, but only to the load balancer
         for service in handled_services:
@@ -667,9 +696,9 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         """
 
         # Get the list of exposed services
-        if 'services' not in self.load_balancer:
+        if 'services' not in self.load_balancer_config:
             raise ValueError('`load_balancer` option must contain a `services` entry.')
-        services = self.load_balancer['services']
+        services = self.load_balancer_config['services']
 
         # Determine if all services are exposed
         all_services = False
@@ -687,6 +716,115 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
                 )
 
         return all_services
+
+
+class StalwartLoadBalancer(tb_pulumi.ThunderbirdComponentResource):
+    """**Pulumi Type:** ``tb:mailstrom:StalwartLoadBalancer``
+
+    Builds a network load balancer and related resources for routing traffic through a StalwartCluster.
+
+    Produces the following ``resources``:
+
+        - *something* - Description
+    """
+
+    def __init__(
+        self,
+        name: str,
+        project: tb_pulumi.ThunderbirdPulumiProject,
+        instances: dict,
+        node_config: dict,
+        security_group_ids: list[str],
+        service_config: dict,
+        subnets: list[aws.ec2.Subnet],
+        vpc_id: str,
+        excluded_nodes: list[str] = [],
+        opts: pulumi.ResourceOptions = None,
+        tags: dict = {},
+    ):
+        super().__init__(
+            'tb:mailstrom:StalwartLoadBalancer',
+            name=name,
+            project=project,
+            opts=opts,
+            tags=tags,
+        )
+
+        # Build a single load balancer
+        load_balancer = aws.lb.LoadBalancer(
+            f'{self.name}-lb',
+            name=f'{self.name}-stalwart',
+            internal=False,
+            load_balancer_type='network',
+            security_groups=security_group_ids,
+            subnets=[subnet.id for subnet in subnets],
+            tags=self.tags,
+            opts=pulumi.ResourceOptions(parent=self, depends_on=[*subnets]),
+        )
+
+        # Build a target group for each service
+        target_groups = {
+            service: aws.lb.TargetGroup(
+                f'{self.name}-tg-{service}',
+                health_check={
+                    'enabled': True,
+                    'healthy_threshold': 2,
+                    'interval': 15,
+                    'port': STALWART_CLUSTER_SERVICES[service],
+                    'protocol': 'TCP',
+                    'unhealthy_threshold': 2,
+                },
+                name=service,  # Constrained to 32 characters
+                port=STALWART_CLUSTER_SERVICES[service],
+                protocol='TCP',
+                target_type='instance',
+                tags=self.tags,
+                vpc_id=vpc_id,
+                opts=pulumi.ResourceOptions(parent=self),
+            )
+            for service, config in service_config.items()
+        }
+
+        # For each target group, register nodes with matching services; route traffic through listeners
+        target_group_attachments = {}
+        listeners = {}
+        for service, tg in target_groups.items():
+            for node_id, node in node_config.items():
+                if (
+                    node_handles_all_services(services=node['services']) or service in node['services']
+                ) and node_id not in excluded_nodes:
+                    target_group_attachments[service] = aws.lb.TargetGroupAttachment(
+                        f'{self.name}-tga-{service}-node{node_id}',
+                        target_group_arn=tg.arn,
+                        target_id=instances[node_id].id,
+                        port=STALWART_CLUSTER_SERVICES[service],
+                        opts=pulumi.ResourceOptions(
+                            parent=self, depends_on=[*instances.values(), *target_groups.values()]
+                        ),
+                    )
+            listeners[service] = aws.lb.Listener(
+                f'{self.name}-listener-{service}',
+                default_actions=[
+                    {
+                        'type': 'forward',
+                        'target_group_arn': tg.arn,
+                    }
+                ],
+                load_balancer_arn=load_balancer.arn,
+                port=STALWART_CLUSTER_SERVICES[service],
+                protocol='TCP',
+                tags=self.tags,
+                opts=pulumi.ResourceOptions(parent=self, depends_on=[*target_groups.values(), load_balancer]),
+            )
+
+        self.finish(
+            resources={
+                'listeners': listeners,
+                'load_balancer': load_balancer,
+                'target_groups': target_groups,
+                'target_group_attachments': target_group_attachments,
+            }
+        )
 
 
 def node_handles_all_roles(node_roles: list[str]) -> bool:
