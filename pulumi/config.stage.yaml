@@ -3,7 +3,8 @@ resources:
   tb:secrets:PulumiSecretsManager:
     secrets:
       secret_names:
-        - stalwart-postgres-settings
+        - stalwart.postboot.postgresql_backend
+        - stalwart.postboot.fallback_admin_password
 
   tb:network:MultiCidrVpc:
     vpc:
@@ -35,39 +36,49 @@ resources:
       # source_sgids: []
       # subnets: []
 
+  # tb:ec2:SshableInstance: {}
+  # Fill out this template to build an SSH bastion
+  tb:ec2:SshableInstance:
+    rjung-bastion:
+      ssh_keypair_name: rjung-burrito
+      source_cidrs:
+        - 38.15.46.29/32
+
+
   tb:mailstrom:StalwartCluster:
     thundermail:
-      # stores:
-      #   postgresql: mailstrom/stage/stalwart-postgres-settings
-      #   redis: mailstrom/stage/stalwart-redis-settings
-      #   s3: mailstrom/stage/stalwart-s3-settings
       nodes:
-        sancus:
-          disable_api_termination: False
+        "0": # Must be a unique, stringified integer
+          disable_api_termination: True
           ignore_ami_changes: True
-          ignore_user_data_changes: False
-          instance_type: t2.micro
-          storage_capacity: 20
-          cluster_services:
-            - all
+          ignore_user_data_changes: True
+          instance_type: t3.micro
+          key_name: mailstrom-stage
           node_roles:
             - all
-          key_name: rjung-churro
-      cluster_services:
-        all:
-          source_cidrs: ['0.0.0.0/0']
-        # http:
-        #   source_security_group_ids: []
-        # imap:
-        #   source_cidrs: ['0.0.0.0/0']
-        # imaps:
-        #   source_cidrs: ['0.0.0.0/0']
-        # lmtp:
-        #   source_cidrs: ['0.0.0.0/0']
-        # managesieve:
-        #   source_cidrs: ['0.0.0.0/0']
-        # smtp:
-        #   source_cidrs: ['0.0.0.0/0']
-        # smtps:
-        #   source_cidrs: ['0.0.0.0/0']
-        
+          services:
+            - http
+            - imap
+            - imaps
+            - lmtp
+            - managesieve
+            - smtp
+            - smtps
+          storage_capacity: 20
+      load_balancer:
+        excluded_nodes: []
+        services:
+          imap:
+            source_cidrs: ['0.0.0.0/0']
+          imaps:
+            source_cidrs: ['0.0.0.0/0']
+          lmtp:
+            source_cidrs: ['0.0.0.0/0']
+          managesieve:
+            source_cidrs: ['0.0.0.0/0']
+          smtp:
+            source_cidrs: ['0.0.0.0/0']
+          smtps:
+            source_cidrs: ['0.0.0.0/0']
+          # http:
+          #   source_security_group_ids: ['your_bastion_sgid']

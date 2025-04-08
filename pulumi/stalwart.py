@@ -774,7 +774,7 @@ class StalwartLoadBalancer(tb_pulumi.ThunderbirdComponentResource):
                     'protocol': 'TCP',
                     'unhealthy_threshold': 2,
                 },
-                name=service,  # Constrained to 32 characters
+                name=f'{self.project.stack}-{service}',  # Constrained to 32 characters
                 port=STALWART_CLUSTER_SERVICES[service],
                 protocol='TCP',
                 target_type='instance',

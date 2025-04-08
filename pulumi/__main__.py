@@ -27,7 +27,7 @@ vpc = tb_pulumi.network.MultiCidrVpc(
     **vpc_opts,
 )
 
-# Uncomment to build out SSH bastions
+# Build out SSH bastions if any are defined
 bastions = {}
 for bastion in resources['tb:ec2:SshableInstance'].keys():
     bastion_opts = resources['tb:ec2:SshableInstance'][bastion]

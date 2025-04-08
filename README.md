@@ -19,7 +19,7 @@ In the broadest strokes:
 - The `bootstrap` directory contains a script and related files that will eventually run on a Stalwart node at launch
   time to configure a running Stalwart instance there.
 - The `stalwart.StalwartCluster` class zips up these bootstrapping files, base64-encodes the zip, and injects that
-  string into a Bash script template (stalwart_instance_user_data.sh.j2).
+  string into a Bash script template (`stalwart_instance_user_data.sh.j2`).
 - That script gets set as the instance's user data script, such that when the instance is first launched, the script
   runs.
 - Additional configuration is stored either as tags on the instance or as secrets (credentials, etc.)
@@ -150,23 +150,24 @@ automatically by the `StalwartCluster` module; you need take no additional actio
 
 You may need to gain SSH access to the Stalwart nodes to debug problems. The nodes are all built in private network
 space with no external access, though, which prevents this. To get around this, you will need to build an SSH bastion —
-a server that exposes private SSH connections through a single public interface — by adding a
-`tb_pulumi.ec2.SshableInstance` to the project in `__main__.py`.
+a server that exposes private SSH connections through a single public interface — by adding a configuration with your
+authentication details to the YAML file.
 
-```python
-tb_pulumi.ec2.SshableInstance(
-    f'{project.name_prefix}-bastion',
-    project=project,
-    subnet_id=vpc.resources['subnets'][0].id,
-    vpc_id=vpc.resources['vpc'].id,
-    public_key='your_ssh_public_key_here',
-    source_cidrs=['$your_public_ip_address/32'],
-    opts=pulumi.ResourceOptions(depends_on=[vpc]),
-)
+```yaml
+  tb:ec2:SshableInstance:
+    yourname-bastion:
+      ssh_keypair_name: name-of-your-ec2-keypair
+      source_cidrs:
+        - your.public.ip.address/32 # You can obtain this with `curl -4 https://curlmyip.net`
 ```
 
-SSH into that machine and install your `id_rsa` and `id_rsa.pub` files into `/home/ec2-user/.ssh/`. Set appropriate file
-permissions.
+SSH into that machine.
+
+```bash
+ssh -i ~/.ssh/your_id_rsa ec2-user@1.2.3.4
+```
+
+Install your `id_rsa` and `id_rsa.pub` files into `/home/ec2-user/.ssh/`. Set appropriate file permissions.
 
 ```bash
 chmod 0600 /home/ec2-user/.ssh/id_rsa*
@@ -182,11 +183,11 @@ Host mailstrom-my-bastion
 # Adjust this IP range to match the actual network
 Host 10.1.*
     User ec2-user
+    IdentityFile ~/.ssh/stalwart_node_id_rsa
     ProxyCommand ssh -W %h:%p mailstrom-my-bastion
 ```
 
-In AWS, add a rule to the Stalwart node's security group allowing SSH (22/tcp) access from your bastion's security
-group. You should now be able to SSH directly into the node, punching through to the private network via the bastion.
+You should now be able to SSH directly into the node, punching through to the private network via the bastion.
 
 ```
 # ssh $node_ip
