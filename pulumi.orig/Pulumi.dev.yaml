@@ -1,0 +1,11 @@
+config:
+  aws:defaultTags:
+    tags:
+      environment: "dev"
+      project: "mailstrom"
+  cloudflare:apiToken:
+    secure: AAABABKCaaymT3OjCzNfG62NxMdKtxubOQh2vS5w337fYbzW098Mu03xq72B4U/IlToWjpXHk2UWrtDPxYIdeANiKEFtdZBS
+  mailstrom:domain: tb.pro
+  mailstrom:eip_id: eipalloc-0d69b5a793c4ad594
+  mailstrom:key_pair: stalwart-key
+  mailstrom:zone_id: 65a43f25ab2055b2b9fb6dcd10321970
