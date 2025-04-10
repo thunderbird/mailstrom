@@ -144,7 +144,7 @@ them.
 automatically by the `StalwartCluster` module; you need take no additional action regarding those stores.
 
 
-## Debugging
+## Operation
 
 ### SSH Setup
 
@@ -360,3 +360,122 @@ docker run \ # ...other options...
   # ...other options...
   stalwartlabs/mail-server:v0.11
 ```
+
+
+### Changing Node Services
+
+When a node is built for the first time, it gets started running the services in this initial configuration. If you need
+to change what services are running, you'll need to do a little extra legwork. You will need to have set up SSH access
+to the node you wish to operate on as described in the section above. In these examples, we will use node `1` and an
+unlikely, oversimplified configuration for demonstration's sake.
+
+Suppose we have configured Node `1` to run all services:
+
+```yaml
+---
+resources:
+  tb:mailstrom:StalwartCluster:
+    thundermail:
+      nodes:
+        "0":
+           # ... Various "Node Zero" options
+        "1":
+          node_roles:
+            - all
+          services:
+            - all
+      load_balancer:
+        excluded_nodes: []
+        services:
+          imap:
+            source_cidrs: ['0.0.0.0/0']
+          imaps:
+            source_cidrs: ['0.0.0.0/0']
+          lmtp:
+            source_cidrs: ['0.0.0.0/0']
+          managesieve:
+            source_cidrs: ['0.0.0.0/0']
+          pop3:
+            source_cidrs: ['0.0.0.0/0']
+          pop3s:
+            source_cidrs: ['0.0.0.0/0']
+          smtp:
+            source_cidrs: ['0.0.0.0/0']
+          smtps:
+            source_cidrs: ['0.0.0.0/0']
+```
+
+But we now realize that we should disable those services which are not considered very secure.
+
+First, remove the node from the load balancer so it does not receive traffic by adding the node to the `excluded_nodes`
+list:
+
+```yaml
+---
+resources:
+  tb:mailstrom:StalwartCluster:
+    load_balancer:
+      excluded_nodes:
+        - "1"
+```
+
+A `pulumi up` should now remove this node from all target groups and close off some security group rules. Traffic going
+to this node should stop soon.
+
+Now update the config with the new set of services:
+
+```yaml
+resources:
+  tb:mailstrom:StalwartCluster:
+    thundermail:
+      nodes:
+        "1":
+          node_roles:
+            - all
+          services:
+            - http
+            - imap
+            - imaps
+            - lmtp
+            - managesieve
+            - smtp
+            - smtps
+```
+
+A `pulumi up` should now want to change the tags of the instance along with the security group rules.
+
+These tags ordinarily inform the bootstrap process how to set up the server. Updating the tags after the bootstrapping
+is complete **will not** automatically result in a change to the operating state of that node's Stalwart service. To do
+this, you must SSH into the machine and re-run bootstrapping. Instructions for doing that are in the section above. In
+the end, you will end up running...
+
+```bash
+python bootstrap.py
+```
+
+...and this will cause a new Stalwart configuration file to be deployed to `/opt/stalwart-mail/etc/config.toml`. If you
+wish, you may verify its contents now.
+
+This also causes a new systemd service config to be deployed, and the changes will involve what ports are exposed. To
+make this new service config active, you must instruct systemd to reload its configuration:
+
+```bash
+systemctl daemon-reload
+```
+
+And now you must restart Thundermail:
+
+```bash
+systemctl restart thundermail
+```
+
+Finally, restore service to the node by removing it from the exclusion list:
+
+```yaml
+resources:
+  tb:mailstrom:StalwartCluster:
+    load_balancer:
+      excluded_nodes: []
+```
+
+A `pulumi up` should now restore service to the node.

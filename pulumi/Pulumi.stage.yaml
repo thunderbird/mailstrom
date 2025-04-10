@@ -1,9 +1,8 @@
 config:
   aws:region: eu-central-1
-  # mailstrom:stalwart-postgres-settings:
-  #   secure: AAABAB7KmSN3+bQ3A9K1gaWKKDdR8evhNM6NqHLOJjPnXnZ32deDgMkHEf2hnQb2K5s8Ecidl+sBWs3POJIS7G18zEQNGMlnyo2MOMytG9nP12KzPZuvvtfLmm+UHv0CsDd6yv3Y6Aki2PoLeTZWYIojGacgUDZnyrns6e6W2qAjddNT3T0qrHR8BmX/kKGularrURGdhifprar9XjhqoZmdjwOAHtaQSd5j7MH6ToLXpMhneKo9Mp2SFyD2xScrbTu+tQ==
-
   mailstrom:stalwart.postboot.postgresql_backend:
     secure: AAABADLizeyy2nmwRhk3Xb1Ry6VLtG1V6k8ezobpp0oYtRkTSpXgxCQcPYk/eaEatNdN3MlZdM2gq5So3SymuUH+wdGKhgBHlubQujUt0VIVmDN0I0QE2AyuawPzHvpg8/JEYz1jQLrPBOM+sZASCQjtM0B+LJehVxl8p2FSv2ibBE6W1vp8Wcg/WxjslquVG0oAJ8v+dbRSWAe5Ve3On+lWhvMskGLZqOZtQbhZHuhUbq9r+9SBmr2V9oRBorrLMWIT38u5bBrwv/03j163BSg4uyh/074z9v9wKAQG8GZCibdx9tfUfG9QKV30O3H3dOPJQIWlwkLSppHM
   mailstrom:stalwart.postboot.fallback_admin_password:
     secure: AAABAN0pTv161GU23QAFapvwf6jNlviUasOdwahldhBofbW0F++e+pyp1HPLlhY5dJgKFWkvYLSsWZivMoLhj9k=
+  cloudflare:apiToken:
+    secure: AAABAOF8CsB/xwjavpx/QGt9wTMexN0R+dwvrRZg2CUHvg7CVu9BHxTYFYwPqoB/qtmMZBNmzIVzPYM+KTtMZAY+fa3+JgLr

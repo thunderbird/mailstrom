@@ -504,7 +504,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
             del handled_services['all']
         else:
             # Build for whatever more specific services the user supplied
-            handled_services = self.load_balancer_config['services'].keys()
+            handled_services = self.nodes[node_id]['services']
 
         # Expose each service port, but only to the load balancer
         for service in handled_services:
