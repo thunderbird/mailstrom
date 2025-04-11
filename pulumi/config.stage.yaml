@@ -3,8 +3,9 @@ resources:
   tb:secrets:PulumiSecretsManager:
     secrets:
       secret_names:
-        - stalwart.postboot.postgresql_backend
         - stalwart.postboot.fallback_admin_password
+        - stalwart.postboot.postgresql_backend
+        - stalwart.postboot.tb-accounts_backend
 
   tb:network:MultiCidrVpc:
     vpc:
@@ -42,8 +43,7 @@ resources:
     rjung-bastion:
       ssh_keypair_name: rjung-burrito
       source_cidrs:
-        - 38.15.46.29/32
-
+        - 76.155.125.135/32
 
   tb:mailstrom:StalwartCluster:
     thundermail:
@@ -51,7 +51,7 @@ resources:
         "0": # Must be a unique, stringified integer
           disable_api_termination: True
           ignore_ami_changes: True
-          ignore_user_data_changes: True
+          ignore_user_data_changes: False
           instance_type: t3.micro
           key_name: mailstrom-stage
           node_roles:
@@ -62,7 +62,6 @@ resources:
             - imaps
             - lmtp
             - managesieve
-            - smtp
             - smtps
           storage_capacity: 20
       load_balancer:
@@ -75,8 +74,6 @@ resources:
           lmtp:
             source_cidrs: ['0.0.0.0/0']
           managesieve:
-            source_cidrs: ['0.0.0.0/0']
-          smtp:
             source_cidrs: ['0.0.0.0/0']
           smtps:
             source_cidrs: ['0.0.0.0/0']

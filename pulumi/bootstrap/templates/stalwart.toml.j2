@@ -21,11 +21,11 @@ data = "postgresql"
 fts = "postgresql"
 blob = "s3"
 lookup = "redis"
-directory = "internal"
+directory = "tb-accounts"
 
-[directory."internal"]
-type = "internal"
-store = "postgresql"
+[directory."tb-accounts"]
+type = "sql"
+store = "tb-accounts"
 
 [store."postgresql"]
 type = "postgresql"
@@ -35,11 +35,35 @@ database = "{{ postgresql_backend['database'] }}"
 user = "{{ postgresql_backend['user'] }}"
 password = "{{ postgresql_backend['password'] }}"
 timeout = "{{ postgresql_backend['timeout'] if 'timeout' in postgresql_backend else '15s' }}"
+read-from-replicas = true
 
 {% if 'tls' in postgresql_backend %}
 {% set tls_enable = "true" if 'enable' in postgresql_backend['tls'] and postgresql_backend['tls']['enable'] else "false"  %}
 {% set tls_invalid_certs = "true" if 'allow-invalid-certs' in postgresql_backend['tls'] and postgresql_backend['tls']['allow-invalid-certs'] else "false" %}
 [store."postgresql".tls]
+enable = {{ tls_enable }}
+allow-invalid-certs = {{ tls_invalid_certs }}
+{% endif %}
+
+[store."tb-accounts"]
+type = "postgresql"
+host = "{{ tb_accounts_backend['host'] }}"
+port = "{{ tb_accounts_backend['port'] }}"
+database = "{{ tb_accounts_backend['database'] }}"
+user = "{{ tb_accounts_backend['user'] }}"
+password = "{{ tb_accounts_backend['password'] }}"
+timeout = "{{ tb_accounts_backend['timeout'] if 'timeout' in tb_accounts_backend else '15s' }}"
+query.emails = "SELECT address FROM mail_email WHERE name = $1 ORDER BY address ASC"
+query.members = "SELECT member_of FROM mail_groupmember WHERE name = $1"
+query.name = "SELECT name, type, description, quota FROM mail_account WHERE name = $1 AND active = true"
+query.recipients = "SELECT name FROM mail_email WHERE address = $1 ORDER BY name ASC"
+query.secrets = "SELECT secret FROM mail_account WHERE name = $1"
+read-from-replicas = true
+
+{% if 'tls' in tb_accounts_backend %}
+{% set tls_enable = "true" if 'enable' in tb_accounts_backend['tls'] and tb_accounts_backend['tls']['enable'] else "false"  %}
+{% set tls_invalid_certs = "true" if 'allow-invalid-certs' in tb_accounts_backend['tls'] and tb_accounts_backend['tls']['allow-invalid-certs'] else "false" %}
+[store."tb-accounts".tls]
 enable = {{ tls_enable }}
 allow-invalid-certs = {{ tls_invalid_certs }}
 {% endif %}

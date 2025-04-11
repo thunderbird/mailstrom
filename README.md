@@ -122,8 +122,10 @@ Paste that into a config command:
 pulumi config set --secret stalwart.postboot.postgresql_backend '$all_that_json'
 ```
 
-You'll also need to set the web admin panel's password by setting `stalwart.postboot.fallback_admin_password` to some
-secure string.
+You'll need another secret set up containing the connection details for the tb-accounts database backend. Follow the
+same procedure, defining those connection details in the `stalwart.postboot.tb-accounts_backend` secret.
+
+Finally, set the web admin panel's password by setting `stalwart.postboot.fallback_admin_password` to a secure string.
 
 Ensure these secrets are pushed to AWS by the `PulumiSecretsManager`:
 
@@ -135,6 +137,7 @@ resources:
       secret_names:
         - stalwart.postboot.fallback_admin_password
         - stalwart.postboot.postgresql_backend
+        - stalwart.postboot.tb-accounts_backend
 ```
 
 This ensures the secrets are populated with your connection details at the time the instances bootstrap and retrieve

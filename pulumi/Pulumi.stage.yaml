@@ -6,3 +6,5 @@ config:
     secure: AAABAN0pTv161GU23QAFapvwf6jNlviUasOdwahldhBofbW0F++e+pyp1HPLlhY5dJgKFWkvYLSsWZivMoLhj9k=
   cloudflare:apiToken:
     secure: AAABAOF8CsB/xwjavpx/QGt9wTMexN0R+dwvrRZg2CUHvg7CVu9BHxTYFYwPqoB/qtmMZBNmzIVzPYM+KTtMZAY+fa3+JgLr
+  mailstrom:stalwart.postboot.tb-accounts_backend:
+    secure: AAABAJ7ExeEDkoDgsJdUWZ1+0nKLuo55kXtKvEvznFPDF+tMWZaWIuXeyNcLZ7nHLnqRQgCEiR0yfpCUCa//MudJlw5a4+mfQCqvB68/VulxsFNVLfRUxOIG6YrUO4OBtLcxMSwNveQFKDbjHitysogCdGOrVSvuw6lJsZssuLkjscLQ9FZjecXLQBezm0C9zNhIiMAQELW91gC/9TrZe6rpOQ9HlkIDJI/ntyE0UwqpccZv4ZkLVrE1j9bJ0TFjovpmVVRQisaAUySGkTqgtpJuzbJFrxWOlezmAhX28ANFQpGEs9xMiPJBcUMseBKV7pveIychnPEo1PvtDg==
