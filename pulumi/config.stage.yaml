@@ -63,6 +63,7 @@ resources:
             - lmtp
             - managesieve
             - smtps
+            - submission
           storage_capacity: 20
       load_balancer:
         excluded_nodes: []
@@ -76,6 +77,8 @@ resources:
           managesieve:
             source_cidrs: ['0.0.0.0/0']
           smtps:
+            source_cidrs: ['0.0.0.0/0']
+          submission:
             source_cidrs: ['0.0.0.0/0']
           # http:
           #   source_security_group_ids: ['your_bastion_sgid']

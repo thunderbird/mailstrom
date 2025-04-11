@@ -28,7 +28,8 @@ STALWART_CLUSTER_SERVICES = {
     'pop3': 110,
     'pop3s': 995,
     'smtp': 25,
-    'smtps': 587,
+    'smtps': 465,
+    'submission': 587,
 }
 
 
