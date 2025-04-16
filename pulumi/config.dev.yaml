@@ -1,0 +1,97 @@
+---
+resources:
+  tb:secrets:PulumiSecretsManager:
+    secrets:
+      secret_names:
+        - stalwart.postboot.postgresql_backend
+        - stalwart.postboot.fallback_admin_password
+      recovery_window_in_days: 0
+
+  tb:network:MultiCidrVpc:
+    vpc:
+      cidr_block: 10.2.0.0/16
+      subnets:
+        eu-central-1a:
+          - 10.2.0.0/17
+        eu-central-1b:
+          - 10.2.128.0/17
+      enable_internet_gateway: True
+      egress_via_internet_gateway: True
+      enable_dns_hostnames: True
+      endpoint_interfaces:
+        - secretsmanager
+
+  tb:elasticache:ElastiCacheReplicationGroup:
+    stalwart:
+      description: Redis memory cache for Stalwart
+      engine: redis
+      engine_version: 7.1
+      node_type: cachhe.t3.micro
+      num_cache_nodes: 1
+      automatic_failover_enabled: False # Must be false when num_cache_nodes is 1
+      parameter_group_family: redis7
+      parameter_group_params: {}
+      port: 6379
+      # Dynamic values set in code, or not at all:
+      # source_cidrs: []
+      # source_sgids: []
+      # subnets: []
+
+  tb:ec2:SshableInstance: {}
+  # Fill out this template to build an SSH bastion
+  # tb:ec2:SshableInstance:
+  #   yourname-bastion:
+  #     public_key: |
+  #       ssh-rsa your_public_key_here== user@machine
+  #     source_cidrs:
+  #       - your.public.ip.address/32
+
+  tb:mailstrom:StalwartCluster:
+    thundermail:
+      nodes:
+        '1':
+          disable_api_termination: False
+          ignore_ami_changes: True
+          ignore_user_data_changes: True
+          instance_type: t3.micro
+          key_name: rjung-burrito
+          node_roles:
+            - all
+          services:
+            - imap
+            - imaps
+            - lmtp
+            - managesieve
+            - smtp
+            - smtps
+          storage_capacity: 20
+        '0':
+          disable_api_termination: False
+          ignore_ami_changes: True
+          ignore_user_data_changes: True
+          instance_type: t3.micro
+          key_name: rjung-burrito
+          node_roles:
+            - all
+          services:
+            - http
+            - smtp
+            - smtps
+          storage_capacity: 20
+      load_balancer:
+        excluded_nodes:
+          - '0'
+        services:
+          imap:
+            source_cidrs: ['0.0.0.0/0']
+          imaps:
+            source_cidrs: ['0.0.0.0/0']
+          lmtp:
+            source_cidrs: ['0.0.0.0/0']
+          managesieve:
+            source_cidrs: ['0.0.0.0/0']
+          smtp:
+            source_cidrs: ['0.0.0.0/0']
+          smtps:
+            source_cidrs: ['0.0.0.0/0']
+        

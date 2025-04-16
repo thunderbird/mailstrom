@@ -1,0 +1,85 @@
+---
+resources:
+  tb:secrets:PulumiSecretsManager:
+    secrets:
+      secret_names:
+        - stalwart.postboot.fallback_admin_password
+        - stalwart.postboot.postgresql_backend
+        - stalwart.postboot.tb-accounts_backend
+
+  tb:network:MultiCidrVpc:
+    vpc:
+      cidr_block: 10.1.0.0/16
+      subnets:
+        eu-central-1a:
+          - 10.1.0.0/17
+        eu-central-1b:
+          - 10.1.128.0/17
+      enable_internet_gateway: True
+      egress_via_internet_gateway: True
+      enable_dns_hostnames: True
+      endpoint_interfaces:
+        - secretsmanager
+
+  tb:elasticache:ElastiCacheReplicationGroup:
+    stalwart:
+      description: Redis memory cache for Stalwart
+      engine: redis
+      engine_version: 7.1
+      node_type: cachhe.t3.micro
+      num_cache_nodes: 1
+      automatic_failover_enabled: False # Must be false when num_cache_nodes is 1
+      parameter_group_family: redis7
+      parameter_group_params: {}
+      port: 6379
+      # Dynamic values set in code, or not at all:
+      # source_cidrs: []
+      # source_sgids: []
+      # subnets: []
+
+  tb:ec2:SshableInstance: {}
+  # Fill out this template to build an SSH bastion
+  # tb:ec2:SshableInstance:
+  #   rjung-bastion:
+  #     ssh_keypair_name: your-ec2-keypair-name
+  #     source_cidrs:
+  #       - your.ip.addr.ess/32
+
+  tb:mailstrom:StalwartCluster:
+    thundermail:
+      nodes:
+        "0": # Must be a unique, stringified integer
+          disable_api_termination: True
+          ignore_ami_changes: True
+          ignore_user_data_changes: True
+          instance_type: t3.micro
+          key_name: mailstrom-stage
+          node_roles:
+            - all
+          services:
+            - http
+            - imap
+            - imaps
+            - lmtp
+            - managesieve
+            - smtp
+            - smtps
+            - submission
+          storage_capacity: 20
+      load_balancer:
+        excluded_nodes: []
+        services:
+          imap:
+            source_cidrs: ['0.0.0.0/0']
+          imaps:
+            source_cidrs: ['0.0.0.0/0']
+          lmtp:
+            source_cidrs: ['0.0.0.0/0']
+          managesieve:
+            source_cidrs: ['0.0.0.0/0']
+          smtp:
+            source_cidrs: ['0.0.0.0/0']
+          smtps:
+            source_cidrs: ['0.0.0.0/0']
+          submission:
+            source_cidrs: ['0.0.0.0/0']

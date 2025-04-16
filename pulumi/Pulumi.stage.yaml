@@ -1,0 +1,10 @@
+config:
+  aws:region: eu-central-1
+  mailstrom:stalwart.postboot.postgresql_backend:
+    secure: AAABADLizeyy2nmwRhk3Xb1Ry6VLtG1V6k8ezobpp0oYtRkTSpXgxCQcPYk/eaEatNdN3MlZdM2gq5So3SymuUH+wdGKhgBHlubQujUt0VIVmDN0I0QE2AyuawPzHvpg8/JEYz1jQLrPBOM+sZASCQjtM0B+LJehVxl8p2FSv2ibBE6W1vp8Wcg/WxjslquVG0oAJ8v+dbRSWAe5Ve3On+lWhvMskGLZqOZtQbhZHuhUbq9r+9SBmr2V9oRBorrLMWIT38u5bBrwv/03j163BSg4uyh/074z9v9wKAQG8GZCibdx9tfUfG9QKV30O3H3dOPJQIWlwkLSppHM
+  mailstrom:stalwart.postboot.fallback_admin_password:
+    secure: AAABAN0pTv161GU23QAFapvwf6jNlviUasOdwahldhBofbW0F++e+pyp1HPLlhY5dJgKFWkvYLSsWZivMoLhj9k=
+  cloudflare:apiToken:
+    secure: AAABAOF8CsB/xwjavpx/QGt9wTMexN0R+dwvrRZg2CUHvg7CVu9BHxTYFYwPqoB/qtmMZBNmzIVzPYM+KTtMZAY+fa3+JgLr
+  mailstrom:stalwart.postboot.tb-accounts_backend:
+    secure: AAABAJ7ExeEDkoDgsJdUWZ1+0nKLuo55kXtKvEvznFPDF+tMWZaWIuXeyNcLZ7nHLnqRQgCEiR0yfpCUCa//MudJlw5a4+mfQCqvB68/VulxsFNVLfRUxOIG6YrUO4OBtLcxMSwNveQFKDbjHitysogCdGOrVSvuw6lJsZssuLkjscLQ9FZjecXLQBezm0C9zNhIiMAQELW91gC/9TrZe6rpOQ9HlkIDJI/ntyE0UwqpccZv4ZkLVrE1j9bJ0TFjovpmVVRQisaAUySGkTqgtpJuzbJFrxWOlezmAhX28ANFQpGEs9xMiPJBcUMseBKV7pveIychnPEo1PvtDg==

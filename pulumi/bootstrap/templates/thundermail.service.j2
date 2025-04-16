@@ -1,0 +1,27 @@
+{#- systemd service config for Stalwart Mail Server's Docker container -#}
+{%- extends "ports.j2" -%}
+{% block with_service_ports %}
+[Unit]
+Description=Stalwart Mail Server
+Documentation=https://stalw.art/docs/get-started
+After=docker.service
+Requires=docker.service
+
+[Service]
+TimeoutStartSec=0
+Restart=always
+Type=exec
+ExecStartPre=-docker exec stalwart-mail stop
+ExecStartPre=-docker rm stalwart-mail
+ExecStart=docker run --rm --name stalwart-mail \
+    -v /opt/stalwart-mail:/opt/stalwart-mail \
+    {% for service in node_services.split(',') -%}
+    -p {{ service_ports[service]['port'] }}:{{ service_ports[service]['port'] }} \
+    {% endfor -%}
+    stalwartlabs/mail-server:v0.11
+ExecStop=docker stop stalwart-mail
+RestartSec=2
+
+[Install]
+WantedBy=default.target
+{% endblock %}
