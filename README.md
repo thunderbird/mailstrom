@@ -16,10 +16,10 @@ Some terminology for clarity:
 
 In the broadest strokes:
 
-- The `bootstrap` directory contains a script and related files that will eventually run on a Stalwart node at launch
-  time to configure a running Stalwart instance there.
-- The `stalwart.StalwartCluster` class zips up these bootstrapping files, base64-encodes the zip, and injects that
-  string into a Bash script template (`stalwart_instance_user_data.sh.j2`).
+- This repo's `bootstrap` directory contains a script and related files that will eventually run on a Stalwart node at
+  launch time to configure a running Stalwart instance there.
+- The `stalwart.StalwartCluster` class (in `stalwart.py`) zips up these bootstrapping files, base64-encodes the zip, and
+  injects that string into a Bash script template (`stalwart_instance_user_data.sh.j2`).
 - That script gets set as the instance's user data script, such that when the instance is first launched, the script
   runs.
 - Additional configuration is stored either as tags on the instance or as secrets (credentials, etc.)
@@ -64,11 +64,12 @@ resources:
             # - pop3s
             # - smtp
             # - smtps
+            # - submission
           storage_capacity: 20 # Ephemeral storage volume size in GB
       load_balancer:
         services: # Configuration of service exposure through the load balancer
-          http: # "http" is the web admin interface, which should never be exposed to the world; restrict the sources.
-            source_cidrs: ['10.1.0.0/16']
+          # http: # "http" is the web admin interface, which should never be exposed to the world; you should really
+          #   source_cidrs: ['10.1.0.0/16'] # disable this entirely, but at least restrict access as much as possible.
           imap: # Actual mail services should be public, though
             source_cidrs: ['0.0.0.0/0']
           imaps:
@@ -80,6 +81,8 @@ resources:
           smtp:
             source_cidrs: ['0.0.0.0/0']
           smtps:
+            source_cidrs: ['0.0.0.0/0']
+          submission:
             source_cidrs: ['0.0.0.0/0']
           # The "all" service exposes all services to the same set of sources. If you do this, you should only ever
           # expose them to private network space for testing purposes. Exposing "all" to the world exposes the web admin
@@ -244,8 +247,8 @@ accidental restarting of nodes in the `StalwartCluster` due to changes in automa
 strongly recommended to keep this set to `True` anytime you are not deliberately performing maintenance.
 
 **Another Note:** This user data *only* runs on the first launch of an instance. It *does not* run on subsequent reboots
-or instance stop/starts. If you want to re-run the bootstrapping process as a means of updating the server's config, you
-will need to manually re-run the bootstrapping process. This is described below.
+or instance stop/starts. If you want to update the server's operating configuration, you will need to manually re-run
+the bootstrapping process. This is described below.
 
 **And One More Note:** We use tb_pulumi's
 [`get_latest_amazon_linux_ami`](https://thunderbird.github.io/pulumi/tb_pulumi.html#tb_pulumi.ThunderbirdPulumiProject.get_latest_amazon_linux_ami)
@@ -323,13 +326,16 @@ systemctl start/stop/restart thundermail
 
 If the service is running, you should also be able to see the container with `docker ps`.
 
+If you are changing what services the node operates, you should re-run the bootstrapping process to ensure the systemd
+service gets updated to expose the right ports. See the "Changing Node Services" section below.
+
 
 ### Logs and Docker Stuff
 
 You can access the logs from the current Stalwart session with Docker:
 
 ```bash
-docker logs stalwart-mail
+docker logs -f stalwart-mail
 ```
 
 You can access historical logs from the current and previous Stalwart sessions with the system journal:
@@ -367,10 +373,10 @@ docker run \ # ...other options...
 
 ### Changing Node Services
 
-When a node is built for the first time, it gets started running the services in this initial configuration. If you need
-to change what services are running, you'll need to do a little extra legwork. You will need to have set up SSH access
-to the node you wish to operate on as described in the section above. In these examples, we will use node `1` and an
-unlikely, oversimplified configuration for demonstration's sake.
+When a node is built for the first time, it gets started running the services in that initial configuration. If you need
+to later change what services are running, you'll need to do a little extra legwork. You will need to have set up SSH
+access to the node you wish to operate on as described in the section above. In these examples, we will use node `1` and
+an unlikely, oversimplified configuration for demonstration's sake.
 
 Suppose we have configured Node `1` to run all services:
 
@@ -408,7 +414,7 @@ resources:
             source_cidrs: ['0.0.0.0/0']
 ```
 
-But we now realize that we should disable those services which are not considered very secure.
+But we now desire to make this into a server that only handles SMTP services, disabling all other ones.
 
 First, remove the node from the load balancer so it does not receive traffic by adding the node to the `excluded_nodes`
 list:
@@ -436,31 +442,33 @@ resources:
           node_roles:
             - all
           services:
-            - http
-            - imap
-            - imaps
-            - lmtp
-            - managesieve
             - smtp
             - smtps
+            - submission
 ```
 
 A `pulumi up` should now want to change the tags of the instance along with the security group rules.
 
-These tags ordinarily inform the bootstrap process how to set up the server. Updating the tags after the bootstrapping
-is complete **will not** automatically result in a change to the operating state of that node's Stalwart service. To do
-this, you must SSH into the machine and re-run bootstrapping. Instructions for doing that are in the section above. In
-the end, you will end up running...
+**Note:** Sometimes security group rules are applied in a way that leads to failed Pulumi runs. This happens because the
+rules are unaware of each other. If a rule is set to be recreated to accomodate a new sequence (something else has been
+added or removed, perhaps) Pulumi may instruct the replacement rule to be created before the old one is deleted. AWS
+doesn't like this and throws a "duplicate rule" error. In these cases, you can usually just run another `pulumi up`
+command to plow through the errors.
+
+The tags being changed ordinarily inform the bootstrap process how to set up the server. Updating the tags after the
+bootstrapping has initially completed **will not** automatically result in a change to the operating state of that
+node's Stalwart service. To complete this change, you must SSH into the machine and re-run bootstrapping. Instructions
+for doing that are in the section above. In the end, you will end up running...
 
 ```bash
 python bootstrap.py
 ```
 
 ...and this will cause a new Stalwart configuration file to be deployed to `/opt/stalwart-mail/etc/config.toml`. If you
-wish, you may verify its contents now.
+wish, you may verify its contents now, before it is applied, in case you need to make further changes.
 
-This also causes a new systemd service config to be deployed, and the changes will involve what ports are exposed. To
-make this new service config active, you must instruct systemd to reload its configuration:
+The script also causes a new systemd service config to be deployed, and the changes will involve what ports are exposed.
+To make this new service config active, you must instruct systemd to reload its configuration:
 
 ```bash
 systemctl daemon-reload
