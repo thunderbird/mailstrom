@@ -1,11 +1,25 @@
 from imaplib import IMAP4_SSL
-from const import IMAP_HOST, IMAP_PORT, RESULT_OK, STATE_NONAUTH, STATE_AUTH, STATE_LOGOUT, MAILBOX_SUBSCRIBED, \
-    MAILBOX_CREATED, MAILBOX_DELETED, MAILBOX_UNSUBSCRIBED, LOGOUT_BYE, MAILBOX_PREFIX, MAILBOX_RENAMED, STATE_SELECTED, \
-    STATE_AUTH, MAILBOX_CLOSE_COMPLETED
+from const import (
+    IMAP_HOST,
+    IMAP_PORT,
+    RESULT_OK,
+    STATE_NONAUTH,
+    STATE_LOGOUT,
+    MAILBOX_SUBSCRIBED,
+    MAILBOX_CREATED,
+    MAILBOX_DELETED,
+    MAILBOX_UNSUBSCRIBED,
+    LOGOUT_BYE,
+    MAILBOX_PREFIX,
+    MAILBOX_RENAMED,
+    STATE_SELECTED,
+    STATE_AUTH,
+    MAILBOX_CLOSE_COMPLETED,
+)
 from utils import convert_raw_mailbox_list
 
 
-class IMAP():
+class IMAP:
     def __init__(self):
         self.connection = None
 
@@ -92,7 +106,7 @@ class IMAP():
         Create a new mailbox with the given name.
         """
         print(f'creating mailbox: {name}')
-        status, data = self.connection.create(f'"{name}"') # need double quotes b/c spaces in name
+        status, data = self.connection.create(f'"{name}"')  # need double quotes b/c spaces in name
         print(status, data)
         assert status == RESULT_OK, 'expected create to return OK'
         assert MAILBOX_CREATED in data[0], 'expected mailbox created message'
@@ -134,7 +148,7 @@ class IMAP():
         existing_mailboxes = self.get_mailboxes()
         for mailbox in existing_mailboxes:
             if mailbox['name'] in names_to_check:
-                print(f'found mailbox: {mailbox['name']}')
+                print(f'found mailbox: {mailbox["name"]}')
                 names_to_check.remove(mailbox['name'])
         return True if len(names_to_check) == 0 else False
 
@@ -155,7 +169,7 @@ class IMAP():
         Rename an exisating mailbox.
         """
         print(f'renaming mailbox: {old_name} to: {new_name}')
-        status, data = self.connection.rename(f'"{old_name}"', f'"{new_name}"') # need double quotes b/c spaces in name
+        status, data = self.connection.rename(f'"{old_name}"', f'"{new_name}"')  # need double quotes b/c spaces in name
         print(status, data)
         assert status == RESULT_OK, 'expected rename to return OK'
         assert MAILBOX_RENAMED in data[0], 'expected mailbox renamed message'
@@ -217,9 +231,9 @@ class IMAP():
 
         for mailbox in sorted_mailboxes:
             if MAILBOX_PREFIX in mailbox['name']:
-                print(f'deleting mailbox: {mailbox['name']}')
+                print(f'deleting mailbox: {mailbox["name"]}')
                 try:
                     self.delete_mailbox(mailbox['name'])
-                except:
+                except Exception as _ex:
                     # we don't really care if it failed for some reason as just cleaning up
                     pass

@@ -1,10 +1,7 @@
-import imaplib
 import pytest
 
-from const import TEST_ACCT_1_USERNAME, TEST_ACCT_1_PASSWORD, MAILBOX_PREFIX, RESULT_OK
-from dotenv import find_dotenv, load_dotenv
+from const import TEST_ACCT_1_USERNAME, TEST_ACCT_1_PASSWORD
 from IMAP import IMAP
-from utils import convert_raw_mailbox_list
 
 
 @pytest.fixture(scope='session')
@@ -21,7 +18,7 @@ def imap():
 
     # this runs after all of the tests in the class are finished; log out of the IMAP server
     if success:
-        closed = imap.close_mailbox() # close any open mailbox
+        imap.close_mailbox()  # close any open mailbox
         signed_out = imap.logout()
         assert signed_out, 'expected logout to be successful'
 

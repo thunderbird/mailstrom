@@ -12,6 +12,20 @@ Some terminology for clarity:
 - **tb_pulumi:** An extension of Pulumi defining some common infrastructure patterns at Thunderbird.
 
 
+## Virtual Environments
+
+Pulumi manages its own Python virtual environment based on the `pulumi/requirements.txt` file. For local development,
+you should manage your own virtual environment.
+
+```bash
+virtualenv .venv
+source .venv/bin/activate
+pip install .[dev]
+```
+
+When you run Pulumi commands, it is best if you `deactivate` your development environment first.
+
+
 ## How Stalwart Node Bootstrapping Works
 
 In the broadest strokes:

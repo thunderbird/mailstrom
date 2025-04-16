@@ -14,5 +14,9 @@ dependencies = { file = ["pulumi/requirements.txt"] }
 
 [project.optional-dependencies]
 dev = [
-    "ruff"
+    "ruff",
+    "python-dotenv==1.0.1",
+    "pytest==8.3.4",
 ]
+
+
