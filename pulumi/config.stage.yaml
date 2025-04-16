@@ -37,13 +37,13 @@ resources:
       # source_sgids: []
       # subnets: []
 
-  # tb:ec2:SshableInstance: {}
+  tb:ec2:SshableInstance: {}
   # Fill out this template to build an SSH bastion
-  tb:ec2:SshableInstance:
-    rjung-bastion:
-      ssh_keypair_name: rjung-burrito
-      source_cidrs:
-        - 76.155.125.135/32
+  # tb:ec2:SshableInstance:
+  #   rjung-bastion:
+  #     ssh_keypair_name: your-ec2-keypair-name
+  #     source_cidrs:
+  #       - your.ip.addr.ess/32
 
   tb:mailstrom:StalwartCluster:
     thundermail:
@@ -62,6 +62,7 @@ resources:
             - imaps
             - lmtp
             - managesieve
+            - smtp
             - smtps
             - submission
           storage_capacity: 20
@@ -76,9 +77,9 @@ resources:
             source_cidrs: ['0.0.0.0/0']
           managesieve:
             source_cidrs: ['0.0.0.0/0']
+          smtp:
+            source_cidrs: ['0.0.0.0/0']
           smtps:
             source_cidrs: ['0.0.0.0/0']
           submission:
             source_cidrs: ['0.0.0.0/0']
-          # http:
-          #   source_security_group_ids: ['your_bastion_sgid']
