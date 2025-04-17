@@ -20,7 +20,7 @@ you should manage your own virtual environment.
 ```bash
 virtualenv .venv
 source .venv/bin/activate
-pip install .[dev]
+pip install ."[dev]"
 ```
 
 When you run Pulumi commands, it is best if you `deactivate` your development environment first.

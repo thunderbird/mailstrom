@@ -19,8 +19,8 @@ cd test/integration
 cp .env.test.example .env.test 
 ```
 
-The `."env.test` file is in the gitignore as to prevent checking it into github by mistake! Open the `.env.test` file and"
-add the "following values:"
+The `.env.test` file is in the gitignore as to prevent checking it into github by mistake! Open the `.env.test` file and
+add the following values:
 
 ```
 TEST_IMAP_HOST = "<your IMAP server host name>"
