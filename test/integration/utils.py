@@ -1,5 +1,6 @@
 # test utils
 
+
 def convert_raw_mailbox_list(raw_mailbox_list):
     """
     The data returned from imap.list() is a list of byte strings, each entry being one mailbox.
@@ -14,7 +15,7 @@ def convert_raw_mailbox_list(raw_mailbox_list):
             # starts as: b'() "/" "Deleted Items"'
             mailbox = raw_mailbox.decode().split(' ', 2)
             # now looks like: ['()', '"/"', '"Deleted Items"']
-            pretty_mailbox_list.append({ 'flags': mailbox[0], 'separator': mailbox[1], 'name': mailbox[2].strip('"') })
+            pretty_mailbox_list.append({'flags': mailbox[0], 'separator': mailbox[1], 'name': mailbox[2].strip('"')})
             # was appended like this: {'flags': '()', 'separator': '"/"', 'name': 'Deleted Items'}
 
     return pretty_mailbox_list

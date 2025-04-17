@@ -14,11 +14,11 @@ TEST_ACCT_1_PASSWORD = str(os.getenv('TEST_ACCT_1_PASSWORD')).strip()
 
 # Default mailboxes expected to exist
 DEFAULT_MAILBOX_LIST = [
-    { 'flags': '()', 'separator': '"/"', 'name': 'Deleted Items' },
-    { 'flags': '()', 'separator': '"/"', 'name': 'Drafts' },
-    { 'flags': '()', 'separator': '"/"', 'name': 'INBOX' },
-    { 'flags': '()', 'separator': '"/"', 'name': 'Junk Mail' },
-    { 'flags': '()', 'separator': '"/"', 'name': 'Sent Items' },
+    {'flags': '()', 'separator': '"/"', 'name': 'Deleted Items'},
+    {'flags': '()', 'separator': '"/"', 'name': 'Drafts'},
+    {'flags': '()', 'separator': '"/"', 'name': 'INBOX'},
+    {'flags': '()', 'separator': '"/"', 'name': 'Junk Mail'},
+    {'flags': '()', 'separator': '"/"', 'name': 'Sent Items'},
 ]
 
 # Prefix used when creating mailboxes/folders

@@ -1,7 +1,7 @@
 [project]
-name = "thundermail-pulumi"
+name = "mailstrom"
 version = "0.0.1"
-description = "Pulumi-built infrastructure for Mailstrom/Thundermail"
+description = "Pulumi-built infrastructure for Thundermail"
 requires-python = ">=3.12"
 dynamic = ["dependencies"]
 
@@ -10,9 +10,13 @@ repository = "https://github.com/thunderbird/mailstrom.git"
 issues = "https://github.com/thunderbird/mailstrom/issues"
 
 [tool.setuptools.dynamic]
-dependencies = { file = ["requirements.txt"] }
+dependencies = { file = ["pulumi/requirements.txt"] }
 
 [project.optional-dependencies]
 dev = [
-    "ruff"
+    "ruff",
+    "python-dotenv==1.0.1",
+    "pytest==8.3.4",
 ]
+
+

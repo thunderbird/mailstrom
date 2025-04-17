@@ -1,12 +1,27 @@
-import datetime, os, pytest, time
+import datetime
 
-from const import DEFAULT_MAILBOX_LIST, MAILBOX_PREFIX, RESULT_NO, ALREADY_EXISTS, MISSING_ARGS, NOT_FOUND, \
-    MAILBOX_ALREADY_SUBSCRIBED, MAILBOX_NAME_MISSING, MAILBOX_NOT_EXIST, MAILBOX_ALREADY_UNSUBSCRIBED, \
-    INVALID_FOLDER_NAME, MAILBOX_HAS_CHILD, STATE_SELECTED, STATE_AUTH, RESULT_OK, MAILBOX_CLOSE_ILLEGAL_STATE
+from const import (
+    DEFAULT_MAILBOX_LIST,
+    MAILBOX_PREFIX,
+    RESULT_NO,
+    ALREADY_EXISTS,
+    MISSING_ARGS,
+    NOT_FOUND,
+    MAILBOX_ALREADY_SUBSCRIBED,
+    MAILBOX_NAME_MISSING,
+    MAILBOX_NOT_EXIST,
+    MAILBOX_ALREADY_UNSUBSCRIBED,
+    INVALID_FOLDER_NAME,
+    MAILBOX_HAS_CHILD,
+    STATE_SELECTED,
+    STATE_AUTH,
+    RESULT_OK,
+    MAILBOX_CLOSE_ILLEGAL_STATE,
+)
 from utils import convert_raw_mailbox_list
 
 
-class TestIMAPMailboxes():
+class TestIMAPMailboxes:
     def test_list_all_mailboxes(self, imap):
         mailbox_list = imap.get_mailboxes()
         # ensure that the expected default malboxes exist
@@ -43,7 +58,7 @@ class TestIMAPMailboxes():
         for level in range(1, 11):
             next_mailbox = f'{MAILBOX_PREFIX} {level} {datetime.datetime.now()}'
             # append the level separator to start of name for all subfolders
-            name_string += f'/{next_mailbox}' if level >1 else f'{next_mailbox}'
+            name_string += f'/{next_mailbox}' if level > 1 else f'{next_mailbox}'
             new_mailboxes.append(name_string)
 
         imap.create_mailbox(name_string)
@@ -70,7 +85,7 @@ class TestIMAPMailboxes():
 
     def test_create_mailbox_invalid_name(self, imap):
         # attempt to create mailbox with invalid name
-        print(f'attempting to create mailbox with invalid name')
+        print('attempting to create mailbox with invalid name')
         result, data = imap.connection.create(' ')
         print(result, data)
         assert result == RESULT_NO, 'expected status of NO when attempt to create mailbox that already exists'
@@ -80,7 +95,7 @@ class TestIMAPMailboxes():
         new_mailbox = f'{MAILBOX_PREFIX} {datetime.datetime.now()}'
         imap.create_mailbox(new_mailbox)
         # verify new mailbox is not subscribed by default
-        assert imap.are_mailboxes_subscribed([new_mailbox]) == False, 'expected mailbox NOT to be subscribed to'
+        assert not imap.are_mailboxes_subscribed([new_mailbox]), 'expected mailbox NOT to be subscribed to'
         # subscribe and verify
         imap.subscribe_mailbox(new_mailbox)
         assert imap.are_mailboxes_subscribed([new_mailbox]), 'expected mailbox to be subscribed to'
@@ -102,7 +117,7 @@ class TestIMAPMailboxes():
 
     def test_subscribe_mailbox_no_exist(self, imap):
         # attempt to subscribe to mailbox that does not exist
-        print(f'attempting to subscribe to mailbox that does not exist')
+        print('attempting to subscribe to mailbox that does not exist')
         result, data = imap.connection.subscribe('Nope')
         print(result, data)
         assert result == RESULT_NO, 'expected status of NO when attempt to subscribe to mailbox that does not exist'
@@ -110,7 +125,7 @@ class TestIMAPMailboxes():
 
     def test_subscribe_mailbox_no_name(self, imap):
         # attempt to subscribe to mailbox with no name
-        print(f'attempting to subscribe to mailbox with no name')
+        print('attempting to subscribe to mailbox with no name')
         result, data = imap.connection.subscribe(' ')
         print(result, data)
         assert result == RESULT_NO, 'expected status of NO when attempt to subscribe to mailbox with no name'
@@ -124,13 +139,13 @@ class TestIMAPMailboxes():
         assert imap.are_mailboxes_subscribed([new_mailbox]), 'expected mailbox to be subscribed to'
         # now unsubscribe and verify
         imap.unsubscribe_mailbox(new_mailbox)
-        assert imap.are_mailboxes_subscribed([new_mailbox]) == False, 'expected mailbox NOT to be subscribed to'
+        assert not imap.are_mailboxes_subscribed([new_mailbox]), 'expected mailbox NOT to be subscribed to'
 
     def test_unsubscribe_mailbox_already_unsubscribed(self, imap):
         new_mailbox = f'{MAILBOX_PREFIX} {datetime.datetime.now()}'
         imap.create_mailbox(new_mailbox)
         # verify new mailbox is not subscribed by default
-        assert imap.are_mailboxes_subscribed([new_mailbox]) == False, 'expected mailbox NOT to be subscribed to'
+        assert not imap.are_mailboxes_subscribed([new_mailbox]), 'expected mailbox NOT to be subscribed to'
 
         # attempt to unsubscribe when not subscribed, expect not
         print(f'attempting to unsubscribe mailbox that is already unsubscribed: {new_mailbox}')
@@ -142,7 +157,7 @@ class TestIMAPMailboxes():
 
     def test_unsubscribe_mailbox_no_exist(self, imap):
         # attempt to unsubscribe to mailbox that does not exist
-        print(f'attempting to unsubscribe a mailbox that does not exist')
+        print('attempting to unsubscribe a mailbox that does not exist')
         result, data = imap.connection.unsubscribe('Nope')
         print(result, data)
         assert result == RESULT_NO, 'expected status of NO when attempt to unsubscribe a mailbox that does not exist'
@@ -150,7 +165,7 @@ class TestIMAPMailboxes():
 
     def test_unsubscribe_mailbox_no_name(self, imap):
         # attempt to unsubscribe to mailbox with no name
-        print(f'attempting to unsubscribe a mailbox with no name')
+        print('attempting to unsubscribe a mailbox with no name')
         result, data = imap.connection.unsubscribe(' ')
         print(result, data)
         assert result == RESULT_NO, 'expected status of NO when attempt to unsubscribe a mailbox with no name'
@@ -202,14 +217,16 @@ class TestIMAPMailboxes():
 
         assert result == RESULT_NO, 'expected rename to return NO'
         assert ALREADY_EXISTS in data[0], 'expected not found message'
-        assert imap.do_mailboxes_exist([first_mailbox, second_mailbox]) is True, 'expected both mailboxes to still exist'
+        assert imap.do_mailboxes_exist([first_mailbox, second_mailbox]) is True, (
+            'expected both mailboxes to still exist'
+        )
 
     def test_rename_mailbox_no_exist(self, imap):
         # attempt to rename a mailbox that doesn't exist
         no_exist = f'{MAILBOX_PREFIX} {datetime.datetime.now()}'
         new_name = f'{MAILBOX_PREFIX} RENAMED! {datetime.datetime.now()}'
 
-        print(f'attempting to rename a mailbox that does not exist');
+        print('attempting to rename a mailbox that does not exist')
         result, data = imap.connection.rename(f'"{no_exist}"', f'"{new_name}"')
         print(result, data)
 
@@ -240,12 +257,12 @@ class TestIMAPMailboxes():
         assert imap.do_mailboxes_exist([test_mailbox]), f'expected mailbox {test_mailbox} to exist'
 
         imap.delete_mailbox(test_mailbox)
-        assert imap.do_mailboxes_exist([test_mailbox]) == False, f'expected mailbox {test_mailbox} to not exist'
+        assert not imap.do_mailboxes_exist([test_mailbox]), f'expected mailbox {test_mailbox} to not exist'
 
     def test_delete_mailbox_no_exist(self, imap):
         # attempt to delete a mailbox that doesn't exist
         print('attempting to delete a mailbox that does not exist')
-        result, data = imap.connection.delete(f'"Nope this mailbox does not exist"')
+        result, data = imap.connection.delete('"Nope this mailbox does not exist"')
         print(result, data)
         assert result == RESULT_NO, 'expected delete to return NO'
         assert MAILBOX_NOT_EXIST in data[0], 'expected mailbox does not exist error'
@@ -338,7 +355,7 @@ class TestIMAPMailboxes():
         imap.unselect_mailbox()
 
         # attempt to select a mailbox that doesn't exist, expect not
-        result, data = imap.connection.select(f'"This mailbox does not exist!"')
+        result, data = imap.connection.select('"This mailbox does not exist!"')
         print(result, data)
 
         assert result == RESULT_NO, 'expected select to return NO'

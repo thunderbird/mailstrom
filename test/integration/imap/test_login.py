@@ -1,10 +1,9 @@
-import os
 
 from const import TEST_ACCT_1_USERNAME, TEST_ACCT_1_PASSWORD
 from IMAP import IMAP
 
 
-class TestIMAPAuth():
+class TestIMAPAuth:
     def test_login_logout(self):
         imap = IMAP()
         success = imap.login(TEST_ACCT_1_USERNAME, TEST_ACCT_1_PASSWORD)
