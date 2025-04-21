@@ -71,6 +71,7 @@ def get_secrets(env: str, aws_region: str) -> dict:
     # Map of template vars to SM secrets
     secret_value_map = {
         'fallback_admin_password': f'mailstrom/{env}/stalwart.postboot.fallback_admin_password',
+        'jmap_toml': f'mailstrom/{env}/stalwart.postboot.jmap_toml',
         'postgresql_backend': f'mailstrom/{env}/stalwart.postboot.postgresql_backend',
         'redis_backend': f'mailstrom/{env}/stalwart.postboot.redis_backend',
         's3_iam_access_key': f'mailstrom/{env}/iam.user.mailstrom-{env}-stalwart.access_key',

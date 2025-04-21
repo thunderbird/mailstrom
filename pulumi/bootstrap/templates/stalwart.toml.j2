@@ -2,7 +2,7 @@
 {%- extends "ports.j2" %}
 {% block with_service_ports %}
 [config]
-local-keys = [ "cluster.node-id", "cluster.bind-addr", "cluster.bind-port", "store.*", "tracer.*", "authentication.fallback-admin"]
+local-keys = ["authentication.fallback-admin", "cluster.node-id", "cluster.bind-addr", "cluster.bind-port", "directory.*", "jmap.*", "storage", "store.*", "tracer.*"]
 
 [cluster]
 node-id = {{ node_id }}
@@ -10,11 +10,15 @@ bind-addr = "[::]"
 bind-port = 1179
 
 {# Set up a listener for every service #}
+{% set jmap = [] %}
 {% for service in node_services.split(',') %}
+{%   if service == 'jmap' %}
+{%     set _ = jmap.append(1) %}
+{%   endif %}
 [server.listener."{{ service_ports[service]['listener'] }}"]
 bind = ["[::]:{{ service_ports[service]['port'] }}"]
 protocol = "{{ service_ports[service]['protocol'] }}"
-{%   if service in ['imaps', 'managesieve', 'pop3s', 'smtps'] %}
+{%   if service in ['imaps', 'jmap', 'managesieve', 'pop3s', 'smtps'] %}
 tls.implicit = true
 {%   endif %}
 {% endfor %}
@@ -96,4 +100,6 @@ enable = true
 [authentication.fallback-admin]
 user = "admin"
 secret = "{{ fallback_admin_password }}"
+
+{% if jmap %}{{ jmap_toml }}{% endif %}
 {% endblock %}
