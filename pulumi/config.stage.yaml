@@ -40,8 +40,8 @@ resources:
   tb:ec2:SshableInstance: {}
   # Fill out this template to build an SSH bastion
   # tb:ec2:SshableInstance:
-  #   rjung-bastion:
-  #     ssh_keypair_name: your-ec2-keypair-name
+  #   bastion:
+  #     ssh_keypair_name: your-ec2-keypair
   #     source_cidrs:
   #       - your.ip.addr.ess/32
 
@@ -66,6 +66,18 @@ resources:
             - smtps
             - submission
           storage_capacity: 20
+        "99":
+          disable_api_termination: False
+          ignore_ami_changes: True
+          ignore_user_data_changes: False
+          instance_type: t3.micro
+          key_name: mailstrom-stage
+          node_roles:
+            - all
+          services:
+            - jmap
+          storage_capacity: 20
+
       load_balancer:
         excluded_nodes: []
         services:
@@ -73,6 +85,8 @@ resources:
             source_cidrs: ['0.0.0.0/0']
           imaps:
             source_cidrs: ['0.0.0.0/0']
+          # jmap:
+          #   source_cidrs: ['0.0.0.0/0']
           lmtp:
             source_cidrs: ['0.0.0.0/0']
           managesieve:
@@ -83,3 +97,54 @@ resources:
             source_cidrs: ['0.0.0.0/0']
           submission:
             source_cidrs: ['0.0.0.0/0']
+      jmap:
+        account:
+          purge:
+            frequency: "0 0 *"
+        email:
+          auto-expunge: 30d
+        event-source:
+          throttle: 1s
+        protocol:
+          changes:
+            max-history: 30d
+            max-results: 5000
+          email:
+            max-attachment-size: 50000000
+            max-size: 75000000
+          get:
+            max-objects: 500
+          mailbox:
+            max-depth: 10
+            max-name-length: 255
+          parse:
+            max-items: 10
+          query:
+            max-results: 5000
+          set:
+            max-objects: 500
+          upload:
+            max-concurrent: 4
+            max-size: 50000000
+            quota:
+              files: 1000
+              size: 50000000
+            ttl: 1h
+        push:
+          attempts:
+            interval: 1m
+            max: 3
+          max-total: 100
+          retry:
+            interval: 1s
+          throttle: 1ms
+          timeout:
+            request: 10s
+            verify: 1s
+        rate-limit:
+          account: 1000/1m
+          anonymous: 100/1m
+        websocket:
+          heartbeat: 1m
+          throttle: 1s
+          timeout: 10m
