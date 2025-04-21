@@ -85,8 +85,8 @@ resources:
             source_cidrs: ['0.0.0.0/0']
           imaps:
             source_cidrs: ['0.0.0.0/0']
-          # jmap:
-          #   source_cidrs: ['0.0.0.0/0']
+          jmap:
+            source_cidrs: ['0.0.0.0/0']
           lmtp:
             source_cidrs: ['0.0.0.0/0']
           managesieve:

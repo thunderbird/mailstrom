@@ -34,6 +34,9 @@ STALWART_CLUSTER_SERVICES = {
     'submission': 587,
 }
 
+#: Valid entries in the services config that trigger the buildout of an Application Load Balancer
+ALB_CLUSTER_SERVICES = ['http', 'jmap']
+
 
 class StalwartNodeRoles(Enum):
     """Discrete set of supported Stalwart cluster node roles."""
@@ -53,9 +56,12 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
 
     Produces the following ``resources``:
 
+        - *alb_lb_sg* - :py:class:`tb_pulumi.network.SecurityGroupWithRule` created for the cluster's application load
+          balancer.
         - *instances* - Dict of :py:class:`StalwartClusterNode`s, identified by their node_id.
         - *jmap_secret* - :py:class:`tb_pulumi.secrets.SecretsManagerSecret` containing the TOML-formatted JMAP config.
-        - *lb_sg* - :py:class:`tb_pulumi.network.SecurityGroupWithRule` created for the cluster's load balancer.
+        - *nlb_lb_sg* - :py:class:`tb_pulumi.network.SecurityGroupWithRule` created for the cluster's network load
+          balancer.
         - *node_profile* - The instance profile used for each cluster node.
         - *node_profile_policy* - The `aws.iam.Policy
           <https://www.pulumi.com/registry/packages/aws/api-docs/iam/policy/>`_ attached to the instance profile.
@@ -97,7 +103,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         and incomplete example:
 
         .. code-block: yaml
-        
+
             jmap:
               protocol:
                 request:
@@ -355,7 +361,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         )
 
         # Store a TOML version of the JMAP config in Secrets Manager for nodes to read back later
-        jmap_dict = {'jmap': jmap} if jmap else {} # Ensure every TOML option gets the "jmap" text in it
+        jmap_dict = {'jmap': jmap} if jmap else {}  # Ensure every TOML option gets the "jmap" text in it
         toml_str = toml.dumps(jmap_dict) if jmap else ''
         jmap_secret = tb_pulumi.secrets.SecretsManagerSecret(
             name=f'{self.name}-secret-jmap',
@@ -378,7 +384,10 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
                 **nodes[node_id],
             )
 
-        lb_sg_id = pulumi.Output.all(**self.load_balancer_security_group.resources).apply(
+        alb_lb_sg_id = pulumi.Output.all(**self.application_load_balancer_security_group.resources).apply(
+            lambda resources: resources['sg'].id
+        )
+        nlb_lb_sg_id = pulumi.Output.all(**self.application_load_balancer_security_group.resources).apply(
             lambda resources: resources['sg'].id
         )
         if self.expose_all_services:
@@ -395,23 +404,28 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
             project=self.project,
             instances=instances,
             node_config=self.nodes,
-            security_group_ids=[lb_sg_id],
+            alb_sg_ids=alb_lb_sg_id,
+            nlb_sg_ids=nlb_lb_sg_id,
             service_config=lb_services,
             subnets=self.subnets,
             vpc_id=self.vpc_id,
             excluded_nodes=self.load_balancer_config['excluded_nodes']
             if 'excluded_nodes' in self.load_balancer_config
             else None,
-            opts=pulumi.ResourceOptions(parent=self, depends_on=[self.load_balancer_security_group]),
+            opts=pulumi.ResourceOptions(
+                parent=self,
+                depends_on=[self.application_load_balancer_security_group, self.network_load_balancer_security_group],
+            ),
             tags=self.tags,
         )
 
         self.finish(
             resources={
+                'alb_lb_sg': self.application_load_balancer_security_group,
                 'instances': instances,
                 'jmap_secret': jmap_secret,
                 'lb': lb,
-                'lb_sg': self.load_balancer_security_group,
+                'nlb_lb_sg': self.network_load_balancer_security_group,
                 'node_profile': profile,
                 'node_profile_policy': profile_policy,
                 'node_profile_policy_attachment': profile_attachment,
@@ -425,10 +439,30 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
             }
         )
 
-    # Cache this property because it produces a Pulumi resource. We don't want to define that multiple times.
+    # Cache properties that produce Pulumi resources. Otherwise we run the risk of defining them multiple times.
     @cached_property
-    def load_balancer_security_group(self):
-        """Defines a security group for the load balancer based on the load_balancer config options."""
+    def application_load_balancer_security_group(self):
+        """Defines a security group for the ALB (if one is built) based on the load_balancer config options."""
+        return self.__load_balancer_security_group(alb=True)
+
+    @cached_property
+    def network_load_balancer_security_group(self):
+        """Defines a security group for the NLB (if one is built) based on the load_balancer config options."""
+        return self.__load_balancer_security_group(alb=False)
+
+    def __load_balancer_security_group(self, alb: bool = False):
+        """Defines a security group to be used on one of the load balancers, the ALB or NLB, if they are built. This
+        function exists because these security groups have the same design and the same code to design them, but
+        different entries in the rules list for the different services.
+
+        You should never call this function directly because it defines Pulumi resources that you should not duplicate.
+        Instead, rely upon either of the ``application_load_balancer_security_group`` or
+        ``network_load_balancer_security_group`` properties, which correctly invoke this function and cache the result.
+
+        :param alb: When True, prepares a security group for the Application Load Balancer. Otherwise, prepares it for
+            the Network Load Balancer. Defaults to True.
+        :type alb: bool, optional
+        """
 
         # Build a skeleton for the security group rules, allowing all egress
         lb_sg_rules = {
@@ -452,7 +486,14 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         else:
             exposed_services = self.load_balancer_config['services'].keys()
 
-        for service in exposed_services:
+        # Determine which set of services we're defining rules for
+        selected_services = (
+            [service for service in exposed_services if service in ALB_CLUSTER_SERVICES]
+            if alb
+            else [service for service in exposed_services if service not in ALB_CLUSTER_SERVICES]
+        )
+
+        for service in selected_services:
             # Validate each exposed service's name
             if service not in STALWART_CLUSTER_SERVICES:
                 raise ValueError(f'{service} is not a valid Stalwart cluster service.')
@@ -489,8 +530,9 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
                     )
 
         # Pipe the whole rule config into a SecurityGroupWithRules pattern
+        res_name = f'{self.name}-{'a' if alb else 'n'}lbsg'
         return tb_pulumi.network.SecurityGroupWithRules(
-            name=f'{self.name}-lbsg',
+            name=res_name,
             project=self.project,
             rules=lb_sg_rules,
             vpc_id=self.vpc_id,
@@ -547,13 +589,18 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
 
         # Expose each service port, but only to the load balancer
         for service in handled_services:
+            sg = (
+                self.application_load_balancer_security_group
+                if service in ALB_CLUSTER_SERVICES
+                else self.network_load_balancer_security_group
+            )
             sg_rules['ingress'].append(
                 {
                     'description': f'Allow {service} traffic',
                     'protocol': 'tcp',
                     'from_port': STALWART_CLUSTER_SERVICES[service],
                     'to_port': STALWART_CLUSTER_SERVICES[service],
-                    'source_security_group_id': self.load_balancer_security_group.resources['sg'].id,
+                    'source_security_group_id': sg.resources['sg'].id,
                 }
             )
 
@@ -761,7 +808,10 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
 class StalwartLoadBalancer(tb_pulumi.ThunderbirdComponentResource):
     """**Pulumi Type:** ``tb:mailstrom:StalwartLoadBalancer``
 
-    Builds a network load balancer and related resources for routing traffic through a StalwartCluster.
+    Builds either or both of an Application Load Balancer and a Network Load Balancer to route traffic to various
+    Stalwart services. Services which use the HTTP protocol get routed through an ALB so we can take advantage of things
+    such as path-based routing rules. Most mail services get routed through an NLB since an ALB cannot comprehend their
+    traffic.
 
     Produces the following ``resources``:
 
@@ -774,7 +824,8 @@ class StalwartLoadBalancer(tb_pulumi.ThunderbirdComponentResource):
         project: tb_pulumi.ThunderbirdPulumiProject,
         instances: dict,
         node_config: dict,
-        security_group_ids: list[str],
+        alb_sg_ids: list[str],
+        nlb_sg_ids: list[str],
         service_config: dict,
         subnets: list[aws.ec2.Subnet],
         vpc_id: str,
@@ -790,20 +841,78 @@ class StalwartLoadBalancer(tb_pulumi.ThunderbirdComponentResource):
             tags=tags,
         )
 
-        # Build a single load balancer
-        load_balancer = aws.lb.LoadBalancer(
-            f'{self.name}-lb',
-            name=f'{self.name}-stalwart',
-            internal=False,
-            load_balancer_type='network',
-            security_groups=security_group_ids,
-            subnets=[subnet.id for subnet in subnets],
-            tags=self.tags,
-            opts=pulumi.ResourceOptions(parent=self, depends_on=[*subnets]),
+        # Determine if any services which require an ALB are set to be exposed
+        build_alb = False
+        for alb_service in ALB_CLUSTER_SERVICES:
+            if alb_service in service_config:
+                build_alb = True
+                break
+
+        # Expose services via the ALB
+        alb = (
+            aws.lb.LoadBalancer(
+                f'{self.name}-alb',
+                name=f'{self.name}-alb',
+                internal=False,
+                load_balancer_type='application',
+                security_groups=alb_sg_ids,
+                subnets=[subnet.id for subnet in subnets],
+                tags=self.tags,
+                opts=pulumi.ResourceOptions(parent=self, depends_on=[*subnets]),
+            )
+            if build_alb
+            else None
+        )
+
+        # Determine if any services which require an NLB are set to be exposed
+        build_nlb = False
+        for service in service_config:
+            if service not in ALB_CLUSTER_SERVICES:
+                build_nlb = True
+                break
+
+        # Expose services via the NLB
+        nlb = (
+            aws.lb.LoadBalancer(
+                f'{self.name}-nlb',
+                name=f'{self.name}-nlb',
+                internal=False,
+                load_balancer_type='network',
+                security_groups=nlb_sg_ids,
+                subnets=[subnet.id for subnet in subnets],
+                tags=self.tags,
+                opts=pulumi.ResourceOptions(parent=self, depends_on=[*subnets]),
+            )
+            if build_nlb
+            else None
         )
 
         # Build a target group for each service
-        target_groups = {
+        alb_target_groups = {
+            service: aws.lb.TargetGroup(
+                f'{self.name}-tg-{service}',
+                health_check={
+                    'enabled': True,
+                    'healthy_threshold': 2,
+                    'interval': 15,
+                    'path': '/',
+                    'port': STALWART_CLUSTER_SERVICES[service],
+                    'protocol': 'HTTPS',
+                    'unhealthy_threshold': 2,
+                },
+                name=f'{self.project.stack}-{service}',  # Constrained to 32 characters
+                port=STALWART_CLUSTER_SERVICES[service],
+                protocol='TCP',
+                target_type='instance',
+                tags=self.tags,
+                vpc_id=vpc_id,
+                opts=pulumi.ResourceOptions(parent=self),
+            )
+            for service in service_config
+            if service in ALB_CLUSTER_SERVICES
+        }
+
+        nlb_target_groups = {
             service: aws.lb.TargetGroup(
                 f'{self.name}-tg-{service}',
                 health_check={
@@ -822,27 +931,28 @@ class StalwartLoadBalancer(tb_pulumi.ThunderbirdComponentResource):
                 vpc_id=vpc_id,
                 opts=pulumi.ResourceOptions(parent=self),
             )
-            for service, config in service_config.items()
+            for service in service_config
+            if service not in ALB_CLUSTER_SERVICES
         }
 
         # For each target group, register nodes with matching services; route traffic through listeners
-        target_group_attachments = {}
-        listeners = {}
-        for service, tg in target_groups.items():
+        alb_target_group_attachments = {}
+        alb_listeners = {}
+        for service, tg in alb_target_groups.items():
             for node_id, node in node_config.items():
                 if (
                     node_handles_all_services(services=node['services']) or service in node['services']
                 ) and node_id not in excluded_nodes:
-                    target_group_attachments[service] = aws.lb.TargetGroupAttachment(
+                    alb_target_group_attachments[service] = aws.lb.TargetGroupAttachment(
                         f'{self.name}-tga-{service}-node{node_id}',
                         target_group_arn=tg.arn,
                         target_id=instances[node_id].id,
                         port=STALWART_CLUSTER_SERVICES[service],
                         opts=pulumi.ResourceOptions(
-                            parent=self, depends_on=[*instances.values(), *target_groups.values()]
+                            parent=self, depends_on=[*instances.values(), *alb_target_groups.values()]
                         ),
                     )
-            listeners[service] = aws.lb.Listener(
+            alb_listeners[service] = aws.lb.Listener(
                 f'{self.name}-listener-{service}',
                 default_actions=[
                     {
@@ -850,19 +960,54 @@ class StalwartLoadBalancer(tb_pulumi.ThunderbirdComponentResource):
                         'target_group_arn': tg.arn,
                     }
                 ],
-                load_balancer_arn=load_balancer.arn,
+                load_balancer_arn=alb.arn,
+                port=STALWART_CLUSTER_SERVICES[service],
+                protocol='HTTPS',
+                tags=self.tags,
+                opts=pulumi.ResourceOptions(parent=self, depends_on=[*alb_target_groups.values(), alb]),
+            )
+
+        nlb_target_group_attachments = {}
+        nlb_listeners = {}
+        for service, tg in nlb_target_groups.items():
+            for node_id, node in node_config.items():
+                if (
+                    node_handles_all_services(services=node['services']) or service in node['services']
+                ) and node_id not in excluded_nodes:
+                    nlb_target_group_attachments[service] = aws.lb.TargetGroupAttachment(
+                        f'{self.name}-tga-{service}-node{node_id}',
+                        target_group_arn=tg.arn,
+                        target_id=instances[node_id].id,
+                        port=STALWART_CLUSTER_SERVICES[service],
+                        opts=pulumi.ResourceOptions(
+                            parent=self, depends_on=[*instances.values(), *nlb_target_groups.values()]
+                        ),
+                    )
+            nlb_listeners[service] = aws.lb.Listener(
+                f'{self.name}-listener-{service}',
+                default_actions=[
+                    {
+                        'type': 'forward',
+                        'target_group_arn': tg.arn,
+                    }
+                ],
+                load_balancer_arn=nlb.arn,
                 port=STALWART_CLUSTER_SERVICES[service],
                 protocol='TCP',
                 tags=self.tags,
-                opts=pulumi.ResourceOptions(parent=self, depends_on=[*target_groups.values(), load_balancer]),
+                opts=pulumi.ResourceOptions(parent=self, depends_on=[*nlb_target_groups.values(), nlb]),
             )
 
         self.finish(
             resources={
-                'listeners': listeners,
-                'load_balancer': load_balancer,
-                'target_groups': target_groups,
-                'target_group_attachments': target_group_attachments,
+                'application_load_balancer': alb,
+                'alb_listeners': alb_listeners,
+                'alb_target_groups': alb_target_groups,
+                'alb_target_group_attachments': alb_target_group_attachments,
+                'network_load_balancer': nlb,
+                'nlb_listeners': nlb_listeners,
+                'nlb_target_groups': nlb_target_groups,
+                'nlb_target_group_attachments': nlb_target_group_attachments,
             }
         )
 
