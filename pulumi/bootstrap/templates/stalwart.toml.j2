@@ -18,7 +18,7 @@ bind-port=1179
 [server.listener."{{ service_ports[service]['listener'] }}"]
 bind=["[::]:{{ service_ports[service]['port'] }}"]
 protocol="{{ service_ports[service]['protocol'] }}"
-{%   if service in ['imaps', 'jmap', 'managesieve', 'pop3s', 'smtps'] %}
+{%   if service in ['http', 'imaps', 'jmap', 'managesieve', 'pop3s', 'smtps'] %}
 tls.implicit=true
 {%   endif %}
 {% endfor %}
