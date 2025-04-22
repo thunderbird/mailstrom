@@ -2,104 +2,115 @@
 {%- extends "ports.j2" %}
 {% block with_service_ports %}
 [config]
-local-keys = ["authentication.fallback-admin", "cluster.node-id", "cluster.bind-addr", "cluster.bind-port", "directory.*", "jmap.*", "storage", "store.*", "tracer.*"]
+local-keys=["authentication.fallback-admin", "cluster.node-id", "cluster.bind-addr", "cluster.bind-port", "directory.*", "jmap.*", "storage", "store.*", "tracer.*"]
 
 [cluster]
-node-id = {{ node_id }}
-bind-addr = "[::]"
-bind-port = 1179
+node-id={{ node_id }}
+bind-addr="[::]"
+bind-port=1179
 
 {# Set up a listener for every service #}
-{% set jmap = [] %}
+{% set jmap=[] %}
 {% for service in node_services.split(',') %}
 {%   if service == 'jmap' %}
-{%     set _ = jmap.append(1) %}
+{%     set _=jmap.append(1) %}
 {%   endif %}
 [server.listener."{{ service_ports[service]['listener'] }}"]
-bind = ["[::]:{{ service_ports[service]['port'] }}"]
-protocol = "{{ service_ports[service]['protocol'] }}"
+bind=["[::]:{{ service_ports[service]['port'] }}"]
+protocol="{{ service_ports[service]['protocol'] }}"
 {%   if service in ['imaps', 'jmap', 'managesieve', 'pop3s', 'smtps'] %}
-tls.implicit = true
+tls.implicit=true
 {%   endif %}
 {% endfor %}
 
 [storage]
-data = "postgresql"
-fts = "postgresql"
-blob = "s3"
-lookup = "redis"
-directory = "tb-accounts"
+data="postgresql"
+fts="postgresql"
+blob="s3"
+lookup="redis"
+directory="tb-accounts"
 
 [directory."tb-accounts"]
-type = "sql"
-store = "tb-accounts"
+type="sql"
+store="tb-accounts"
 
 [store."postgresql"]
-type = "postgresql"
-host = "{{ postgresql_backend['host'] }}"
-port = {{ postgresql_backend['port'] if 'port' in postgresql_backend else 5432 }}
-database = "{{ postgresql_backend['database'] }}"
-user = "{{ postgresql_backend['user'] }}"
-password = "{{ postgresql_backend['password'] }}"
-timeout = "{{ postgresql_backend['timeout'] if 'timeout' in postgresql_backend else '15s' }}"
-read-from-replicas = true
+type="postgresql"
+host="{{ postgresql_backend['host'] }}"
+port={{ postgresql_backend['port'] if 'port' in postgresql_backend else 5432 }}
+database="{{ postgresql_backend['database'] }}"
+user="{{ postgresql_backend['user'] }}"
+password="{{ postgresql_backend['password'] }}"
+timeout="{{ postgresql_backend['timeout'] if 'timeout' in postgresql_backend else '15s' }}"
+read-from-replicas=true
 
 {% if 'tls' in postgresql_backend %}
-{% set tls_enable = "true" if 'enable' in postgresql_backend['tls'] and postgresql_backend['tls']['enable'] else "false"  %}
-{% set tls_invalid_certs = "true" if 'allow-invalid-certs' in postgresql_backend['tls'] and postgresql_backend['tls']['allow-invalid-certs'] else "false" %}
+{% set tls_enable="true" if 'enable' in postgresql_backend['tls'] and postgresql_backend['tls']['enable'] else "false"  %}
+{% set tls_invalid_certs="true" if 'allow-invalid-certs' in postgresql_backend['tls'] and postgresql_backend['tls']['allow-invalid-certs'] else "false" %}
 [store."postgresql".tls]
-enable = {{ tls_enable }}
-allow-invalid-certs = {{ tls_invalid_certs }}
+enable={{ tls_enable }}
+allow-invalid-certs={{ tls_invalid_certs }}
 {% endif %}
 
 [store."tb-accounts"]
-type = "postgresql"
-host = "{{ tb_accounts_backend['host'] }}"
-port = "{{ tb_accounts_backend['port'] }}"
-database = "{{ tb_accounts_backend['database'] }}"
-user = "{{ tb_accounts_backend['user'] }}"
-password = "{{ tb_accounts_backend['password'] }}"
-timeout = "{{ tb_accounts_backend['timeout'] if 'timeout' in tb_accounts_backend else '15s' }}"
-query.emails = "SELECT address FROM mail_email WHERE name = $1 ORDER BY address ASC"
-query.members = "SELECT member_of FROM mail_groupmember WHERE name = $1"
-query.name = "SELECT name, type, description, quota FROM mail_account WHERE name = $1 AND active = true"
-query.recipients = "SELECT name FROM mail_email WHERE address = $1 ORDER BY name ASC"
-query.secrets = "SELECT secret FROM mail_account WHERE name = $1"
-read-from-replicas = true
+type="postgresql"
+host="{{ tb_accounts_backend['host'] }}"
+port="{{ tb_accounts_backend['port'] }}"
+database="{{ tb_accounts_backend['database'] }}"
+user="{{ tb_accounts_backend['user'] }}"
+password="{{ tb_accounts_backend['password'] }}"
+timeout="{{ tb_accounts_backend['timeout'] if 'timeout' in tb_accounts_backend else '15s' }}"
+query.emails="SELECT address FROM mail_email WHERE name=$1 ORDER BY address ASC"
+query.members="SELECT member_of FROM mail_groupmember WHERE name=$1"
+query.name="SELECT name, type, description, quota FROM mail_account WHERE name=$1 AND active=true"
+query.recipients="SELECT name FROM mail_email WHERE address=$1 ORDER BY name ASC"
+query.secrets="SELECT secret FROM mail_account WHERE name=$1"
+read-from-replicas=true
 
 {% if 'tls' in tb_accounts_backend %}
-{% set tls_enable = "true" if 'enable' in tb_accounts_backend['tls'] and tb_accounts_backend['tls']['enable'] else "false"  %}
-{% set tls_invalid_certs = "true" if 'allow-invalid-certs' in tb_accounts_backend['tls'] and tb_accounts_backend['tls']['allow-invalid-certs'] else "false" %}
+{% set tls_enable="true" if 'enable' in tb_accounts_backend['tls'] and tb_accounts_backend['tls']['enable'] else "false"  %}
+{% set tls_invalid_certs="true" if 'allow-invalid-certs' in tb_accounts_backend['tls'] and tb_accounts_backend['tls']['allow-invalid-certs'] else "false" %}
 [store."tb-accounts".tls]
-enable = {{ tls_enable }}
-allow-invalid-certs = {{ tls_invalid_certs }}
+enable={{ tls_enable }}
+allow-invalid-certs={{ tls_invalid_certs }}
 {% endif %}
 
 [store."s3"]
-type = "s3"
-bucket = "{{ s3_backend['bucket'] }}"
-region = "{{ s3_backend['region'] }}"
-access-key = "{{ s3_iam_access_key['access_key_id'] }}"
-secret-key = "{{ s3_iam_access_key['secret_access_key'] }}"
+type="s3"
+bucket="{{ s3_backend['bucket'] }}"
+region="{{ s3_backend['region'] }}"
+access-key="{{ s3_iam_access_key['access_key_id'] }}"
+secret-key="{{ s3_iam_access_key['secret_access_key'] }}"
 
 [store."redis"]
-type = "redis"
-redis-type = "single"
-urls = "{{ redis_backend['urls'] }}"
-timeout = "{{ redis_backend['timeout'] if 'timeout' in redis_backend else '15s' }}"
+type="redis"
+redis-type="single"
+urls="{{ redis_backend['urls'] }}"
+timeout="{{ redis_backend['timeout'] if 'timeout' in redis_backend else '15s' }}"
 {#- TODO: Support Redis clusters.
-redis-type = "cluster"
-urls = ["url_1", "url_2", "etc"] #}
+redis-type="cluster"
+urls=["url_1", "url_2", "etc"] #}
 
 [tracer."stdout"]
-type = "stdout"
-level = "info"
-ansi = false
-enable = true
+type="stdout"
+level="info"
+ansi=false
+enable=true
 
 [authentication.fallback-admin]
-user = "admin"
-secret = "{{ fallback_admin_password }}"
+user="admin"
+secret="{{ fallback_admin_password }}"
 
 {% if jmap %}{{ jmap_toml }}{% endif %}
+
+{%- if jmap -%}
+[server.http]
+allowed-endpoint=[
+    {if="starts_with(url_path, '/jmap')",then="200"},
+    {if="starts_with(url_path, '/.well-known/')",then="200"},
+    {if="starts_with(url_path, '/healthz/ready')",then="200"},
+    {if="starts_with(url_path, '/robots.txt')",then="200"},
+    {if="remote_ip == '127.0.0.1'",then="200"},
+    {else="404"}]
+{% endif -%}
 {% endblock %}

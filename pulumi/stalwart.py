@@ -242,6 +242,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
                 exclude_from_project=True,
                 secret_name=f'mailstrom/{self.project.stack}/stalwart.postboot.redis_backend',
                 secret_value=json.dumps({'urls': f'redis://{address}#insecure'}),
+                opts=pulumi.ResourceOptions(parent=self)
             )
 
         redis_secret = pulumi.Output.all(**redis.resources).apply(
