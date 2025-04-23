@@ -849,6 +849,7 @@ class StalwartLoadBalancer(tb_pulumi.ThunderbirdComponentResource):
         load_balancer = aws.lb.LoadBalancer(
             f'{self.name}-lb',
             name=f'{self.name}-stalwart',
+            enable_cross_zone_load_balancing=True,
             internal=False,
             load_balancer_type='network',
             security_groups=security_group_ids,
