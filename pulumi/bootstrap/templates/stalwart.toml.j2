@@ -10,11 +10,9 @@ bind-addr="[::]"
 bind-port=1179
 
 {# Set up a listener for every service #}
-{% set jmap=[] %}
-{% for service in node_services.split(',') %}
-{%   if service == 'jmap' %}
-{%     set _=jmap.append(1) %}
-{%   endif %}
+{% set node_services = node_services.split(',') %}
+{% set jmap = 'jmap' in node_services %}
+{% for service in node_services %}
 [server.listener."{{ service_ports[service]['listener'] }}"]
 bind=["[::]:{{ service_ports[service]['port'] }}"]
 protocol="{{ service_ports[service]['protocol'] }}"
