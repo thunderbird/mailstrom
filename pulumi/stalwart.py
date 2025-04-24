@@ -9,6 +9,7 @@ import tb_pulumi.iam
 import tb_pulumi.network
 import tb_pulumi.s3
 import tb_pulumi.secrets
+import toml
 
 from enum import Enum
 from functools import cached_property
@@ -23,6 +24,7 @@ STALWART_CLUSTER_SERVICES = {
     'http': 8080,
     'imap': 143,
     'imaps': 993,
+    'jmap': 443,
     'lmtp': 24,
     'managesieve': 4190,
     'pop3': 110,
@@ -52,20 +54,26 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
     Produces the following ``resources``:
 
         - *instances* - Dict of :py:class:`StalwartClusterNode`s, identified by their node_id.
-        - *lb_sg* - :py:class:`tb_pulumi.network.SecurityGroupWithRule` created for the cluster's load balancer.
+        - *jmap_secret* - :py:class:`tb_pulumi.secrets.SecretsManagerSecret` containing the TOML-formatted JMAP config.
+        - *lb* - :py:class:`StalwartLoadBalancer` defining the way service traffic is routed through the cluster.
+        - *lb_sg* - :py:class:`tb_pulumi.network.SecurityGroupWithRules` created for the cluster's load balancer.
         - *node_profile* - The instance profile used for each cluster node.
         - *node_profile_policy* - The `aws.iam.Policy
           <https://www.pulumi.com/registry/packages/aws/api-docs/iam/policy/>`_ attached to the instance profile.
         - *node_profile_policy_attachment* - The `aws.iam.PolicyAttachment
           <https://www.pulumi.com/registry/packages/aws/api-docs/iam/policyattachment/>`_ resource between the the
           policy and the instance profile.
-        - *node_sgs* - Dict of :py:class:`tb_pulumi.network.SecurityGroupWithRule`s created for each node to support its
+        - *node_sgs* - Dict of :py:class:`tb_pulumi.network.SecurityGroupWithRules` created for each node to support its
           enabled services, identified by their node_id.
         - *redis* - :py:class:`tb_pulumi.elasticache.ElastiCacheReplicationGroup` which Stalwart uses for its in-
           memory store.
         - *redis_secret* - :py:class:`tb_pulumi.secrets.SecretsManagerSecret` containing the Redis connection details.
         - *s3* - :py:class:`tb_pulumi.s3.S3Bucket` which Stalwart uses for its blob store.
+        - *s3_policy* - `aws.iam.Policy <https://www.pulumi.com/registry/packages/aws/api-docs/iam/policy/>`_ granting
+          full, unrestricted access to the S3 bucket and all its objects.
         - *s3_secret* - :py:class:`tb_pulumi.secrets.SecretsManagerSecret` containing the S3 bucket details.
+        - *user- :py:class:`tb_pulumi.iam.UserWithAccessKey` which Stalwart itself will use to manipulate the objects in
+          its S3 blob store.
 
     :param name: A string identifying this set of resources.
     :type name: str
@@ -89,10 +97,27 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
     :param cache_parameters: Dictionary of parameters in the parameter group to override.
     :type cache_parameters: dict, optional
 
-    :param load_balancer: Configuration for the load balancer, listing services to expose and to what other components
-        to expose them to. Must contain a `services` dict, whose keys must be valid
-        :py:data:`STALWART_CLUSTER_SERVICES`s. Those values must contain at least one (or both) of a list of
-        ``source_cidrs`` or a list of ``source_security_group_ids``. For example:
+    :param jmap: Dictionary of options to configure the JMAP configuration on servers running JMAP. This should match
+        the options listed in `Stalwart's JMAP documention <https://stalw.art/docs/jmap/overview>`_. A very brief
+        and incomplete example:
+
+        .. code-block: yaml
+
+            jmap:
+              protocol:
+                request:
+                    max-concurrent: 4
+                    max-size: 10000000
+                    max-calls: 16
+                upload:
+                    ttl: 1h
+                    # ... etc
+    :type jmap: dict, optional
+
+    :param load_balancer: Configuration for the load balancer, listing services to expose and what other components to
+        expose them to. Must contain a `services` dict, whose keys must be valid :py:data:`STALWART_CLUSTER_SERVICES`.
+        Those values must contain at least one (or both) of a list of ``source_cidrs`` or a list of
+        ``source_security_group_ids``. For example:
 
         .. code-block:: yaml
             :linenos:
@@ -104,12 +129,12 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
                     http:
                         source_security_group_ids: ['sg-abcdef0123456789']
                         source_cidrs: ['10.0.0.0/8']
+    :type load_balancer: dict, optional
 
     :param nodes: Dict describing the individual nodes of the cluster. Each key is a node_id, which must be a
         stringified integer (a restriction imposed by Stalwart), and each value is a dict of supported values describing
-        a node configuration. The configuration is composed of inputs to the :py:meth:`StalwartCluster.node`. The values
+        a node configuration. The configuration is composed of inputs to :py:meth:`StalwartCluster.node`. The values
         listed below are described in more detail alongside that function. The set of valid values is:
-
 
         - disable_api_stop: bool (False)
         - disable_api_termination: bool (False)
@@ -125,7 +150,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
     :type nodes: dict, optional
 
     :param node_additional_ingress_rules: Dict describing additional ingress rules to apply to the node. This is useful
-        for when you need to punch a hole for testing purposes. Defaults to {}.
+        for granting access to services from sources other than the load balancer. Defaults to {}.
     :type node_additional_ingress_rules: dict, optional
 
     :param user_data_archive: File on disk in which to store the zip file for the user data bootstrapping stage. This is
@@ -158,6 +183,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         cache_node_count: int = 1,
         cache_node_type: str = 'cache.t3.micro',
         cache_parameters: list = [],
+        jmap: dict = None,
         load_balancer: dict = {},
         nodes: dict = {},
         node_additional_ingress_rules: list[dict] = [],
@@ -220,6 +246,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
                 exclude_from_project=True,
                 secret_name=f'mailstrom/{self.project.stack}/stalwart.postboot.redis_backend',
                 secret_value=json.dumps({'urls': f'redis://{address}#insecure'}),
+                opts=pulumi.ResourceOptions(parent=self),
             )
 
         redis_secret = pulumi.Output.all(**redis.resources).apply(
@@ -252,6 +279,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
                     'region': self.project.aws_region,
                 }
             ),
+            opts=pulumi.ResourceOptions(parent=self),
         )
 
         # Build an IAM policy granting bucket access
@@ -331,13 +359,27 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
             f'{self.name}-ip-nodeprofile', name=f'{self.name}-nodeprofile', role=role.name
         )
 
+        # Store a TOML version of the JMAP config in Secrets Manager for nodes to read back later
+        jmap_dict = {'jmap': jmap} if jmap else {}  # Ensure every TOML option gets the "jmap" text in it
+        toml_str = toml.dumps(jmap_dict) if jmap else ''
+        jmap_secret = tb_pulumi.secrets.SecretsManagerSecret(
+            name=f'{self.name}-secret-jmap',
+            project=self.project,
+            exclude_from_project=True,
+            secret_name=f'{self.project.project}/{self.project.stack}/stalwart.postboot.jmap_toml',
+            secret_value=toml_str,
+            opts=pulumi.ResourceOptions(parent=self),
+        )
+
         # Pipe the node configs into a series of StalwartClusterNodes
         instances = {}
         for idx, node_id in enumerate(nodes):
+            subnet = self.subnets[idx % len(self.subnets)]
             instances[node_id] = self.node(
                 node_id=node_id,
-                subnet=self.subnets[idx % len(self.subnets)],
+                subnet=subnet,
                 iam_instance_profile=profile.name,
+                depends_on=[jmap_secret, profile, redis_secret, s3_secret, subnet],
                 **nodes[node_id],
             )
 
@@ -361,7 +403,6 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
             security_group_ids=[lb_sg_id],
             service_config=lb_services,
             subnets=self.subnets,
-            vpc_id=self.vpc_id,
             excluded_nodes=self.load_balancer_config['excluded_nodes']
             if 'excluded_nodes' in self.load_balancer_config
             else None,
@@ -371,13 +412,14 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
 
         self.finish(
             resources={
+                'instances': instances,
+                'jmap_secret': jmap_secret,
                 'lb': lb,
                 'lb_sg': self.load_balancer_security_group,
                 'node_profile': profile,
                 'node_profile_policy': profile_policy,
                 'node_profile_policy_attachment': profile_attachment,
                 'node_sgs': self.node_sgs,
-                'instances': instances,
                 'redis': redis,
                 'redis_secret': redis_secret,
                 's3': s3_bucket,
@@ -533,6 +575,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         self,
         node_id: str,
         subnet: aws.ec2.Subnet,
+        depends_on: list = [],
         disable_api_stop: bool = False,
         disable_api_termination: bool = False,
         ignore_ami_changes: bool = True,
@@ -643,7 +686,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
             tags=instance_tags,
             user_data=self.user_data,
             vpc_security_group_ids=[self.node_sgs[node_id].resources['sg'].id],
-            opts=pulumi.ResourceOptions(parent=self, ignore_changes=instance_ignores),
+            opts=pulumi.ResourceOptions(parent=self, ignore_changes=instance_ignores, depends_on=depends_on),
             **kwargs,
         )
 
@@ -726,7 +769,59 @@ class StalwartLoadBalancer(tb_pulumi.ThunderbirdComponentResource):
 
     Produces the following ``resources``:
 
-        - *something* - Description
+        - *listeners* - Dict of `aws.lb.Listeners <https://www.pulumi.com/registry/packages/aws/api-docs/lb/listener/>`_
+          on the load balancer, one entry for each exposed service.
+        - *load_balancer* - The `aws.lb.LoadBalancer
+          <https://www.pulumi.com/registry/packages/aws/api-docs/lb/loadbalancer/>`_ routing traffic for the cluster.
+        - *target_groups* - Dict of `aws.lb.TargetGroups
+          <https://www.pulumi.com/registry/packages/aws/api-docs/lb/targetgroup/>`_ which receive the traffic, one entry
+          for each exposed service.
+        - *target_group_attachments* - Dict of `aws.lb.TargetGroupAttachments
+          <https://www.pulumi.com/registry/packages/aws/api-docs/lb/targetgroupattachment/>`_ binding the targets to
+          their target groups.
+
+        :param name: A string identifying this set of resources.
+        :type name: str
+
+        :param project: The ThunderbirdPulumiProject to add these resources to.
+        :type project: tb_pulumi.ThunderbirdPulumiProject
+
+        :param instances: Dict of `aws.ec2.Instances
+        <https://www.pulumi.com/registry/packages/aws/api-docs/ec2/instance/>`_, identified by their node IDs, which
+        run any services requiring load balancing.
+        :type instances: dict
+
+        :param node_config: The ``nodes`` portion of a StalwartCluster's configuration. Relevant to this class is the
+        list of configured services for each node, used to establish the correct targets for each load balancer
+        listener.
+        :type node_config: dict
+
+        :param security_group_ids: List of security group IDs which should be attached to the load balancer.
+        :type security_group_ids: list[str]
+
+        :param service_config: The ``services`` section of the StalwartCluster's ``load_balancer`` configuration. This
+        defines services which should be exposed through the load balancer, and to what audience they should be exposed.
+        Use ``source_cidrs`` and ``source_security_group_ids`` to define that scope.
+        :type service_config: dict
+
+        :param subnets: List of subnets to attach the load balancer to. This list must be inclusive of all subnets in
+        which you have targets. Targets that live in a subnet not contained in this list will be incapable of receiving
+        load balanced traffic. All subnets must reside in the same VPC. The VPC ID will be determined from the first
+        subnet listed.
+        :type subnets: list[aws.ec2.Subnet]
+
+        :param excluded_nodes: List of node IDs which should not receive any traffic at all. Instances in rotation which
+        are added to this list will be removed from all target groups they are currently in. This allows for safe
+        downtime operations on the cluster. Defaults to [].
+        :type excluded_nodes: list[str], optional
+
+        :param opts: Additional pulumi.ResourceOptions to apply to these resources. Defaults to None.
+        :type opts: pulumi.ResourceOptions, optional
+
+        :param tags: Key/value pairs to merge with the default tags which get applied to all resources in this group.
+            Defaults to {}.
+        :type tags: dict, optional
+
     """
 
     def __init__(
@@ -738,7 +833,6 @@ class StalwartLoadBalancer(tb_pulumi.ThunderbirdComponentResource):
         security_group_ids: list[str],
         service_config: dict,
         subnets: list[aws.ec2.Subnet],
-        vpc_id: str,
         excluded_nodes: list[str] = [],
         opts: pulumi.ResourceOptions = None,
         tags: dict = {},
@@ -755,6 +849,7 @@ class StalwartLoadBalancer(tb_pulumi.ThunderbirdComponentResource):
         load_balancer = aws.lb.LoadBalancer(
             f'{self.name}-lb',
             name=f'{self.name}-stalwart',
+            enable_cross_zone_load_balancing=True,
             internal=False,
             load_balancer_type='network',
             security_groups=security_group_ids,
@@ -780,7 +875,7 @@ class StalwartLoadBalancer(tb_pulumi.ThunderbirdComponentResource):
                 protocol='TCP',
                 target_type='instance',
                 tags=self.tags,
-                vpc_id=vpc_id,
+                vpc_id=subnets[0].vpc_id,
                 opts=pulumi.ResourceOptions(parent=self),
             )
             for service, config in service_config.items()
