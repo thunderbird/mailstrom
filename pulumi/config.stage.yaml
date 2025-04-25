@@ -60,6 +60,7 @@ resources:
             - http
             - imap
             - imaps
+            - jmap
             - lmtp
             - managesieve
             - smtp
