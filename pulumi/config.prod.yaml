@@ -6,15 +6,16 @@ resources:
         - stalwart.postboot.fallback_admin_password
         - stalwart.postboot.postgresql_backend
         - stalwart.postboot.tb-accounts_backend
+      recovery_window_in_days: 0
 
   tb:network:MultiCidrVpc:
     vpc:
-      cidr_block: 10.1.0.0/16
+      cidr_block: 10.0.0.0/16
       subnets:
         eu-central-1a:
-          - 10.1.0.0/17
+          - 10.0.0.0/17
         eu-central-1b:
-          - 10.1.128.0/17
+          - 10.0.128.0/17
       enable_internet_gateway: True
       egress_via_internet_gateway: True
       enable_dns_hostnames: True
@@ -37,7 +38,11 @@ resources:
       # source_sgids: []
       # subnets: []
 
-  tb:ec2:SshableInstance: {}
+  tb:ec2:SshableInstance:
+    bastion-rjung:
+      ssh_keypair_name: rjung-burrito
+      source_cidrs:
+        - 38.15.46.29/32
   # Fill out this template to build an SSH bastion
   # tb:ec2:SshableInstance:
   #   bastion:
@@ -53,10 +58,11 @@ resources:
           ignore_ami_changes: True
           ignore_user_data_changes: True
           instance_type: t3.micro
-          key_name: mailstrom-stage
+          key_name: mailstrom-prod
           node_roles:
             - all
           services:
+            - http
             - imap
             - imaps
             - jmap
