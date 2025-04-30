@@ -106,6 +106,7 @@ secret="{{ fallback_admin_password }}"
 allowed-endpoint=[
     {if="starts_with(url_path, '/jmap')",then="200"},
     {if="starts_with(url_path, '/.well-known/')",then="200"},
+    {if="starts_with(url_path, '/api/oauth')",then="200"},
     {if="starts_with(url_path, '/healthz/ready')",then="200"},
     {if="starts_with(url_path, '/robots.txt')",then="200"},
     {if="remote_ip == '127.0.0.1'",then="200"},

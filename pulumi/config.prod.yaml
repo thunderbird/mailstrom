@@ -37,7 +37,11 @@ resources:
       # source_sgids: []
       # subnets: []
 
-  tb:ec2:SshableInstance: {}
+  tb:ec2:SshableInstance:
+    bastion:
+      ssh_keypair_name: rjung-burrito
+      source_cidrs:
+        - 76.155.125.135/32
   # Fill out this template to build an SSH bastion
   # tb:ec2:SshableInstance:
   #   bastion:
@@ -65,6 +69,17 @@ resources:
             - smtp
             - smtps
             - submission
+          storage_capacity: 20
+        "99": # Temp node for admin console access
+          disable_api_termination: True
+          ignore_ami_changes: True
+          ignore_user_data_changes: True
+          instance_type: t3.micro
+          key_name: mailstrom-prod
+          node_roles:
+            - all
+          services:
+            - http
           storage_capacity: 20
 
       load_balancer:
