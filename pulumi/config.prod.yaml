@@ -38,11 +38,7 @@ resources:
       # source_sgids: []
       # subnets: []
 
-  tb:ec2:SshableInstance:
-    bastion-rjung:
-      ssh_keypair_name: rjung-burrito
-      source_cidrs:
-        - 38.15.46.29/32
+  tb:ec2:SshableInstance: {}
   # Fill out this template to build an SSH bastion
   # tb:ec2:SshableInstance:
   #   bastion:
@@ -62,7 +58,6 @@ resources:
           node_roles:
             - all
           services:
-            - http
             - imap
             - imaps
             - jmap
