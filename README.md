@@ -504,3 +504,9 @@ resources:
 ```
 
 A `pulumi up` should now restore service to the node.
+
+
+### Integration Tests
+
+
+Please see the [Integration tests README](./test/integration/README.md).

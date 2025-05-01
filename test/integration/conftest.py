@@ -1,7 +1,21 @@
-import pytest
+import pytest, time
 
-from const import TEST_ACCT_1_USERNAME, TEST_ACCT_1_PASSWORD
 from IMAP import IMAP
+from SMTP import SMTP
+
+from const import (
+    TEST_ACCT_1_USERNAME,
+    TEST_ACCT_1_PASSWORD,
+    TEST_ACCT_2_USERNAME,
+    TEST_ACCT_2_PASSWORD,
+    IMAP_MSG_TESTS_EMAIL_COUNT,
+    IMAP_MSG_TESTS_DRAFT_EMAIL_COUNT,
+    IMAP_MSG_TESTS_DEL_EMAIL_COUNT,
+    IMAP_MSG_TESTS_EMAIL_WITH_ATTACHMENT_COUNT,
+    TEST_MSG_SUBJECT_PREFIX,
+    TEST_MSG_DEL_SUBJECT_PREFIX,
+    TEST_MSG_WITH_ATTACHMENT_SUBJECT_PREFIX,
+)
 
 
 @pytest.fixture(scope='session')
@@ -23,6 +37,24 @@ def imap():
         assert signed_out, 'expected logout to be successful'
 
 
+@pytest.fixture(scope='session')
+def smtp():
+    """
+    This fixture runs only once per entire test session, when included in any test definition.
+    Before the tests start login to the SMTP server and provide the SMTP connection instance.
+    Only login once per test session; the same login will be used by all of the tests in the session).
+    """
+    smtp = SMTP()
+    success = smtp.login(TEST_ACCT_1_USERNAME, TEST_ACCT_1_PASSWORD)
+    assert success, 'expected smtp auth to be successful'
+    yield smtp
+
+    # this runs after all of the tests in the class are finished; log out of the SMTP server
+    if success:
+        signed_out = smtp.logout()
+        assert signed_out, 'expected smtp logout to be successful'
+
+
 @pytest.fixture(scope='session', autouse=True)
 def setup_env():
     """
@@ -32,11 +64,126 @@ def setup_env():
     tests. We do it here at the start so that we can always go in and look at the email account mailboxes
     if we want to check the state after the tests ran (but before running them again).
     """
-    print('\ncleaning up test mailboxes')
     imap = IMAP()
     success = imap.login(TEST_ACCT_1_USERNAME, TEST_ACCT_1_PASSWORD)
-    assert success, 'expected auth to be successful'
+    assert success, 'expected imap auth to be successful'
 
+    print('\ncleaning up test mailboxes')
     imap.cleanup_test_mailboxes()
+
+    print('\ncleaning up test emails')
+    imap.cleanup_test_messages()
+
+    print('\ncleaning up draft test emails')
+    imap.cleanup_draft_test_messages()
+
+    # done with imap
     signed_out = imap.logout()
-    assert signed_out, 'expected logout to be successful'
+    assert signed_out, 'expected imap logout to be successful'
+    print('finished cleaning up mailboxes')
+
+
+@pytest.fixture(scope='class')
+def populate_inbox():
+    """
+    This fixture runs once automatically at the start of a test suite when pulled into the test class.
+    Used to populate the test_acct_1 inbox with email messages that are requried to exist for the imap
+    messaging tests; by sending email to test_acct_1 from test_acct_2.
+
+    We can only send 10 messages per connection then have to disconnect and reconnect or else send will
+    fail with Maximum number of messages per session exceeded error.
+
+    Also we pause 1 second after sending each email to avoid rate limiting; although we are also rate
+    limited if we send more than 25 emails per (hour?).
+    """
+    print('\npopulating test_acct_1 for imap messaging tests')
+
+    # first check how many messags exist in the test_acct_1 inbox
+    imap = IMAP()
+    success = imap.login(TEST_ACCT_1_USERNAME, TEST_ACCT_1_PASSWORD)
+    assert success, 'expected imap auth to be successful'
+
+    before_count = imap.select_mailbox() # inbox by default
+    print(f'inbox message count: {before_count}')
+
+    # now sign into SMTP and send our messages
+    smtp = SMTP()
+    success = smtp.login(TEST_ACCT_2_USERNAME, TEST_ACCT_2_PASSWORD)
+    assert success, 'expected smtp auth to be successful'
+
+    for x in range(IMAP_MSG_TESTS_EMAIL_COUNT):
+        if x != 0 and x % 10 == 0:
+            print("disconnecting and reconnecting smtp so we won't exceed sent messages per session")
+            signed_out = smtp.logout()
+            assert signed_out, 'expected smtp logout to be successful'
+            success = smtp.login(TEST_ACCT_2_USERNAME, TEST_ACCT_2_PASSWORD)
+            assert success, 'expected smtp auth to be successful'
+
+        # send the email
+        success = smtp.send_test_email(subject=f'{TEST_MSG_SUBJECT_PREFIX} {x + 1}')
+        assert success, 'expected to be able to send email via smtp'
+        time.sleep(1)
+
+    # also we need to create some messages to be used for delete tests (special subject)
+    for x in range(IMAP_MSG_TESTS_DEL_EMAIL_COUNT):
+        if x != 0 and x % 10 == 0:
+            print("disconnecting and reconnecting smtp so we won't exceed sent messages per session")
+            signed_out = smtp.logout()
+            assert signed_out, 'expected smtp logout to be successful'
+            success = smtp.login(TEST_ACCT_2_USERNAME, TEST_ACCT_2_PASSWORD)
+            assert success, 'expected smtp auth to be successful'
+
+        # send the email
+        success = smtp.send_test_email(subject=f'{TEST_MSG_DEL_SUBJECT_PREFIX} {x + 1}')
+        assert success, 'expected to be able to send email via smtp'
+        time.sleep(1)
+
+    # also we need to create some messages with attachments (special subject too)
+    for x in range(IMAP_MSG_TESTS_EMAIL_WITH_ATTACHMENT_COUNT):
+        if x != 0 and x % 10 == 0:
+            print("disconnecting and reconnecting smtp so we won't exceed sent messages per session")
+            signed_out = smtp.logout()
+            assert signed_out, 'expected smtp logout to be successful'
+            success = smtp.login(TEST_ACCT_2_USERNAME, TEST_ACCT_2_PASSWORD)
+            assert success, 'expected smtp auth to be successful'
+
+        # send the email
+        success = smtp.send_test_email(subject=f'{TEST_MSG_WITH_ATTACHMENT_SUBJECT_PREFIX} {x + 1}', add_attachment=True)
+        assert success, 'expected to be able to send email with attachment via smtp'
+        time.sleep(1)
+
+    # now create our draft test messages
+    for x in range(IMAP_MSG_TESTS_DRAFT_EMAIL_COUNT):
+        success = imap.create_draft_email(subject=f'{TEST_MSG_SUBJECT_PREFIX} Draft {x + 1}')
+        assert success, 'expected to be able to create draft email via imap'
+        time.sleep(1)
+
+    draft_count = imap.select_mailbox('Drafts')
+    assert draft_count >= IMAP_MSG_TESTS_DRAFT_EMAIL_COUNT, f'expected {IMAP_MSG_TESTS_DRAFT_EMAIL_COUNT} draft messages to exist'
+
+    # done with smtp
+    signed_out = smtp.logout()
+    assert signed_out, 'expected smtp logout to be successful'
+
+    # wait for all test messages to have been received by test_acct_1 before continuing
+    max_checks = 6
+    wait_seconds = 5
+    all_arrived = False
+    exp_msg_count = before_count + IMAP_MSG_TESTS_EMAIL_COUNT + IMAP_MSG_TESTS_DEL_EMAIL_COUNT + IMAP_MSG_TESTS_EMAIL_WITH_ATTACHMENT_COUNT
+
+    for checks in range(1, max_checks + 1):
+        print(f'waiting {wait_seconds} seconds for messages to arrive in test_acct_1 inbox (check {checks} of {max_checks})')
+        time.sleep(wait_seconds)
+        after_count = imap.select_mailbox() # inbox by default
+        print(f'inbox message count is now: {after_count}')
+        if after_count >= (before_count + IMAP_MSG_TESTS_EMAIL_COUNT + IMAP_MSG_TESTS_DEL_EMAIL_COUNT):
+            all_arrived = True
+            break
+
+    assert all_arrived, 'failed populating inbox: expected all sent messages to have been received'
+
+    # done with imap
+    signed_out = imap.logout()
+    assert signed_out, 'expected imap logout to be successful'
+
+    print('finished populating test_acct_1')

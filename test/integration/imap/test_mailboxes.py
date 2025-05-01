@@ -22,6 +22,9 @@ from utils import convert_raw_mailbox_list
 
 
 class TestIMAPMailboxes:
+    """
+    IMAP mailbox (folders) tests.
+    """
     def test_list_all_mailboxes(self, imap):
         mailbox_list = imap.get_mailboxes()
         # ensure that the expected default malboxes exist
@@ -309,7 +312,7 @@ class TestIMAPMailboxes:
         imap.unselect_mailbox()
 
         # select mailbox but don't provide a name, should select INBOX by default
-        imap.select_mailbox(None)
+        imap.select_mailbox()
 
         # now verify we are in selected state
         print(f'verifying connection state is: {STATE_SELECTED}')
@@ -381,7 +384,7 @@ class TestIMAPMailboxes:
     def test_unselect_mailbox(self, imap):
         # if a mailbox isn't currently selected, select the INBOX
         if imap.connection.state != STATE_SELECTED:
-            imap.select_mailbox(None)
+            imap.select_mailbox()
 
         print(f'verifying connection state is: {STATE_SELECTED}')
         assert imap.connection.state == STATE_SELECTED
@@ -431,7 +434,7 @@ class TestIMAPMailboxes:
     def test_close_mailbox(self, imap):
         # if a mailbox isn't currently selected, select the INBOX
         if imap.connection.state != STATE_SELECTED:
-            imap.select_mailbox(None)
+            imap.select_mailbox()
 
         print(f'verifying connection state is: {STATE_SELECTED}')
         assert imap.connection.state == STATE_SELECTED
