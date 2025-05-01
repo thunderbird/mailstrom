@@ -57,7 +57,7 @@ class SMTP:
         msg.set_content(body)
 
         if add_attachment:
-            print(f'adding an attachment to the test email')
+            print('adding an attachment to the test email')
             with open(TEST_MSG_ATTACHMENT, 'rb') as fp:
                 try:
                     img_data = fp.read()

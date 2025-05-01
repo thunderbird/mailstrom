@@ -319,10 +319,8 @@ class IMAP:
         a list of IDs of messagest that were found (that matched the criteria).
         """
         print(f'searching for messages using criteria: {criteria1} {criteria2 if criteria2 != None else ''}')
-        charSet = None # will defaul to UTF-8
-
         result, found_msg_ids = self.connection.search(
-            charSet,
+            None, # will default to UTF-8
             criteria1, # i.e. 'ALL'
             f'"{criteria2}"' if criteria2 != None else None # double quotes as if included search string might have space
         )
