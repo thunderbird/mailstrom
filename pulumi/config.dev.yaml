@@ -5,6 +5,7 @@ resources:
       secret_names:
         - stalwart.postboot.postgresql_backend
         - stalwart.postboot.fallback_admin_password
+        - stalwart.postboot.tb-accounts_backend
       recovery_window_in_days: 0
 
   tb:network:MultiCidrVpc:
@@ -40,43 +41,24 @@ resources:
   tb:ec2:SshableInstance: {}
   # Fill out this template to build an SSH bastion
   # tb:ec2:SshableInstance:
-  #   yourname-bastion:
-  #     public_key: |
-  #       ssh-rsa your_public_key_here== user@machine
+  #   bastion:
+  #     ssh_keypair_name: your-ec2-keypair
   #     source_cidrs:
-  #       - your.public.ip.address/32
+  #       - your.ip.addr.ess/32
 
   tb:mailstrom:StalwartCluster:
     thundermail:
       nodes:
-        '1':
-          disable_api_termination: False
-          ignore_ami_changes: True
-          ignore_user_data_changes: True
-          instance_type: t3.micro
-          key_name: rjung-burrito
-          node_roles:
-            - all
-          services:
-            - imap
-            - imaps
-            - lmtp
-            - managesieve
-            - smtp
-            - smtps
-          storage_capacity: 20
         '0':
           disable_api_termination: False
           ignore_ami_changes: True
           ignore_user_data_changes: True
           instance_type: t3.micro
-          key_name: rjung-burrito
+          key_name: mailstrom-dev
           node_roles:
             - all
           services:
-            - http
-            - smtp
-            - smtps
+            - all
           storage_capacity: 20
       load_balancer:
         excluded_nodes:
