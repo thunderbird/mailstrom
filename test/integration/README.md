@@ -15,7 +15,7 @@ The integration tests need two mailstrom test accounts (and associated credentia
 Each test account must have a mailstrom email address set up with it already.
 
 **Note:**
-The tests will leave behind data (i.e. mailboxes/folders/emails) so it is hihgly recommended you use mailstrom test accounts and not your own personal account.
+The tests will leave behind data (i.e. mailboxes/folders/emails) so it is highly recommended you use mailstrom test accounts and not your own personal account.
 
 Provide your mailstrom test accounts info in a local .env.test file as follows:
 
