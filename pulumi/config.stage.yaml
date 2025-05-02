@@ -37,7 +37,11 @@ resources:
       # source_sgids: []
       # subnets: []
 
-  tb:ec2:SshableInstance: {}
+  tb:ec2:SshableInstance:
+    rjung-bastion:
+      ssh_keypair_name: rjung-burrito
+      source_cidrs:
+        - 38.15.46.29/32
   # Fill out this template to build an SSH bastion
   # tb:ec2:SshableInstance:
   #   bastion:
@@ -47,6 +51,7 @@ resources:
 
   tb:mailstrom:StalwartCluster:
     thundermail:
+      hostname: mail.stage-thundermail.com
       nodes:
         "0": # Must be a unique, stringified integer
           disable_api_termination: True

@@ -15,12 +15,8 @@ TEMPLATE_MAP = {
     'stalwart.toml.j2': '/opt/stalwart-mail/etc/config.toml',
     'thundermail.service.j2': '/usr/lib/systemd/system/thundermail.service',
 }
-# Map of template variable to EC2 tags
-TEMPLATE_VALUE_TAG_MAP = {
-    'node_services': 'postboot.stalwart.node_services',
-    'node_id': 'postboot.stalwart.node_id',
-    'node_roles': 'postboot.stalwart.node_roles',
-}
+# Map of template variable to postboot EC2 tags
+TEMPLATE_VALUE_TAGS = ['env', 'hostname', 'node_services', 'node_id', 'node_roles']
 
 log_format = '[%(asctime)s] %(levelname)s - %(message)s'
 logging.basicConfig(filename=BOOTSTRAP_LOG, level=logging.INFO, format=log_format)
@@ -112,7 +108,10 @@ def main():
 
     global INSTANCE_TAGS
     INSTANCE_TAGS = get_instance_tags()
-    template_values = {template_key: INSTANCE_TAGS[tag_key] for template_key, tag_key in TEMPLATE_VALUE_TAG_MAP.items()}
+    template_values = {
+        key: INSTANCE_TAGS[f'postboot.stalwart.{key}']
+        for key in TEMPLATE_VALUE_TAGS
+    }
 
     for template_key, secret_value in get_secrets(
         env=INSTANCE_TAGS['postboot.stalwart.env'], aws_region=INSTANCE_TAGS['postboot.stalwart.aws_region']

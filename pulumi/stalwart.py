@@ -81,6 +81,9 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
     :param project: The ThunderbirdPulumiProject to add these resources to.
     :type project: tb_pulumi.ThunderbirdPulumiProject
 
+    :param hostname: The base hostname to use for this domain.
+    :type hostname: str
+
     :param subnets: List of `aws.ec2.Subnet <https://www.pulumi.com/registry/packages/aws/api-docs/ec2/subnet/>`_ s
         in which to build cluster nodes.
     :type subnets: list[aws.ec2.Subnet]
@@ -179,6 +182,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         self,
         name: str,
         project: tb_pulumi.ThunderbirdPulumiProject,
+        hostname: str,
         subnets: list[aws.ec2.Subnet],
         cache_node_count: int = 1,
         cache_node_type: str = 'cache.t3.micro',
@@ -205,6 +209,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
             raise ValueError('You must provide at least one subnet.')
 
         # Internalize some vars we need in the other functions and properties
+        self.hostname = hostname
         self.load_balancer_config = load_balancer
         self.nodes = nodes
         self.subnets = subnets
@@ -647,6 +652,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         postboot_tags = {
             'postboot.stalwart.aws_region': self.project.aws_region,
             'postboot.stalwart.env': self.project.stack,
+            'postboot.stalwart.hostname': self.hostname,
             'postboot.stalwart.node_services': node_services_tag,
             'postboot.stalwart.node_id': node_id,
             'postboot.stalwart.node_roles': node_roles_tag,

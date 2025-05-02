@@ -38,6 +38,10 @@ resources:
       # subnets: []
 
   tb:ec2:SshableInstance: {}
+  # rjung-bastion:
+  #   ssh_keypair_name: rjung-burrito
+  #   source_cidrs:
+  #     - 38.15.46.29/32
   # Fill out this template to build an SSH bastion
   # tb:ec2:SshableInstance:
   #   bastion:
@@ -46,6 +50,7 @@ resources:
   #       - your.ip.addr.ess/32
 
   tb:mailstrom:StalwartCluster:
+    hostname: "mail.thundermail.com"
     thundermail:
       nodes:
         "0": # Must be a unique, stringified integer
@@ -66,6 +71,17 @@ resources:
             - smtps
             - submission
           storage_capacity: 20
+        # "99": # Must be a unique, stringified integer
+        #   disable_api_termination: True
+        #   ignore_ami_changes: True
+        #   ignore_user_data_changes: True
+        #   instance_type: t3.micro
+        #   key_name: mailstrom-prod
+        #   node_roles:
+        #     - all
+        #   services:
+        #     - http
+        #   storage_capacity: 20
 
       load_balancer:
         excluded_nodes: []

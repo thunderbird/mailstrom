@@ -2,8 +2,8 @@
 {%- extends "ports.j2" %}
 {% block with_service_ports %}
 [config]
-local-keys = [ "store.*", "directory.*", "tracer.*", "!server.blocked-ip.*", "!server.allowed-ip.*", "server.*",
-               "authentication.fallback-admin.*", "!cluster.key", "cluster.*",   "config.local-keys.*", 
+local-keys = [ "store.*", "directory.*", "tracer.*", "server.hostname", "server.http.allowed-endpoint",
+               "server.http.url", "authentication.fallback-admin.*", "!cluster.key", "cluster.*", "config.local-keys.*", 
                "storage.data", "storage.blob", "storage.lookup", "storage.fts", "storage.directory", "certificate.*" ]
 
 [cluster]
@@ -103,7 +103,10 @@ secret="{{ fallback_admin_password }}"
 
 {% if jmap %}{{ jmap_toml }}{% endif %}
 
-{%- if jmap -%}
+[server]
+hostname = {{hostname}}
+
+{% if jmap -%}
 [server.http]
 allowed-endpoint=[
     {if="starts_with(url_path, '/jmap')",then="200"},
@@ -112,5 +115,6 @@ allowed-endpoint=[
     {if="starts_with(url_path, '/robots.txt')",then="200"},
     {if="remote_ip == '127.0.0.1'",then="200"},
     {else="404"}]
+url = "protocol + '://{{hostname}}:' + local_port"
 {% endif -%}
 {% endblock %}

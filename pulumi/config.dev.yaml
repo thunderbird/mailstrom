@@ -48,6 +48,7 @@ resources:
 
   tb:mailstrom:StalwartCluster:
     thundermail:
+      hostname: mail.thunderbird.dev
       nodes:
         '0':
           disable_api_termination: False
