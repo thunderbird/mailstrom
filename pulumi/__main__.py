@@ -3,6 +3,7 @@
 
 import pulumi
 import tb_pulumi
+import tb_pulumi.cloudwatch
 import tb_pulumi.ec2
 import tb_pulumi.elasticache
 import tb_pulumi.network
@@ -71,4 +72,14 @@ def __stalwart_cluster(jumphost_rules: list[dict]):
     )
 
 
-stalwart_cluster = jumphost_rules.apply(lambda jumphost_rules: __stalwart_cluster(jumphost_rules=jumphost_rules))
+project.resources['stalwart_cluster'] = jumphost_rules.apply(
+    lambda jumphost_rules: __stalwart_cluster(jumphost_rules=jumphost_rules)
+)
+
+monitoring_opts = resources['tb:cloudwatch:CloudWatchMonitoringGroup']
+monitoring = tb_pulumi.cloudwatch.CloudWatchMonitoringGroup(
+    name=f'{project.name_prefix}-monitoring',
+    project=project,
+    notify_emails=monitoring_opts['notify_emails'],
+    config=monitoring_opts,
+)

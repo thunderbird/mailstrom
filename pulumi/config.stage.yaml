@@ -137,3 +137,14 @@ resources:
           heartbeat: 1m
           throttle: 1s
           timeout: 10m
+
+  tb:cloudwatch:CloudWatchMonitoringGroup:
+    alarms: {}
+    notify_emails:
+      - rjung+cloudwatch@thunderbird.net
+    # alarms:
+    #   alarm_group_name:
+    #     alarm_name:
+    #       enabled: False
+    #       threshold: 80
+    #       other_options: etc
