@@ -1,6 +1,8 @@
 from email.message import EmailMessage
 from smtplib import SMTP_SSL
 
+from common.logger import log
+
 from const import (
     TEST_SERVER_HOST,
     SMTP_PORT,
@@ -21,27 +23,27 @@ class SMTP:
         Connect and log into the smtp server as defined in the .env.test file.
         """
         success = False
-        print(f'\nconnecting to smtp host: {TEST_SERVER_HOST}')
+        log.debug(f'connecting to smtp host: {TEST_SERVER_HOST}')
 
         try:
             self.connection = SMTP_SSL(TEST_SERVER_HOST, SMTP_PORT, timeout=CONNECT_TIMEOUT)
             self.connection.set_debuglevel(0) # set to 1 if want to debug locally
-            print('connected, now signing in to smtp')
+            log.debug('connected, now signing in to smtp')
             result, data = self.connection.login(username, password)
-            print(result, data)
+            log.debug(f'{result}, {data}')
             if b'Authentication succeeded' in data:
-                print(f'successfully signed into smtp host: {TEST_SERVER_HOST}')
+                log.debug(f'successfully signed into smtp host: {TEST_SERVER_HOST}')
                 success = True
 
         except Exception as e:
-            print(str(e))
+            log.debug(f'{str(e)}')
 
         return success
 
     def logout(self):
-        print(f'\nlogging out of SMTP host: {TEST_SERVER_HOST}')
+        log.debug(f'logging out of SMTP host: {TEST_SERVER_HOST}')
         result, data = self.connection.quit()
-        print(result, data)
+        log.debug(f'{result}, {data}')
         if b'Bye' in data:
             return True
         return False
@@ -57,19 +59,19 @@ class SMTP:
         msg.set_content(body)
 
         if add_attachment:
-            print('adding an attachment to the test email')
+            log.debug('adding an attachment to the test email')
             with open(TEST_MSG_ATTACHMENT, 'rb') as fp:
                 try:
                     img_data = fp.read()
                 except Exception as e:
-                    print(str(e))
+                    log.debug(f'{str(e)}')
             msg.add_attachment(img_data, maintype='image', subtype='png')
 
-        print(f'sending an email from test_acct_2 to test_acct_1 with the subject: {subject}')
+        log.debug(f'sending an email from test_acct_2 to test_acct_1 with the subject: {subject}')
         try:
             self.connection.send_message(msg)
         except Exception as e:
-            print(f'failed to send email: {str(e)}')
+            log.debug(f'failed to send email: {str(e)}')
             return False
 
         return True

@@ -1,5 +1,7 @@
 import datetime
 
+from common.logger import log
+
 from const import (
     DEFAULT_MAILBOX_LIST,
     MAILBOX_PREFIX,
@@ -80,17 +82,17 @@ class TestIMAPMailboxes:
         imap.subscribe_mailbox(name)
 
         # attempt to create another mailbox with the same name
-        print(f'attempting to create mailbox with same name: {name}')
+        log.debug(f'attempting to create mailbox with same name: {name}')
         result, data = imap.connection.create(f'"{name}"')
-        print(result, data)
+        log.debug(f'{result}, {data}')
         assert result == RESULT_NO, 'expected status of NO when attempt to create mailbox that already exists'
         assert ALREADY_EXISTS in data[0], 'expected mailbox already exists message'
 
     def test_create_mailbox_invalid_name(self, imap):
         # attempt to create mailbox with invalid name
-        print('attempting to create mailbox with invalid name')
+        log.debug('attempting to create mailbox with invalid name')
         result, data = imap.connection.create(' ')
-        print(result, data)
+        log.debug(f'{result}, {data}')
         assert result == RESULT_NO, 'expected status of NO when attempt to create mailbox that already exists'
         assert MISSING_ARGS in data[0], 'expected missing arguments message'
 
@@ -111,26 +113,26 @@ class TestIMAPMailboxes:
         assert imap.are_mailboxes_subscribed([new_mailbox]), 'expected mailbox to be subscribed to'
 
         # attempt to subscribe again, expect not
-        print(f'attempting to subscribe to the same mailbox again: {new_mailbox}')
+        log.debug(f'attempting to subscribe to the same mailbox again: {new_mailbox}')
         result, data = imap.connection.subscribe(f'"{new_mailbox}"')
-        print(result, data)
+        log.debug(f'{result}, {data}')
 
         assert result == RESULT_NO, 'expected subscribe to return NO'
         assert MAILBOX_ALREADY_SUBSCRIBED in data[0], 'expected already subscribed message'
 
     def test_subscribe_mailbox_no_exist(self, imap):
         # attempt to subscribe to mailbox that does not exist
-        print('attempting to subscribe to mailbox that does not exist')
+        log.debug('attempting to subscribe to mailbox that does not exist')
         result, data = imap.connection.subscribe('Nope')
-        print(result, data)
+        log.debug(f'{result}, {data}')
         assert result == RESULT_NO, 'expected status of NO when attempt to subscribe to mailbox that does not exist'
         assert MAILBOX_NOT_EXIST in data[0], 'expected mailbox does not exist message'
 
     def test_subscribe_mailbox_no_name(self, imap):
         # attempt to subscribe to mailbox with no name
-        print('attempting to subscribe to mailbox with no name')
+        log.debug('attempting to subscribe to mailbox with no name')
         result, data = imap.connection.subscribe(' ')
-        print(result, data)
+        log.debug(f'{result}, {data}')
         assert result == RESULT_NO, 'expected status of NO when attempt to subscribe to mailbox with no name'
         assert MAILBOX_NAME_MISSING in data[0], 'expected missing mailbox name message'
 
@@ -151,26 +153,26 @@ class TestIMAPMailboxes:
         assert not imap.are_mailboxes_subscribed([new_mailbox]), 'expected mailbox NOT to be subscribed to'
 
         # attempt to unsubscribe when not subscribed, expect not
-        print(f'attempting to unsubscribe mailbox that is already unsubscribed: {new_mailbox}')
+        log.debug(f'attempting to unsubscribe mailbox that is already unsubscribed: {new_mailbox}')
         result, data = imap.connection.unsubscribe(f'"{new_mailbox}"')
-        print(result, data)
+        log.debug(f'{result}, {data}')
 
         assert result == RESULT_NO, 'expected subscribe to return NO'
         assert MAILBOX_ALREADY_UNSUBSCRIBED in data[0], 'expected already unsubscribed message'
 
     def test_unsubscribe_mailbox_no_exist(self, imap):
         # attempt to unsubscribe to mailbox that does not exist
-        print('attempting to unsubscribe a mailbox that does not exist')
+        log.debug('attempting to unsubscribe a mailbox that does not exist')
         result, data = imap.connection.unsubscribe('Nope')
-        print(result, data)
+        log.debug(f'{result}, {data}')
         assert result == RESULT_NO, 'expected status of NO when attempt to unsubscribe a mailbox that does not exist'
         assert MAILBOX_NOT_EXIST in data[0], 'expected mailbox does not exist message'
 
     def test_unsubscribe_mailbox_no_name(self, imap):
         # attempt to unsubscribe to mailbox with no name
-        print('attempting to unsubscribe a mailbox with no name')
+        log.debug('attempting to unsubscribe a mailbox with no name')
         result, data = imap.connection.unsubscribe(' ')
-        print(result, data)
+        log.debug(f'{result}, {data}')
         assert result == RESULT_NO, 'expected status of NO when attempt to unsubscribe a mailbox with no name'
         assert MAILBOX_NAME_MISSING in data[0], 'expected missing mailbox name message'
 
@@ -214,9 +216,9 @@ class TestIMAPMailboxes:
         imap.create_mailbox(second_mailbox)
         imap.subscribe_mailbox(second_mailbox)
 
-        print(f'attempting to rename mailbox: {first_mailbox} to the name of existing mailbox: {second_mailbox}')
+        log.debug(f'attempting to rename mailbox: {first_mailbox} to the name of existing mailbox: {second_mailbox}')
         result, data = imap.connection.rename(f'"{first_mailbox}"', f'"{second_mailbox}"')
-        print(result, data)
+        log.debug(f'{result}, {data}')
 
         assert result == RESULT_NO, 'expected rename to return NO'
         assert ALREADY_EXISTS in data[0], 'expected not found message'
@@ -229,9 +231,9 @@ class TestIMAPMailboxes:
         no_exist = f'{MAILBOX_PREFIX} {datetime.datetime.now()}'
         new_name = f'{MAILBOX_PREFIX} RENAMED! {datetime.datetime.now()}'
 
-        print('attempting to rename a mailbox that does not exist')
+        log.debug('attempting to rename a mailbox that does not exist')
         result, data = imap.connection.rename(f'"{no_exist}"', f'"{new_name}"')
-        print(result, data)
+        log.debug(f'{result}, {data}')
 
         assert result == RESULT_NO, 'expected rename to return NO'
         assert NOT_FOUND in data[0], 'expected not found message'
@@ -244,9 +246,9 @@ class TestIMAPMailboxes:
         imap.subscribe_mailbox(old_name)
 
         new_name = ' '
-        print(f'attempting to rename mailbox: {old_name} to an invalid name')
+        log.debug(f'attempting to rename mailbox: {old_name} to an invalid name')
         result, data = imap.connection.rename(f'"{old_name}"', f'"{new_name}"')
-        print(result, data)
+        log.debug(f'{result}, {data}')
 
         assert result == RESULT_NO, 'expected rename to return NO'
         assert INVALID_FOLDER_NAME in data[0], 'expected not found message'
@@ -264,9 +266,9 @@ class TestIMAPMailboxes:
 
     def test_delete_mailbox_no_exist(self, imap):
         # attempt to delete a mailbox that doesn't exist
-        print('attempting to delete a mailbox that does not exist')
+        log.debug('attempting to delete a mailbox that does not exist')
         result, data = imap.connection.delete('"Nope this mailbox does not exist"')
-        print(result, data)
+        log.debug(f'{result}, {data}')
         assert result == RESULT_NO, 'expected delete to return NO'
         assert MAILBOX_NOT_EXIST in data[0], 'expected mailbox does not exist error'
 
@@ -298,9 +300,9 @@ class TestIMAPMailboxes:
         assert imap.do_mailboxes_exist([first_mailbox, second_mailbox]), 'expected both mailboxes to exist'
 
         # now attempt to delete the parent folder, expect not
-        print(f'attempting to delete mailbox that contains a child mailbox: {first_mailbox}')
+        log.debug(f'attempting to delete mailbox that contains a child mailbox: {first_mailbox}')
         result, data = imap.connection.delete(f'"{first_mailbox}"')
-        print(result, data)
+        log.debug(f'{result}, {data}')
 
         assert result == RESULT_NO, 'expected delete to return NO'
         assert MAILBOX_HAS_CHILD in data[0], 'expected mailbox contains child error message'
@@ -315,7 +317,7 @@ class TestIMAPMailboxes:
         imap.select_mailbox()
 
         # now verify we are in selected state
-        print(f'verifying connection state is: {STATE_SELECTED}')
+        log.debug(f'verifying connection state is: {STATE_SELECTED}')
         assert imap.connection.state == STATE_SELECTED
 
     def test_select_specific_mailbox(self, imap):
@@ -330,7 +332,7 @@ class TestIMAPMailboxes:
         imap.select_mailbox(test_mailbox)
 
         # now verify we are in selected state
-        print(f'verifying connection state is: {STATE_SELECTED}')
+        log.debug(f'verifying connection state is: {STATE_SELECTED}')
         assert imap.connection.state == STATE_SELECTED
 
     def test_select_sub_mailbox(self, imap):
@@ -350,7 +352,7 @@ class TestIMAPMailboxes:
         # now select the subfolder
         imap.select_mailbox(second_mailbox)
 
-        print(f'verifying connection state is: {STATE_SELECTED}')
+        log.debug(f'verifying connection state is: {STATE_SELECTED}')
         assert imap.connection.state == STATE_SELECTED
 
     def test_select_mailbox_no_exist(self, imap):
@@ -359,12 +361,12 @@ class TestIMAPMailboxes:
 
         # attempt to select a mailbox that doesn't exist, expect not
         result, data = imap.connection.select('"This mailbox does not exist!"')
-        print(result, data)
+        log.debug(f'{result}, {data}')
 
         assert result == RESULT_NO, 'expected select to return NO'
         assert MAILBOX_NOT_EXIST in data[0], 'expected mailbox does not exist message'
 
-        print(f'verifying connection state is still: {STATE_AUTH}')
+        log.debug(f'verifying connection state is still: {STATE_AUTH}')
         assert imap.connection.state == STATE_AUTH
 
     def test_select_mailbox_no_name(self, imap):
@@ -373,12 +375,12 @@ class TestIMAPMailboxes:
 
         # attempt to select a mailbox with no name
         result, data = imap.connection.select(' ')
-        print(result, data)
+        log.debug(f'{result}, {data}')
 
         assert result == RESULT_NO, 'expected select to return NO'
         assert MAILBOX_NAME_MISSING in data[0], 'expected mailbox name missing message'
 
-        print(f'verifying connection state is still: {STATE_AUTH}')
+        log.debug(f'verifying connection state is still: {STATE_AUTH}')
         assert imap.connection.state == STATE_AUTH
 
     def test_unselect_mailbox(self, imap):
@@ -386,7 +388,7 @@ class TestIMAPMailboxes:
         if imap.connection.state != STATE_SELECTED:
             imap.select_mailbox()
 
-        print(f'verifying connection state is: {STATE_SELECTED}')
+        log.debug(f'verifying connection state is: {STATE_SELECTED}')
         assert imap.connection.state == STATE_SELECTED
 
         # unselect (which also verifies state is back to AUTH)
@@ -413,9 +415,9 @@ class TestIMAPMailboxes:
         imap.subscribe_mailbox(second_mailbox)
 
         # now list mailboxes with pattern
-        print(f'getting list of mailboxes with pattern: {MAILBOX_PREFIX} YES!*')
+        log.debug(f'getting list of mailboxes with pattern: {MAILBOX_PREFIX} YES!*')
         result, data = imap.connection.list(f'"{MAILBOX_PREFIX} YES!*"')
-        print(result, data)
+        log.debug(f'{result}, {data}')
         assert result == RESULT_OK, 'expected list with pattern to return OK'
         assert data[0] is not None, 'expected list of mailboxes to be returned in data'
 
@@ -436,13 +438,13 @@ class TestIMAPMailboxes:
         if imap.connection.state != STATE_SELECTED:
             imap.select_mailbox()
 
-        print(f'verifying connection state is: {STATE_SELECTED}')
+        log.debug(f'verifying connection state is: {STATE_SELECTED}')
         assert imap.connection.state == STATE_SELECTED
 
         # now close the mailbox
         imap.close_mailbox()
 
-        print(f'verifying connection state is: {STATE_AUTH}')
+        log.debug(f'verifying connection state is: {STATE_AUTH}')
         assert imap.connection.state == STATE_AUTH
 
     def test_close_mailbox_none_selected(self, imap):
@@ -450,13 +452,13 @@ class TestIMAPMailboxes:
         if imap.connection.state == STATE_SELECTED:
             imap.unselect_mailbox()
 
-        print(f'verifying connection state is: {STATE_AUTH}')
+        log.debug(f'verifying connection state is: {STATE_AUTH}')
         assert imap.connection.state == STATE_AUTH
 
         # now attempt to close mailbox, expect err
-        print('attempting to close mailbox when none is selected')
+        log.debug('attempting to close mailbox when none is selected')
         try:
             imap.connection.close()
         except Exception as e:
-            print(str(e))
+            log.debug(f'{str(e)}')
             assert MAILBOX_CLOSE_ILLEGAL_STATE in str(e)
