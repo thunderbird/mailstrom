@@ -6,6 +6,7 @@ import tb_pulumi
 import tb_pulumi.ec2
 import tb_pulumi.elasticache
 import tb_pulumi.network
+import tb_pulumi.s3
 import stalwart
 
 
@@ -71,4 +72,13 @@ def __stalwart_cluster(jumphost_rules: list[dict]):
     )
 
 
-stalwart_cluster = jumphost_rules.apply(lambda jumphost_rules: __stalwart_cluster(jumphost_rules=jumphost_rules))
+project.resources['stalwart_cluster'] = jumphost_rules.apply(
+    lambda jumphost_rules: __stalwart_cluster(jumphost_rules=jumphost_rules)
+)
+
+# Build an S3 website to host our autoconfig files in
+project.resources['autoconfig_website'] = tb_pulumi.s3.S3BucketWebsite(
+    f'{project.name_prefix}-autoconfig_site',
+    project=project,
+    **resources['tb:s3:S3BucketWebsite']['autoconfig'],
+)

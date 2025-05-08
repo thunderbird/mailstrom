@@ -137,3 +137,18 @@ resources:
           heartbeat: 1m
           throttle: 1s
           timeout: 10m
+
+  tb:s3:S3BucketWebsite:
+    autoconfig:
+      bucket_name: tb-mailstrom-stage-autoconfig
+      object_dir: static-stage
+      website_config:
+        error_document:
+          key: 4xx.html
+        index_document:
+          suffix: stage-thundermail.com.xml
+        routing_rules:
+          - condition:
+              http_error_code_returned_equals: "404"
+            redirect:
+              replace_key_with: 4xx.html
