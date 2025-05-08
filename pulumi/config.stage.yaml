@@ -151,4 +151,4 @@ resources:
           - condition:
               http_error_code_returned_equals: "404"
             redirect:
-              replace_key_with: 4xx.html
+              replace_key_with: "stage-thundermail.com.xml"
