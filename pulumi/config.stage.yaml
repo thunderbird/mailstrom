@@ -140,7 +140,7 @@ resources:
 
   tb:s3:S3BucketWebsite:
     autoconfig:
-      bucket_name: tb-mailstrom-stage-autoconfig
+      bucket_name: tb-mailstrom-stage-autoconfig-site
       object_dir: static-stage
       website_config:
         error_document:
@@ -152,3 +152,30 @@ resources:
               http_error_code_returned_equals: "404"
             redirect:
               replace_key_with: "stage-thundermail.com.xml"
+  
+  tb:cloudfront:CloudFrontDistribution:
+    autoconfig:
+      # cache_policy_id: set in code
+      certificate_arn: arn:aws:acm:us-east-1:768512802988:certificate/a765b321-ac88-473a-a0de-b777a3faf53e
+      distribution:
+        aliases:
+          - autoconfig.stage-thundermail.com
+        comment: mailstrom-stage autoconfig
+        default_cache_behavior:
+          allowed_methods:
+            - GET
+            - HEAD
+            - OPTIONS
+          cached_methods:
+            - GET
+            - HEAD
+          compress: True
+          # origins: set in code
+          # target_origin_id: set in code
+          viewer_protocol_policy: redirect-to-https
+        enabled: True
+        restrictions:
+          geo_restriction:
+            restriction_type: none
+      forcibly_destroy_bucket: True
+      logging_bucket_name: tb-mailstrom-stage-autoconfig-logs
