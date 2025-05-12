@@ -3,6 +3,8 @@ import pytest, time
 from IMAP import IMAP
 from SMTP import SMTP
 
+from common.logger import log
+
 from const import (
     TEST_ACCT_1_USERNAME,
     TEST_ACCT_1_PASSWORD,
@@ -68,19 +70,19 @@ def setup_env():
     success = imap.login(TEST_ACCT_1_USERNAME, TEST_ACCT_1_PASSWORD)
     assert success, 'expected imap auth to be successful'
 
-    print('\ncleaning up test mailboxes')
+    log.debug('cleaning up test mailboxes')
     imap.cleanup_test_mailboxes()
 
-    print('\ncleaning up test emails')
+    log.debug('cleaning up test emails')
     imap.cleanup_test_messages()
 
-    print('\ncleaning up draft test emails')
+    log.debug('cleaning up draft test emails')
     imap.cleanup_draft_test_messages()
 
     # done with imap
     signed_out = imap.logout()
     assert signed_out, 'expected imap logout to be successful'
-    print('finished cleaning up mailboxes')
+    log.debug('finished cleaning up mailboxes')
 
 
 @pytest.fixture(scope='class')
@@ -96,7 +98,7 @@ def populate_inbox():
     Also we pause 1 second after sending each email to avoid rate limiting; although we are also rate
     limited if we send more than 25 emails per (hour?).
     """
-    print('\npopulating test_acct_1 for imap messaging tests')
+    log.debug('populating test_acct_1 for imap messaging tests')
 
     # first check how many messags exist in the test_acct_1 inbox
     imap = IMAP()
@@ -104,7 +106,7 @@ def populate_inbox():
     assert success, 'expected imap auth to be successful'
 
     before_count = imap.select_mailbox() # inbox by default
-    print(f'inbox message count: {before_count}')
+    log.debug(f'inbox message count: {before_count}')
 
     # now sign into SMTP and send our messages
     smtp = SMTP()
@@ -113,7 +115,7 @@ def populate_inbox():
 
     for x in range(IMAP_MSG_TESTS_EMAIL_COUNT):
         if x != 0 and x % 10 == 0:
-            print("disconnecting and reconnecting smtp so we won't exceed sent messages per session")
+            log.debug("disconnecting and reconnecting smtp so we won't exceed sent messages per session")
             signed_out = smtp.logout()
             assert signed_out, 'expected smtp logout to be successful'
             success = smtp.login(TEST_ACCT_2_USERNAME, TEST_ACCT_2_PASSWORD)
@@ -127,7 +129,7 @@ def populate_inbox():
     # also we need to create some messages to be used for delete tests (special subject)
     for x in range(IMAP_MSG_TESTS_DEL_EMAIL_COUNT):
         if x != 0 and x % 10 == 0:
-            print("disconnecting and reconnecting smtp so we won't exceed sent messages per session")
+            log.debug("disconnecting and reconnecting smtp so we won't exceed sent messages per session")
             signed_out = smtp.logout()
             assert signed_out, 'expected smtp logout to be successful'
             success = smtp.login(TEST_ACCT_2_USERNAME, TEST_ACCT_2_PASSWORD)
@@ -141,7 +143,7 @@ def populate_inbox():
     # also we need to create some messages with attachments (special subject too)
     for x in range(IMAP_MSG_TESTS_EMAIL_WITH_ATTACHMENT_COUNT):
         if x != 0 and x % 10 == 0:
-            print("disconnecting and reconnecting smtp so we won't exceed sent messages per session")
+            log.debug("disconnecting and reconnecting smtp so we won't exceed sent messages per session")
             signed_out = smtp.logout()
             assert signed_out, 'expected smtp logout to be successful'
             success = smtp.login(TEST_ACCT_2_USERNAME, TEST_ACCT_2_PASSWORD)
@@ -172,10 +174,10 @@ def populate_inbox():
     exp_msg_count = before_count + IMAP_MSG_TESTS_EMAIL_COUNT + IMAP_MSG_TESTS_DEL_EMAIL_COUNT + IMAP_MSG_TESTS_EMAIL_WITH_ATTACHMENT_COUNT
 
     for checks in range(1, max_checks + 1):
-        print(f'waiting {wait_seconds} seconds for messages to arrive in test_acct_1 inbox (check {checks} of {max_checks})')
+        log.debug(f'waiting {wait_seconds} seconds for messages to arrive in test_acct_1 inbox (check {checks} of {max_checks})')
         time.sleep(wait_seconds)
         after_count = imap.select_mailbox() # inbox by default
-        print(f'inbox message count is now: {after_count}')
+        log.debug(f'inbox message count is now: {after_count}')
         if after_count >= (before_count + IMAP_MSG_TESTS_EMAIL_COUNT + IMAP_MSG_TESTS_DEL_EMAIL_COUNT):
             all_arrived = True
             break
@@ -186,4 +188,4 @@ def populate_inbox():
     signed_out = imap.logout()
     assert signed_out, 'expected imap logout to be successful'
 
-    print('finished populating test_acct_1')
+    log.debug('finished populating test_acct_1')

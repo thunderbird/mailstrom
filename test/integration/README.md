@@ -67,5 +67,5 @@ To run the tests with debug logging:
 
 ```bash
 cd test/integration
-python -m pytest -vs
+python -m pytest --log-cli-level=DEBUG
 ```

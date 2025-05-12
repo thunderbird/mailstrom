@@ -2,6 +2,8 @@ import datetime, os, pytest, time, uuid
 
 from IMAP import IMAP
 
+from common.logger import log
+
 from const import (
     IMAP_MSG_TESTS_EMAIL_COUNT,
     IMAP_MSG_TESTS_DRAFT_EMAIL_COUNT,
@@ -157,7 +159,7 @@ class TestIMAPMessaging():
 
         # if we don't have any unread test messages mark one unread and verify
         if len(unread_msgs) == 0:
-            print('no unread test messages found, so marking one unread first')
+            log.debug('no unread test messages found, so marking one unread first')
             msgs = imap.search_messages('SUBJECT', TEST_MSG_SUBJECT_PREFIX)
             assert len(msgs) > 0, 'expected test messages to already exist in test_acct_1 inbox'
             test_msg = msgs[0]
@@ -182,7 +184,7 @@ class TestIMAPMessaging():
 
         # if we don't have any read test messages mark one read and verify
         if len(read_msgs) == 0:
-            print('no read test messages found, so marking one read first')
+            log.debug('no read test messages found, so marking one read first')
             msgs = imap.search_messages('SUBJECT', TEST_MSG_SUBJECT_PREFIX)
             assert len(msgs) > 0, 'expected test messages to already exist in test_acct_1 inbox'
             test_msg = msgs[0]
@@ -208,7 +210,7 @@ class TestIMAPMessaging():
 
         # fetch subject of our selected message
         msg_subject = imap.fetch_message_details(msg_id)['Subject']
-        print(f'message to be copied has this subject: {msg_subject}')
+        log.debug(f'message to be copied has this subject: {msg_subject}')
 
         # create and subscribe to a new test folder
         destination = f'{MAILBOX_PREFIX} Move Msg Test {datetime.datetime.now()}'
@@ -243,11 +245,11 @@ class TestIMAPMessaging():
         msg_id = imap.search_messages('SUBJECT', TEST_MSG_SUBJECT_PREFIX)[0]
 
         msg_subject = imap.fetch_message_details(msg_id)['Subject']
-        print(f'message to be copied has this subject: {msg_subject}')
+        log.debug(f'message to be copied has this subject: {msg_subject}')
 
-        print(f'attempting to copy message {msg_id} from INBOX into INBOX, expect error')
+        log.debug(f'attempting to copy message {msg_id} from INBOX into INBOX, expect error')
         result, data = imap.connection.copy(msg_id, 'INBOX')
-        print(result, data)
+        log.debug(f'{result}, {data}')
         assert result == RESULT_NO, 'expected copy to return NO'
         assert MSG_COPY_SAME_LOCATION in data[0], 'expected same source and destination message'
 
@@ -261,7 +263,7 @@ class TestIMAPMessaging():
         test_msg = msgs_ids[0]
 
         msg_subject = imap.fetch_message_details(test_msg)['Subject']
-        print(f'message to be deleted has this subject: {msg_subject}')
+        log.debug(f'message to be deleted has this subject: {msg_subject}')
 
         imap.delete_messages(test_msg)
 
@@ -277,7 +279,7 @@ class TestIMAPMessaging():
         test_msg = msgs_ids[1]
 
         msg_subject = imap.fetch_message_details(test_msg)['Subject']
-        print(f'message to be deleted has this subject: {msg_subject}')
+        log.debug(f'message to be deleted has this subject: {msg_subject}')
 
         imap.delete_messages(test_msg)
 
@@ -371,12 +373,12 @@ class TestIMAPMessaging():
 
                 # actually download the attachment
                 download_to = DOWNLOAD_EMAIL_ATTACHMENTS_PATH + 'imap-msg-test-download.png'
-                print(f'downloading email msg attachment to: {download_to} ')
+                log.debug(f'downloading email msg attachment to: {download_to} ')
                 try:
                     with open(download_to, 'wb') as f:
                         f.write(part.get_payload(decode=True))
                 except Exception as e:
-                    print(str(e))
+                    log.debug(str(e))
 
                 assert os.path.isfile(download_to), 'expected downloaded file to exist'
 
@@ -390,7 +392,7 @@ class TestIMAPMessaging():
 
     def test_fetch_message_marks_read(self, imap):
         # after an unread message is fetched from the inbox, it should automatically be marked as read
-        print('selecting an unread message')
+        log.debug('selecting an unread message')
         imap.select_mailbox()
         unread_msgs = imap.search_messages('UNSEEN SUBJECT', TEST_MSG_SUBJECT_PREFIX)
         assert len(unread_msgs) >= 1, 'expected at least one unread message in the inbox'
@@ -419,13 +421,13 @@ class TestIMAPMessaging():
         # able to open multiple imap connections and select a mailbox and search using each connection
         c1 = imap;
 
-        print('creating 2nd imap connection')
+        log.debug('creating 2nd imap connection')
         c2 = IMAP()
         success = c2.login(TEST_ACCT_1_USERNAME, TEST_ACCT_1_PASSWORD)
         assert success, 'expected imap auth to be successful'
 
         # select inbox for first connection, we know messages exist
-        print('selecting and searching inbox using first connection')
+        log.debug('selecting and searching inbox using first connection')
         msg_count = c1.select_mailbox()
         assert msg_count != 0, 'expected inbox to have messages'
 
@@ -433,7 +435,7 @@ class TestIMAPMessaging():
         assert len(found_msgs) > 0, 'expected messages to have been found in the inbox'
 
         # select drafts for second connection, we know draft messages exist
-        print('selecting and searching drafts folder using second connection')
+        log.debug('selecting and searching drafts folder using second connection')
         msg_count = c2.select_mailbox('Drafts')
         assert msg_count != 0, 'expected drafts folder to have messages'
 
@@ -449,7 +451,7 @@ class TestIMAPMessaging():
         # able to open multiple imap connections and fetch a message using each connection
         c1 = imap;
 
-        print('creating 2nd imap connection')
+        log.debug('creating 2nd imap connection')
         c2 = IMAP()
         success = c2.login(TEST_ACCT_1_USERNAME, TEST_ACCT_1_PASSWORD)
         assert success, 'expected imap auth to be successful'
@@ -458,7 +460,7 @@ class TestIMAPMessaging():
         c1_msg_ids = c1.search_messages('SUBJECT', {TEST_MSG_SUBJECT_PREFIX})
 
         # use the first connection to fetch the first message and verify contents
-        print('fetching a message from the inbox using the first connection')
+        log.debug('fetching a message from the inbox using the first connection')
         c1_msg = c1.fetch_message_details(c1_msg_ids[0])
         assert c1_msg, 'expected message to have been fetched using first connection'
 
@@ -474,7 +476,7 @@ class TestIMAPMessaging():
         c2_msg_ids = c2.search_messages('SUBJECT', {TEST_MSG_SUBJECT_PREFIX})
 
         # use the second connection to fetch the first message and verify contents
-        print('fetching a message from the inbox using the second connection')
+        log.debug('fetching a message from the inbox using the second connection')
         c2_msg = c2.fetch_message_details(c2_msg_ids[0])
         assert c2_msg, 'expected message to have been fetched using second connection'
 
@@ -491,24 +493,24 @@ class TestIMAPMessaging():
         # then verify the other connections see the same message marked as read
         c1 = imap;
 
-        print('creating 2nd imap connection')
+        log.debug('creating 2nd imap connection')
         c2 = IMAP()
         success = c2.login(TEST_ACCT_1_USERNAME, TEST_ACCT_1_PASSWORD)
         assert success, 'expected imap auth to be successful'
 
         # select an unread message using first imap connection
-        print('searching for an unread message using the first connection')
+        log.debug('searching for an unread message using the first connection')
         c1.select_mailbox()
         c1_unread_msgs = c1.search_messages('UNSEEN SUBJECT', TEST_MSG_SUBJECT_PREFIX)
         assert len(c1_unread_msgs) >= 1, 'expected at least one unread message in the inbox'
         test_msg_id = c1_unread_msgs[0]
 
         # use the first imap connection and mark the message as read
-        print("using the first connection to mark the message as read")
+        log.debug("using the first connection to mark the message as read")
         c1.mark_message_read(test_msg_id)
 
         # second connection should see the same message as read; and also one less unread message
-        print('verifying that the second connection now sees the same message as marked read')
+        log.debug('verifying that the second connection now sees the same message as marked read')
         c2.select_mailbox()
         c2_unread_msgs = c2.search_messages('UNSEEN SUBJECT', TEST_MSG_SUBJECT_PREFIX)
         assert len(c2_unread_msgs) == len(c1_unread_msgs) -1, 'expected at least one unread message in the inbox'
