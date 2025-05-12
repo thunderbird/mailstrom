@@ -43,9 +43,7 @@ class SMTP:
         log.debug(f'logging out of SMTP host: {self.host}')
         result, data = self.connection.quit()
         log.debug(f'{result}, {data}')
-        if b'Bye' in data:
-            return True
-        return False
+        return True if b'Bye' in data else False
 
     def send_test_email(self, to_email, from_email, subject, body, attachment, locust=False):
         # send an email using smtp

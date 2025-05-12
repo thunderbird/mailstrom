@@ -56,7 +56,7 @@ locust -f <load-test-name.py> --loglevel=DEBUG
 
 ### View the locust results
 
-After running the tests locusts writes an HTML results report which includes performance numbers and charts.
+After running the tests locust writes an HTML results report which includes performance numbers and charts.
 The report will be found at `/mailstrom/test/load/locust-output/locust-report.html`.
 
 ### Using the locust dashboard
@@ -68,3 +68,4 @@ locust -f <load-test-name.py>
 ```
 
 When prompted, in the terminal press <ENTER> and the locust dashboard will open in your browser.
+k
