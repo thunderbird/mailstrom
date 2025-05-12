@@ -413,6 +413,7 @@ class TestIMAPMessaging():
         # put a new message directly in the inbox using append and verify
         msg_subject = f'{TEST_MSG_SUBJECT_PREFIX} Appended {datetime.datetime.now()}'
         imap.append_message_to_inbox(msg_subject)
+        time.sleep(1)
         imap.select_mailbox()
         found_id = imap.search_messages('SUBJECT', msg_subject)
         assert len(found_id) == 1, 'expected to find the appended message in the test_acct_1 inbox'

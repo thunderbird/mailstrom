@@ -1,11 +1,18 @@
 import pytest, time
 
 from IMAP import IMAP
-from SMTP import SMTP
+from common.SMTP import SMTP
 
 from common.logger import log
 
 from const import (
+    TEST_SERVER_HOST,
+    SMTP_PORT,
+    CONNECT_TIMEOUT,
+    TEST_ACCT_1_EMAIL,
+    TEST_ACCT_2_EMAIL,
+    TEST_MSG_BODY_PREFIX,
+    TEST_MSG_ATTACHMENT,
     TEST_ACCT_1_USERNAME,
     TEST_ACCT_1_PASSWORD,
     TEST_ACCT_2_USERNAME,
@@ -46,7 +53,7 @@ def smtp():
     Before the tests start login to the SMTP server and provide the SMTP connection instance.
     Only login once per test session; the same login will be used by all of the tests in the session).
     """
-    smtp = SMTP()
+    smtp = SMTP(TEST_SERVER_HOST, SMTP_PORT, CONNECT_TIMEOUT)
     success = smtp.login(TEST_ACCT_1_USERNAME, TEST_ACCT_1_PASSWORD)
     assert success, 'expected smtp auth to be successful'
     yield smtp
@@ -109,7 +116,7 @@ def populate_inbox():
     log.debug(f'inbox message count: {before_count}')
 
     # now sign into SMTP and send our messages
-    smtp = SMTP()
+    smtp = SMTP(TEST_SERVER_HOST, SMTP_PORT, CONNECT_TIMEOUT)
     success = smtp.login(TEST_ACCT_2_USERNAME, TEST_ACCT_2_PASSWORD)
     assert success, 'expected smtp auth to be successful'
 
@@ -122,7 +129,13 @@ def populate_inbox():
             assert success, 'expected smtp auth to be successful'
 
         # send the email
-        success = smtp.send_test_email(subject=f'{TEST_MSG_SUBJECT_PREFIX} {x + 1}')
+        success = smtp.send_test_email(
+            to_email = TEST_ACCT_1_EMAIL,
+            from_email = TEST_ACCT_2_EMAIL,
+            subject=f'{TEST_MSG_SUBJECT_PREFIX} {x + 1}',
+            body = TEST_MSG_BODY_PREFIX,
+            attachment=None,
+        )
         assert success, 'expected to be able to send email via smtp'
         time.sleep(1)
 
@@ -136,7 +149,13 @@ def populate_inbox():
             assert success, 'expected smtp auth to be successful'
 
         # send the email
-        success = smtp.send_test_email(subject=f'{TEST_MSG_DEL_SUBJECT_PREFIX} {x + 1}')
+        success = smtp.send_test_email(
+            to_email = TEST_ACCT_1_EMAIL,
+            from_email = TEST_ACCT_2_EMAIL,
+            subject=f'{TEST_MSG_DEL_SUBJECT_PREFIX} {x + 1}',
+            body = TEST_MSG_BODY_PREFIX,
+            attachment=None,
+        )
         assert success, 'expected to be able to send email via smtp'
         time.sleep(1)
 
@@ -150,7 +169,13 @@ def populate_inbox():
             assert success, 'expected smtp auth to be successful'
 
         # send the email
-        success = smtp.send_test_email(subject=f'{TEST_MSG_WITH_ATTACHMENT_SUBJECT_PREFIX} {x + 1}', add_attachment=True)
+        success = smtp.send_test_email(
+            to_email = TEST_ACCT_1_EMAIL,
+            from_email = TEST_ACCT_2_EMAIL,
+            subject=f'{TEST_MSG_WITH_ATTACHMENT_SUBJECT_PREFIX} {x + 1}',
+            body = TEST_MSG_BODY_PREFIX,
+            attachment = TEST_MSG_ATTACHMENT,
+        )
         assert success, 'expected to be able to send email with attachment via smtp'
         time.sleep(1)
 
