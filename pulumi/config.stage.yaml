@@ -183,7 +183,7 @@ resources:
   tb:cloudwatch:CloudWatchMonitoringGroup:
     alarms: {}
     notify_emails:
-      - rjung+cloudwatch@thunderbird.net
+      - thunderbird-services-monitoring+mailstrom-stage@thunderbird.net
     # alarms:
     #   alarm_group_name:
     #     alarm_name:
