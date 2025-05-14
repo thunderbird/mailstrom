@@ -1,4 +1,4 @@
 Jinja2>=3.1,<4.0
 pulumi_cloudflare==5.49.1
-tb_pulumi @ git+https://github.com/thunderbird/pulumi.git@instance-monitoring
+tb_pulumi @ git+https://github.com/thunderbird/pulumi.git@main
 toml>=0.10.2,<0.11
