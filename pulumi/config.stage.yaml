@@ -179,3 +179,14 @@ resources:
             restriction_type: none
       forcibly_destroy_bucket: True
       logging_bucket_name: tb-mailstrom-stage-autoconfig-logs
+
+  tb:cloudwatch:CloudWatchMonitoringGroup:
+    alarms: {}
+    notify_emails:
+      - thunderbird-services-monitoring+mailstrom-stage@thunderbird.net
+    # alarms:
+    #   alarm_group_name:
+    #     alarm_name:
+    #       enabled: False
+    #       threshold: 80
+    #       other_options: etc

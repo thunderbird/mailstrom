@@ -5,6 +5,7 @@ import pulumi
 import pulumi_aws as aws
 import tb_pulumi
 import tb_pulumi.cloudfront
+import tb_pulumi.cloudwatch
 import tb_pulumi.ec2
 import tb_pulumi.elasticache
 import tb_pulumi.network
@@ -148,4 +149,12 @@ project.resources['cloudfront_distribution'] = tb_pulumi.cloudfront.CloudFrontDi
         depends_on=[project.resources['autoconfig_website'], project.resources['autoconfig_oac']]
     ),
     **tb_distro_config,
+)
+
+monitoring_opts = resources['tb:cloudwatch:CloudWatchMonitoringGroup']
+monitoring = tb_pulumi.cloudwatch.CloudWatchMonitoringGroup(
+    name=f'{project.name_prefix}-monitoring',
+    project=project,
+    notify_emails=monitoring_opts['notify_emails'],
+    config=monitoring_opts,
 )
