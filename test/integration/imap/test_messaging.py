@@ -32,8 +32,8 @@ from const import (
 )
 
 
-@pytest.mark.usefixtures("populate_inbox")
-class TestIMAPMessaging():
+@pytest.mark.usefixtures('populate_inbox')
+class TestIMAPMessaging:
     """
     IMAP messaging tests.
     These tests require specific emails to already exist in the test_acct_1 inbox. These emails
@@ -43,19 +43,22 @@ class TestIMAPMessaging():
     for IMAP messaging even though they use SMTP to populate the inbox first; there will be separate
     tests specifically for SMTP.
     """
+
     def test_search_all_messages(self, imap):
         # select inbox and search for all messages
         imap.select_mailbox()
         found_msgs = imap.search_messages('ALL')
-        assert len(found_msgs) >= IMAP_MSG_TESTS_EMAIL_COUNT, \
+        assert len(found_msgs) >= IMAP_MSG_TESTS_EMAIL_COUNT, (
             f'expected at least {IMAP_MSG_TESTS_EMAIL_COUNT} messages to have been found'
+        )
 
     def test_search_messages_matching_to(self, imap):
         # search inbox for messages with specific email in to: field
         imap.select_mailbox()
         found_msgs = imap.search_messages('TO', TEST_ACCT_1_EMAIL)
-        assert len(found_msgs) >= IMAP_MSG_TESTS_EMAIL_COUNT, \
+        assert len(found_msgs) >= IMAP_MSG_TESTS_EMAIL_COUNT, (
             f'expected at least {IMAP_MSG_TESTS_EMAIL_COUNT} messages to have been found'
+        )
 
         # now search using an email we know doesn't exist, so should return 0 messages
         found_msgs = imap.search_messages('TO', 'nope@nope.com')
@@ -65,8 +68,9 @@ class TestIMAPMessaging():
         # search inbox for messages with specific email in from: field
         imap.select_mailbox()
         found_msgs = imap.search_messages('FROM', TEST_ACCT_2_EMAIL)
-        assert len(found_msgs) >= IMAP_MSG_TESTS_EMAIL_COUNT, \
+        assert len(found_msgs) >= IMAP_MSG_TESTS_EMAIL_COUNT, (
             f'expected at least {IMAP_MSG_TESTS_EMAIL_COUNT} messages to have been found'
+        )
 
         # now search using an email we know doesn't exist, so should return 0 messages
         found_msgs = imap.search_messages('FROM', 'nope@nope.com')
@@ -76,8 +80,9 @@ class TestIMAPMessaging():
         # search inbox for messages that contain specified text in message subject
         imap.select_mailbox()
         found_msgs = imap.search_messages('SUBJECT', TEST_MSG_SUBJECT_PREFIX)
-        assert len(found_msgs) >= IMAP_MSG_TESTS_EMAIL_COUNT, \
+        assert len(found_msgs) >= IMAP_MSG_TESTS_EMAIL_COUNT, (
             f'expected at least {IMAP_MSG_TESTS_EMAIL_COUNT} messages to have been found'
+        )
 
         # now search using a subject we know doesn't exist, so should return 0 messages
         found_msgs = imap.search_messages('SUBJECT', 'The quick brown fox jumps over the lazy dog')
@@ -87,8 +92,9 @@ class TestIMAPMessaging():
         # search inbox for messages that contain specified text in message body
         imap.select_mailbox()
         found_msgs = imap.search_messages('BODY', TEST_MSG_BODY_PREFIX)
-        assert len(found_msgs) >= IMAP_MSG_TESTS_EMAIL_COUNT, \
+        assert len(found_msgs) >= IMAP_MSG_TESTS_EMAIL_COUNT, (
             f'expected at least {IMAP_MSG_TESTS_EMAIL_COUNT} messages to have been found'
+        )
 
         # now search using a text we know won't exist in any message body, so should return 0 messages
         found_msgs = imap.search_messages('BODY', f'nope{uuid.uuid4()}')
@@ -98,8 +104,9 @@ class TestIMAPMessaging():
         # search for draft messages
         imap.select_mailbox('Drafts')
         found_msgs = imap.search_messages('DRAFT')
-        assert len(found_msgs) >= IMAP_MSG_TESTS_DRAFT_EMAIL_COUNT, \
+        assert len(found_msgs) >= IMAP_MSG_TESTS_DRAFT_EMAIL_COUNT, (
             f'expected at least {IMAP_MSG_TESTS_DRAFT_EMAIL_COUNT} draft messages to have been found'
+        )
 
     def test_search_messages_deleted(self, imap):
         # delete one of our test messages that already exists in the inbox and is allocated
@@ -121,7 +128,7 @@ class TestIMAPMessaging():
         assert len(found_msgs) == 0, 'expected 0 deleted messages to have been found'
 
     def test_search_messages_unread(self, imap):
-        # mark one of our inbox test messages as unread, then search for unread messages 
+        # mark one of our inbox test messages as unread, then search for unread messages
         imap.select_mailbox()
         msgs = imap.search_messages('SUBJECT', TEST_MSG_SUBJECT_PREFIX)
         assert len(msgs) > 0, 'expected test messages to already exist in test_acct_1 inbox'
@@ -143,10 +150,11 @@ class TestIMAPMessaging():
     def test_search_messages_rcvd_on_date(self, imap):
         # search inbox for messages received today; test setup ensured we already received messages today
         imap.select_mailbox()
-        today = datetime.datetime.now().strftime("%d-%b-%Y") # IMAP requires dd-mm-yyyy ie. 23-Apr-2025
+        today = datetime.datetime.now().strftime('%d-%b-%Y')  # IMAP requires dd-mm-yyyy ie. 23-Apr-2025
         found_msgs = imap.search_messages(f'ON {today}')
-        assert len(found_msgs) >= IMAP_MSG_TESTS_EMAIL_COUNT, \
+        assert len(found_msgs) >= IMAP_MSG_TESTS_EMAIL_COUNT, (
             f'expected at least {IMAP_MSG_TESTS_EMAIL_COUNT} messages to have been found'
+        )
 
         # search inbox for messages received on a date that we know we never received any msgs on
         found_msgs = imap.search_messages(f'ON 01-Jan-2025')
@@ -234,7 +242,9 @@ class TestIMAPMessaging():
 
         # now switch back to inbox and search again, message should still be found there too
         after_inbox_msg_count = imap.select_mailbox()
-        assert after_inbox_msg_count == start_inbox_msg_count, 'expected inbox message count to be the same as before the copy'
+        assert after_inbox_msg_count == start_inbox_msg_count, (
+            'expected inbox message count to be the same as before the copy'
+        )
 
         found_msg = imap.search_messages('SUBJECT', msg_subject)
         assert len(found_msg) == 1, 'expected to find the original copied message in the inbox'
@@ -306,7 +316,9 @@ class TestIMAPMessaging():
         assert msg['From'] == TEST_ACCT_2_EMAIL, 'expected message from field to be test_acct_2 email'
         assert TEST_MSG_SUBJECT_PREFIX in msg['Subject'], 'expected message subject to be correct'
         assert TEST_MSG_MIME_VER in msg['MIME-Version'], 'expected message MIME version to be correct'
-        assert msg['Content-Transfer-Encoding'] == TRANS_ENCODING_7BIT, 'expected message transfer encoding to be correct'
+        assert msg['Content-Transfer-Encoding'] == TRANS_ENCODING_7BIT, (
+            'expected message transfer encoding to be correct'
+        )
         assert msg['Content-Type'] == CONTENT_TYPE_TEXT_PLAIN, 'expected message content-type to be correct'
 
     def test_fetch_message_flags(self, imap):
@@ -330,7 +342,7 @@ class TestIMAPMessaging():
 
         # fetch the message internaldate and verify, will be in this format: "24-Apr-2025 18:15:40 +0000"
         internal_date = imap.fetch_message_internal_date(msg_id)[0]
-        today = datetime.datetime.now().strftime("%d-%b-%Y")
+        today = datetime.datetime.now().strftime('%d-%b-%Y')
         assert today in internal_date.decode(), 'expected internal date to be correct'
 
     def test_fetch_message_attachment(self, imap):
@@ -351,25 +363,37 @@ class TestIMAPMessaging():
             msg_part += 1
             if msg_part == 1:
                 # message top-level
-                assert CONTENT_TYPE_MULTI_MIXED in part['Content-Type'], 'expected msg part 1 content-type to be correct'
-                assert msg['Delivered-To'] == TEST_ACCT_1_EMAIL, 'expected message delivered-to field to be test_acct_1 email'
+                assert CONTENT_TYPE_MULTI_MIXED in part['Content-Type'], (
+                    'expected msg part 1 content-type to be correct'
+                )
+                assert msg['Delivered-To'] == TEST_ACCT_1_EMAIL, (
+                    'expected message delivered-to field to be test_acct_1 email'
+                )
                 assert msg['To'] == TEST_ACCT_1_EMAIL, 'expected message to field to be test_acct_1 email'
                 assert msg['From'] == TEST_ACCT_2_EMAIL, 'expected message from field to be test_acct_2 email'
-                assert TEST_MSG_WITH_ATTACHMENT_SUBJECT_PREFIX in msg['Subject'], 'expected message subject to be correct'
+                assert TEST_MSG_WITH_ATTACHMENT_SUBJECT_PREFIX in msg['Subject'], (
+                    'expected message subject to be correct'
+                )
                 assert part['MIME-Version'] == TEST_MSG_MIME_VER, 'expected message MIME version to be correct'
 
             elif msg_part == 2:
                 # text part of message
                 assert part['Content-Type'] == CONTENT_TYPE_TEXT_PLAIN, 'expected msg part 2 content type to be correct'
-                assert part['Content-Transfer-Encoding'] == TRANS_ENCODING_7BIT, 'expected msg part 2 transfer encoding to be correct'
+                assert part['Content-Transfer-Encoding'] == TRANS_ENCODING_7BIT, (
+                    'expected msg part 2 transfer encoding to be correct'
+                )
                 assert TEST_MSG_BODY_PREFIX in part.get_payload(), 'expected message body text to be in the msg part 2'
 
             elif msg_part == 3:
                 # attachment
                 assert part['Content-Type'] == CONTENT_TYPE_PNG, 'expected msg part 2 content type to be correct'
-                assert part['Content-Transfer-Encoding'] == TRANS_ENCODING_BASE64, 'expected msg part 2 transfer encoding to be correct'
+                assert part['Content-Transfer-Encoding'] == TRANS_ENCODING_BASE64, (
+                    'expected msg part 2 transfer encoding to be correct'
+                )
                 assert part['MIME-Version'] == TEST_MSG_MIME_VER, 'expected msg part 2 MIME version to be correct'
-                assert part['Content-Disposition'] == CONTENT_DISP_ATTACHMENT, 'expected msg part 2 content disposition to be correct'
+                assert part['Content-Disposition'] == CONTENT_DISP_ATTACHMENT, (
+                    'expected msg part 2 content disposition to be correct'
+                )
 
                 # actually download the attachment
                 download_to = DOWNLOAD_EMAIL_ATTACHMENTS_PATH + 'imap-msg-test-download.png'
@@ -385,8 +409,12 @@ class TestIMAPMessaging():
                 # compare the dowloaded file with the file that was attached when the email was originally sent by the populate_inbox fixture
                 og_stats = os.stat(TEST_MSG_ATTACHMENT)
                 df_stats = os.stat(download_to)
-                assert df_stats.st_size == og_stats.st_size, 'expected downloaded attachment size to match original file size'
-                assert df_stats.st_ctime > og_stats.st_ctime, 'expected downlaoded attachment ctime to be > original file ctime'
+                assert df_stats.st_size == og_stats.st_size, (
+                    'expected downloaded attachment size to match original file size'
+                )
+                assert df_stats.st_ctime > og_stats.st_ctime, (
+                    'expected downlaoded attachment ctime to be > original file ctime'
+                )
 
         assert msg_part == 3, 'expected message to have 3 parts'
 
@@ -420,8 +448,7 @@ class TestIMAPMessaging():
 
     def test_multi_connection_search(self, imap):
         # able to open multiple imap connections and select a mailbox and search using each connection
-        c1 = imap;
-
+        c1 = imap
         log.debug('creating 2nd imap connection')
         c2 = IMAP()
         success = c2.login(TEST_ACCT_1_USERNAME, TEST_ACCT_1_PASSWORD)
@@ -441,8 +468,9 @@ class TestIMAPMessaging():
         assert msg_count != 0, 'expected drafts folder to have messages'
 
         found_msgs = c2.search_messages('DRAFT')
-        assert len(found_msgs) >= IMAP_MSG_TESTS_DRAFT_EMAIL_COUNT, \
+        assert len(found_msgs) >= IMAP_MSG_TESTS_DRAFT_EMAIL_COUNT, (
             f'expected at least {IMAP_MSG_TESTS_DRAFT_EMAIL_COUNT} draft messages to have been found'
+        )
 
         # done with the second connection
         c2.close_mailbox()
@@ -450,8 +478,7 @@ class TestIMAPMessaging():
 
     def test_multi_connection_fetch(self, imap):
         # able to open multiple imap connections and fetch a message using each connection
-        c1 = imap;
-
+        c1 = imap
         log.debug('creating 2nd imap connection')
         c2 = IMAP()
         success = c2.login(TEST_ACCT_1_USERNAME, TEST_ACCT_1_PASSWORD)
@@ -465,12 +492,16 @@ class TestIMAPMessaging():
         c1_msg = c1.fetch_message_details(c1_msg_ids[0])
         assert c1_msg, 'expected message to have been fetched using first connection'
 
-        assert c1_msg['Delivered-To'] == TEST_ACCT_1_EMAIL, 'expected message delivered-to field to be test_acct_1 email'
+        assert c1_msg['Delivered-To'] == TEST_ACCT_1_EMAIL, (
+            'expected message delivered-to field to be test_acct_1 email'
+        )
         assert c1_msg['To'] == TEST_ACCT_1_EMAIL, 'expected message to field to be test_acct_1 email'
         assert c1_msg['From'] == TEST_ACCT_2_EMAIL, 'expected message from field to be test_acct_2 email'
         assert TEST_MSG_SUBJECT_PREFIX in c1_msg['Subject'], 'expected message subject to be correct'
         assert TEST_MSG_MIME_VER in c1_msg['MIME-Version'], 'expected message MIME version to be correct'
-        assert c1_msg['Content-Transfer-Encoding'] == TRANS_ENCODING_7BIT, 'expected message transfer encoding to be correct'
+        assert c1_msg['Content-Transfer-Encoding'] == TRANS_ENCODING_7BIT, (
+            'expected message transfer encoding to be correct'
+        )
         assert c1_msg['Content-Type'] == CONTENT_TYPE_TEXT_PLAIN, 'expected message content-type to be correct'
 
         c2.select_mailbox()
@@ -492,8 +523,7 @@ class TestIMAPMessaging():
     def test_multi_connection_sync_read(self, imap):
         # with multiple imap connections open, have one connection mark a message as read;
         # then verify the other connections see the same message marked as read
-        c1 = imap;
-
+        c1 = imap
         log.debug('creating 2nd imap connection')
         c2 = IMAP()
         success = c2.login(TEST_ACCT_1_USERNAME, TEST_ACCT_1_PASSWORD)
@@ -507,17 +537,19 @@ class TestIMAPMessaging():
         test_msg_id = c1_unread_msgs[0]
 
         # use the first imap connection and mark the message as read
-        log.debug("using the first connection to mark the message as read")
+        log.debug('using the first connection to mark the message as read')
         c1.mark_message_read(test_msg_id)
 
         # second connection should see the same message as read; and also one less unread message
         log.debug('verifying that the second connection now sees the same message as marked read')
         c2.select_mailbox()
         c2_unread_msgs = c2.search_messages('UNSEEN SUBJECT', TEST_MSG_SUBJECT_PREFIX)
-        assert len(c2_unread_msgs) == len(c1_unread_msgs) -1, 'expected at least one unread message in the inbox'
+        assert len(c2_unread_msgs) == len(c1_unread_msgs) - 1, 'expected at least one unread message in the inbox'
 
         c2_test_msg_flags = c2.fetch_message_flags(test_msg_id)
-        assert MSG_SEEN_FLAG in c2_test_msg_flags[0], 'expected second connection to see the same message as marked read'
+        assert MSG_SEEN_FLAG in c2_test_msg_flags[0], (
+            'expected second connection to see the same message as marked read'
+        )
 
         # done with the second connection
         c2.close_mailbox()

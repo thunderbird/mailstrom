@@ -26,7 +26,7 @@ class SMTP:
 
         try:
             self.connection = SMTP_SSL(self.host, self.port, timeout=self.connection_timeout)
-            self.connection.set_debuglevel(0) # set to 1 if want to debug locally
+            self.connection.set_debuglevel(0)  # set to 1 if want to debug locally
             log.debug('connected, now signing in to smtp')
             result, data = self.connection.login(username, password)
             log.debug(f'{result}, {data}')
@@ -74,7 +74,6 @@ class SMTP:
             self.connection.send_message(msg)
 
         except Exception as e:
-
             if 'Rate limit exceeded' in str(e):
                 log.debug(f'failed to send email: rate limit exceeded')
                 send_exception = 'rate limit exceeded'
@@ -87,7 +86,7 @@ class SMTP:
             events.request.fire(
                 request_type='smtp',
                 name='send_message',
-                response_time=(gevent.get_hub().loop.now() - start_time) * 1000, # convert to ms
+                response_time=(gevent.get_hub().loop.now() - start_time) * 1000,  # convert to ms
                 response_length=len(body) if not send_exception else 0,
                 context=None,
                 exception=send_exception,

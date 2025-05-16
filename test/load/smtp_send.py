@@ -17,6 +17,7 @@ from const import (
     LOAD_TEST_EMAIL_BODY_PREFIX,
 )
 
+
 class MailstromSMTPUser(User):
     # each task is repeated over and over by each test user; wait N seconds after each task is run
     # with 3 seconds wait, each user will send approximately 20 emails per minute when all spawned
@@ -48,7 +49,9 @@ class MailstromSMTPUser(User):
 
         logging.debug(f'user instance {id(self)}: sending email message {self.email_count} via smtp')
         subject = f'{LOAD_TEST_EMAIL_SUBJECT_PREFIX} (user instance {id(self)} msg {self.email_count}) {datetime.datetime.now()}'
-        self.connection.send_test_email(LOAD_TEST_TO_EMAIL, LOAD_TEST_ACCT_EMAIL, subject, LOAD_TEST_EMAIL_BODY_PREFIX, attachment=None, locust=True)
+        self.connection.send_test_email(
+            LOAD_TEST_TO_EMAIL, LOAD_TEST_ACCT_EMAIL, subject, LOAD_TEST_EMAIL_BODY_PREFIX, attachment=None, locust=True
+        )
 
     def on_stop(self):
         # runs one time for each user (when the tests are finished )

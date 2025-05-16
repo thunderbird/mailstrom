@@ -27,6 +27,7 @@ class TestIMAPMailboxes:
     """
     IMAP mailbox (folders) tests.
     """
+
     def test_list_all_mailboxes(self, imap):
         mailbox_list = imap.get_mailboxes()
         # ensure that the expected default malboxes exist
