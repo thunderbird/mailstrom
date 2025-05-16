@@ -264,7 +264,7 @@ class IMAP:
         """
         Find all existing email messages that were previously created by these tests and delete them.
         """
-        self.select_mailbox() # select inbox
+        self.select_mailbox()  # select inbox
         prev_test_msgs = self.search_messages('SUBJECT', TEST_MSG_SUBJECT_PREFIX)
         more_prev_test_msgs = self.search_messages('SUBJECT', TEST_MSG_DEL_SUBJECT_PREFIX)
         even_more_prev_test_msgs = self.search_messages('SUBJECT', TEST_MSG_WITH_ATTACHMENT_SUBJECT_PREFIX)
@@ -274,7 +274,7 @@ class IMAP:
         for msg_id in prev_test_msgs:
             log.debug(f'deleting old test email {msg_id}')
             try:
-                self.connection.store(msg_id, "+FLAGS", "\\Deleted")
+                self.connection.store(msg_id, '+FLAGS', '\\Deleted')
                 time.sleep(1)
             except Exception as _ex:
                 # we don't really care if it failed for some reason as just cleaning up
@@ -299,7 +299,7 @@ class IMAP:
         for msg_id in prev_draft_test_msgs:
             log.debug(f'deleting old test email {msg_id}')
             try:
-                self.connection.store(msg_id, "+FLAGS", "\\Deleted")
+                self.connection.store(msg_id, '+FLAGS', '\\Deleted')
                 time.sleep(1)
             except Exception as _ex:
                 # we don't really care if it failed for some reason as just cleaning up
@@ -320,11 +320,12 @@ class IMAP:
         Search the currently selected mailbox for messages using the given criteria; and return
         a list of IDs of messagest that were found (that matched the criteria).
         """
-        log.debug(f'searching for messages using criteria: {criteria1} {criteria2 if criteria2 != None else ''}')
+        log.debug(f'searching for messages using criteria: {criteria1} {criteria2 if criteria2 is not None else ""}')
         result, found_msg_ids = self.connection.search(
-            None, # will default to UTF-8
-            criteria1, # i.e. 'ALL'
-            f'"{criteria2}"' if criteria2 != None else None # double quotes as if included search string might have space
+            None,  # will default to UTF-8
+            criteria1,  # i.e. 'ALL'
+            # double quotes as if included search string might have space
+            f'"{criteria2}"' if criteria2 is not None else None,
         )
         log.debug(f'{result}, {found_msg_ids}')
 
@@ -336,7 +337,7 @@ class IMAP:
 
         return found_msg_ids_list
 
-    def create_draft_email(self, subject="Test email"):
+    def create_draft_email(self, subject='Test email'):
         # create a draft email to test_acct_1 (from test_acct_2)
         log.debug(f'creating draft email from test_acct_2 to test_acct_1 with the subject: {subject}')
 
@@ -362,7 +363,7 @@ class IMAP:
         """
         for msg in msg_ids:
             log.debug(f'marking message {msg} as deleted')
-            result, data = self.connection.store(msg, "+FLAGS", "\\Deleted")
+            result, data = self.connection.store(msg, '+FLAGS', '\\Deleted')
             log.debug(f'{result}, {data}')
             assert result == RESULT_OK, 'expected to be able to mark message as deleted'
             assert MSG_DELETED_FLAG in data[0], 'expected deleted flag to have been added'
@@ -371,7 +372,7 @@ class IMAP:
         """
         Permanently delete all messages that are marked as deleted in the currently selected mailbox.
         """
-        log.debug(f'expunging all deleted messages in current mailbox')
+        log.debug('expunging all deleted messages in current mailbox')
         result, data = self.connection.expunge()
         log.debug(f'{result}, {data}')
         assert result == RESULT_OK, 'expected expunge to return OK'
@@ -383,7 +384,7 @@ class IMAP:
         an option to confirm or not, as some cases we may call this not knowing if the msg is read already.
         """
         log.debug(f'marking message {msg_id} as read')
-        result, data = self.connection.store(msg_id, "+FLAGS", "\\Seen")
+        result, data = self.connection.store(msg_id, '+FLAGS', '\\Seen')
         log.debug(f'{result}')
         assert result == RESULT_OK, 'expected to be able to mark message as read'
         if confirm:
@@ -395,7 +396,7 @@ class IMAP:
         the '\\Seen' flag if it exists (as there is no UNSEEN flag).
         """
         log.debug(f'marking message {msg_id} as unread')
-        result, data = self.connection.store(msg_id, "-FLAGS", "\\Seen")
+        result, data = self.connection.store(msg_id, '-FLAGS', '\\Seen')
         log.debug(f'{result}')
         assert result == RESULT_OK, 'expected to be able to mark message as unread'
 
@@ -405,14 +406,14 @@ class IMAP:
         in a nicely formatted message structure.
         """
         log.debug(f'fetching message {msg_id}')
-        result, data = self.connection.fetch(msg_id, '(RFC822)') # get message details
+        result, data = self.connection.fetch(msg_id, '(RFC822)')  # get message details
         log.debug(f'{result}')
         assert result == RESULT_OK, 'expected fetch message to return OK'
         assert len(data) == 2, 'expected message data to be returned'
 
         # use python's email message module to parse raw message data into useful object
         parsed_msg = message_from_bytes(data[0][1])
-        log.debug(f'fetched message details, message subject is: {parsed_msg['Subject']}')
+        log.debug(f'fetched message details, message subject is: {parsed_msg["Subject"]}')
 
         return parsed_msg
 
@@ -421,7 +422,7 @@ class IMAP:
         Fetch the flags for the given message id (from the currently selected mailbox).
         """
         log.debug(f'fetching message {msg_id} flags')
-        result, msg_flags = self.connection.fetch(msg_id, '(FLAGS)') # get flags only
+        result, msg_flags = self.connection.fetch(msg_id, '(FLAGS)')  # get flags only
         log.debug(f'{result}, {msg_flags}')
         assert result == RESULT_OK, 'expected fetch message flags to return OK'
         assert msg_flags, 'expected message flags to be returned'
@@ -433,7 +434,7 @@ class IMAP:
         Fetch the internal date for the given message id (from the currently selected mailbox).
         """
         log.debug(f'fetching message {msg_id} internal date')
-        result, date = self.connection.fetch(msg_id, '(INTERNALDATE)') # get flags only
+        result, date = self.connection.fetch(msg_id, '(INTERNALDATE)')  # get flags only
         log.debug(f'{result}, {date}')
         assert result == RESULT_OK, 'expected fetch message internal date to return OK'
         assert len(date[0]) != 0, 'expected message internal date to be returned'

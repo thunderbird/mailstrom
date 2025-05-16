@@ -9,7 +9,7 @@ TEST_SERVER_HOST = str(os.getenv('TEST_SERVER_HOST')).strip()
 IMAP_PORT = int(os.getenv('TEST_IMAP_PORT'))
 SMTP_HOST = str(os.getenv('TEST_SMTP_HOST')).strip()
 SMTP_PORT = int(os.getenv('TEST_SMTP_PORT'))
-CONNECT_TIMEOUT = 10 # seconds
+CONNECT_TIMEOUT = 10  # seconds
 
 # Test accounts that already exist
 TEST_ACCT_1_USERNAME = str(os.getenv('TEST_ACCT_1_USERNAME')).strip()

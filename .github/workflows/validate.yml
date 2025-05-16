@@ -1,0 +1,34 @@
+---
+name: validate
+
+concurrency:
+  group: validate
+  cancel-in-progress: true
+
+on:
+  push:
+    branches:
+      - "**"
+      - "!main"
+
+permissions:
+  contents: read
+
+jobs:
+  iac-lint:
+    runs-on: ubuntu-latest
+    env:
+      IS_CI_AUTOMATION: "yes"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ruff formatting checks
+        uses: chartboost/ruff-action@v1
+        with:
+          src: "."
+          args: "format --check"
+
+      - name: Other linting with Ruff
+        uses: chartboost/ruff-action@v1
+        with:
+          src: "."

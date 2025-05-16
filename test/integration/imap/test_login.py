@@ -1,4 +1,3 @@
-
 from const import TEST_ACCT_1_USERNAME, TEST_ACCT_1_PASSWORD
 from IMAP import IMAP
 
