@@ -26,6 +26,25 @@ pip install ."[dev]"
 When you run Pulumi commands, it is best if you `deactivate` your development environment first.
 
 
+## Ruff
+
+We use the [Ruff](https://docs.astral.sh/ruff/) tool to ensure consistent code style throughout our projects. The tool
+has plugins for most of your favorite IDEs, and is easy to use from the command line as well.
+
+Set up the local dev environment as shown above, then run...
+
+```bash
+# Rewrite files in our configured format (ruff.toml).
+ruff format
+
+# Fix any issues that can be automatically fixed
+ruff check --fix
+
+# Identify remaining issues to fix by hand
+ruff check
+```
+
+
 ## How Stalwart Node Bootstrapping Works
 
 In the broadest strokes:

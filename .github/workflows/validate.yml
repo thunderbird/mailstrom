@@ -25,10 +25,10 @@ jobs:
       - name: Ruff formatting checks
         uses: chartboost/ruff-action@v1
         with:
-          src: "./packages/send/pulumi"
+          src: "."
           args: "format --check"
 
       - name: Other linting with Ruff
         uses: chartboost/ruff-action@v1
         with:
-          src: "./packages/send/pulumi"
+          src: "."

@@ -1,4 +1,5 @@
-import pytest, time
+import pytest
+import time
 
 from IMAP import IMAP
 from common.SMTP import SMTP
@@ -198,7 +199,7 @@ def populate_inbox():
     max_checks = 6
     wait_seconds = 5
     all_arrived = False
-    exp_msg_count = (
+    _exp_msg_count = (
         before_count
         + IMAP_MSG_TESTS_EMAIL_COUNT
         + IMAP_MSG_TESTS_DEL_EMAIL_COUNT
@@ -207,7 +208,8 @@ def populate_inbox():
 
     for checks in range(1, max_checks + 1):
         log.debug(
-            f'waiting {wait_seconds} seconds for messages to arrive in test_acct_1 inbox (check {checks} of {max_checks})'
+            f'waiting {wait_seconds} seconds for messages to arrive in test_acct_1 inbox '
+            f'(check {checks} of {max_checks})'
         )
         time.sleep(wait_seconds)
         after_count = imap.select_mailbox()  # inbox by default

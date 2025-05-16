@@ -320,12 +320,12 @@ class IMAP:
         Search the currently selected mailbox for messages using the given criteria; and return
         a list of IDs of messagest that were found (that matched the criteria).
         """
-        log.debug(f'searching for messages using criteria: {criteria1} {criteria2 if criteria2 != None else ""}')
+        log.debug(f'searching for messages using criteria: {criteria1} {criteria2 if criteria2 is not None else ""}')
         result, found_msg_ids = self.connection.search(
             None,  # will default to UTF-8
             criteria1,  # i.e. 'ALL'
             f'"{criteria2}"'
-            if criteria2 != None
+            if criteria2 is not None
             else None,  # double quotes as if included search string might have space
         )
         log.debug(f'{result}, {found_msg_ids}')
@@ -373,7 +373,7 @@ class IMAP:
         """
         Permanently delete all messages that are marked as deleted in the currently selected mailbox.
         """
-        log.debug(f'expunging all deleted messages in current mailbox')
+        log.debug('expunging all deleted messages in current mailbox')
         result, data = self.connection.expunge()
         log.debug(f'{result}, {data}')
         assert result == RESULT_OK, 'expected expunge to return OK'

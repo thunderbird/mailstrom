@@ -1,4 +1,5 @@
-import gevent, sys
+import gevent
+import sys
 
 from email.message import EmailMessage
 from smtplib import SMTP_SSL
@@ -75,7 +76,7 @@ class SMTP:
 
         except Exception as e:
             if 'Rate limit exceeded' in str(e):
-                log.debug(f'failed to send email: rate limit exceeded')
+                log.debug('failed to send email: rate limit exceeded')
                 send_exception = 'rate limit exceeded'
             else:
                 log.debug(f'failed to send email: {type(e)}')

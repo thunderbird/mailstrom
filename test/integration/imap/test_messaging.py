@@ -1,4 +1,8 @@
-import datetime, os, pytest, time, uuid
+import datetime
+import os
+import pytest
+import time
+import uuid
 
 from IMAP import IMAP
 
@@ -7,7 +11,6 @@ from common.logger import log
 from const import (
     IMAP_MSG_TESTS_EMAIL_COUNT,
     IMAP_MSG_TESTS_DRAFT_EMAIL_COUNT,
-    RESULT_OK,
     RESULT_NO,
     TEST_ACCT_1_EMAIL,
     TEST_ACCT_2_EMAIL,
@@ -119,7 +122,7 @@ class TestIMAPMessaging:
 
         # now we know we have at least 1 deleted message, search for deleted
         found_msgs = imap.search_messages('DELETED')
-        assert len(found_msgs) >= 1, f'expected at least 1 deleted messages to have been found'
+        assert len(found_msgs) >= 1, 'expected at least 1 deleted messages to have been found'
 
         # now permanently remove deleted messages and search again, should now be 0
         imap.permanently_delete_msgs()
@@ -135,7 +138,7 @@ class TestIMAPMessaging:
         imap.mark_message_unread(msgs[2])
         time.sleep(1)
         found_msgs = imap.search_messages('UNSEEN')
-        assert len(found_msgs) >= 1, f'expected at least 1 unread message to have been found'
+        assert len(found_msgs) >= 1, 'expected at least 1 unread message to have been found'
 
     def test_search_messages_read(self, imap):
         # mark one of our inbox test messages as read, then search for read messages
@@ -145,7 +148,7 @@ class TestIMAPMessaging:
         imap.mark_message_read(msgs[0])
         time.sleep(1)
         found_msgs = imap.search_messages('SEEN')
-        assert len(found_msgs) >= 1, f'expected at least 1 read message to have been found'
+        assert len(found_msgs) >= 1, 'expected at least 1 read message to have been found'
 
     def test_search_messages_rcvd_on_date(self, imap):
         # search inbox for messages received today; test setup ensured we already received messages today
@@ -157,8 +160,8 @@ class TestIMAPMessaging:
         )
 
         # search inbox for messages received on a date that we know we never received any msgs on
-        found_msgs = imap.search_messages(f'ON 01-Jan-2025')
-        assert len(found_msgs) == 0, f'expected to find 0 messages'
+        found_msgs = imap.search_messages('ON 01-Jan-2025')
+        assert len(found_msgs) == 0, 'expected to find 0 messages'
 
     def test_mark_message_read(self, imap):
         # we need an unread message to start; select one of our existing inbox test messages
@@ -406,7 +409,8 @@ class TestIMAPMessaging:
 
                 assert os.path.isfile(download_to), 'expected downloaded file to exist'
 
-                # compare the dowloaded file with the file that was attached when the email was originally sent by the populate_inbox fixture
+                # compare the dowloaded file with the file that was attached when the email was
+                # originally sent by the populate_inbox fixture
                 og_stats = os.stat(TEST_MSG_ATTACHMENT)
                 df_stats = os.stat(download_to)
                 assert df_stats.st_size == og_stats.st_size, (
@@ -431,7 +435,7 @@ class TestIMAPMessaging:
         assert MSG_SEEN_FLAG not in test_msg_flags[0], 'expected message to be marked unread'
 
         # now fetch the message details
-        msg_details = imap.fetch_message_details(test_msg_id)
+        _msg_details = imap.fetch_message_details(test_msg_id)
 
         # now check the flags for the same message and this time it should be marked read
         test_msg_flags = imap.fetch_message_flags(test_msg_id)
