@@ -324,9 +324,8 @@ class IMAP:
         result, found_msg_ids = self.connection.search(
             None,  # will default to UTF-8
             criteria1,  # i.e. 'ALL'
-            f'"{criteria2}"'
-            if criteria2 is not None
-            else None,  # double quotes as if included search string might have space
+            # double quotes as if included search string might have space
+            f'"{criteria2}"' if criteria2 is not None else None,
         )
         log.debug(f'{result}, {found_msg_ids}')
 

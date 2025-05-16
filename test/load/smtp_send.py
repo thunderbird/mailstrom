@@ -50,8 +50,10 @@ class MailstromSMTPUser(User):
             assert success, 'expected smtp login to be successful'
 
         logging.debug(f'user instance {id(self)}: sending email message {self.email_count} via smtp')
-        subject = f'{LOAD_TEST_EMAIL_SUBJECT_PREFIX} (user instance {id(self)} '
-        f'msg {self.email_count}) {datetime.datetime.now()}'
+        subject = (
+            f'{LOAD_TEST_EMAIL_SUBJECT_PREFIX} (user instance {id(self)} '
+            f'msg {self.email_count}) {datetime.datetime.now()}'
+        )
         self.connection.send_test_email(
             LOAD_TEST_TO_EMAIL, LOAD_TEST_ACCT_EMAIL, subject, LOAD_TEST_EMAIL_BODY_PREFIX, attachment=None, locust=True
         )
