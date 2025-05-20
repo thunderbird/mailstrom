@@ -20,6 +20,7 @@ TEMPLATE_VALUE_TAG_MAP = {
     'node_services': 'postboot.stalwart.node_services',
     'node_id': 'postboot.stalwart.node_id',
     'node_roles': 'postboot.stalwart.node_roles',
+    'stalwart_image': 'postboot.stalwart.image',
 }
 
 log_format = '[%(asctime)s] %(levelname)s - %(message)s'

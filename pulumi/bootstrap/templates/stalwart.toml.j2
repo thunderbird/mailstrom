@@ -2,9 +2,10 @@
 {%- extends "ports.j2" %}
 {% block with_service_ports %}
 [config]
-local-keys = [ "store.*", "directory.*", "tracer.*", "!server.blocked-ip.*", "!server.allowed-ip.*", "server.*",
-               "authentication.fallback-admin.*", "!cluster.key", "cluster.*",   "config.local-keys.*", 
-               "storage.data", "storage.blob", "storage.lookup", "storage.fts", "storage.directory", "certificate.*" ]
+local-keys = [ "store.*", "directory.*", "tracer.*", "!server.blocked-ip.*", "!server.allowed-ip.*", "!server.hostname",
+               "server.*", "authentication.fallback-admin.*", "!cluster.key", "cluster.*",   "config.local-keys.*",
+               "jmap.*", "storage.data", "storage.blob", "storage.lookup", "storage.fts", "storage.directory",
+               "certificate.*" ]
 
 [cluster]
 node-id={{ node_id }}

@@ -18,7 +18,7 @@ ExecStart=docker run --rm --name stalwart-mail \
     {% for service in node_services.split(',') -%}
     -p {{ service_ports[service]['port'] }}:{{ service_ports[service]['port'] }} \
     {% endfor -%}
-    stalwartlabs/mail-server:v0.11
+    {{ stalwart_image }}
 ExecStop=docker stop stalwart-mail
 RestartSec=2
 

@@ -153,6 +153,10 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         for granting access to services from sources other than the load balancer. Defaults to {}.
     :type node_additional_ingress_rules: dict, optional
 
+    :param stalwart_image: The Docker image to use for the Stalwart service. Defaults to
+        'stalwartlabs/mail-server:v0.11'
+    :type stalwart_image: str
+
     :param user_data_archive: File on disk in which to store the zip file for the user data bootstrapping stage. This is
         a temporary file which can be safely deleted after a Pulumi run. This file is intentionally not deleted, as it
         is valuable for debugging the bootstrapping process. However, any Pulumi command that uses this module will
@@ -187,6 +191,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         load_balancer: dict = {},
         nodes: dict = {},
         node_additional_ingress_rules: list[dict] = [],
+        stalwart_image: str = 'stalwartlabs/mail-server:v0.11',
         user_data_archive: str = 'bootstrap.zip',
         user_data_template: str = 'stalwart_instance_user_data.sh.j2',
         opts: pulumi.ResourceOptions = None,
@@ -207,6 +212,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         # Internalize some vars we need in the other functions and properties
         self.load_balancer_config = load_balancer
         self.nodes = nodes
+        self.stalwart_image = stalwart_image
         self.subnets = subnets
         self.user_data_archive = user_data_archive
         self.user_data_template = user_data_template
@@ -647,6 +653,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         postboot_tags = {
             'postboot.stalwart.aws_region': self.project.aws_region,
             'postboot.stalwart.env': self.project.stack,
+            'postboot.stalwart.image': self.stalwart_image,
             'postboot.stalwart.node_services': node_services_tag,
             'postboot.stalwart.node_id': node_id,
             'postboot.stalwart.node_roles': node_roles_tag,
