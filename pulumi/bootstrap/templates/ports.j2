@@ -1,9 +1,14 @@
 {#- Service port data common to other templates -#}
 {%- set service_ports = {
-    'http': {
+    'management': {
         'listener': 'management',
         'protocol': 'http',
         'port': 8080
+    },
+    'https': {
+        'listener': 'https',
+        'protocol': 'http',
+        'port': 443,
     },
     'imap': {
         'listener': 'imap',
@@ -14,11 +19,6 @@
         'listener': 'imaptls',
         'protocol': 'imap',
         'port': 993
-    },
-    'jmap': {
-        'listener': 'jmap',
-        'protocol': 'http',
-        'port': 443
     },
     'lmtp': {
         'listener': 'lmtp',

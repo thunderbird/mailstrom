@@ -1,28 +1,27 @@
 {#- Configuration file for Stalwart Mail Server -#}
-{%- extends "ports.j2" %}
-{% block with_service_ports %}
+{%- extends "ports.j2" -%}
+{%- block with_service_ports -%}
 [config]
-local-keys = [ "store.*", "directory.*", "tracer.*", "!server.blocked-ip.*", "!server.allowed-ip.*", "server.*",
-               "authentication.fallback-admin.*", "!cluster.key", "cluster.*",   "config.local-keys.*", 
-               "storage.data", "storage.blob", "storage.lookup", "storage.fts", "storage.directory", "certificate.*" ]
+local-keys = [ "store.*", "directory.*", "tracer.*", "!server.blocked-ip.*", "!server.allowed-ip.*", "!server.hostname",
+               "server.*", "authentication.fallback-admin.*", "!cluster.key", "cluster.*",   "config.local-keys.*",
+               "jmap.*", "storage.data", "storage.blob", "storage.lookup", "storage.fts", "storage.directory",
+               "certificate.*" ]
 
 [cluster]
 node-id={{ node_id }}
 bind-addr="[::]"
 bind-port=1179
 
-{# Set up a listener for every service #}
-{% set node_services = node_services.split(',') %}
-{% set jmap = 'jmap' in node_services %}
+{#- Set up a listener for every service #}
+{%- set node_services = node_services.split(',') %}
 {% for service in node_services %}
 [server.listener."{{ service_ports[service]['listener'] }}"]
 bind=["[::]:{{ service_ports[service]['port'] }}"]
 protocol="{{ service_ports[service]['protocol'] }}"
-{%   if service in ['http', 'imaps', 'jmap', 'managesieve', 'pop3s', 'smtps'] %}
+{%-   if service in ['https', 'imaps', 'jmap', 'management', 'managesieve', 'pop3s', 'smtps'] %}
 tls.implicit=true
-{%   endif %}
+{%-   endif %}
 {% endfor %}
-
 [storage]
 data="postgresql"
 fts="postgresql"
@@ -44,13 +43,13 @@ password="{{ postgresql_backend['password'] }}"
 timeout="{{ postgresql_backend['timeout'] if 'timeout' in postgresql_backend else '15s' }}"
 read-from-replicas=true
 
-{% if 'tls' in postgresql_backend %}
-{% set tls_enable="true" if 'enable' in postgresql_backend['tls'] and postgresql_backend['tls']['enable'] else "false"  %}
+{%- if 'tls' in postgresql_backend %}
+{%- set tls_enable="true" if 'enable' in postgresql_backend['tls'] and postgresql_backend['tls']['enable'] else "false"  %}
 {% set tls_invalid_certs="true" if 'allow-invalid-certs' in postgresql_backend['tls'] and postgresql_backend['tls']['allow-invalid-certs'] else "false" %}
 [store."postgresql".tls]
 enable={{ tls_enable }}
 allow-invalid-certs={{ tls_invalid_certs }}
-{% endif %}
+{%- endif %}
 
 [store."tb-accounts"]
 type="postgresql"
@@ -67,13 +66,13 @@ query.recipients="SELECT name FROM mail_email WHERE address=$1 ORDER BY name ASC
 query.secrets="SELECT secret FROM mail_account WHERE name=$1"
 read-from-replicas=true
 
-{% if 'tls' in tb_accounts_backend %}
-{% set tls_enable="true" if 'enable' in tb_accounts_backend['tls'] and tb_accounts_backend['tls']['enable'] else "false"  %}
+{%- if 'tls' in tb_accounts_backend %}
+{%- set tls_enable="true" if 'enable' in tb_accounts_backend['tls'] and tb_accounts_backend['tls']['enable'] else "false"  %}
 {% set tls_invalid_certs="true" if 'allow-invalid-certs' in tb_accounts_backend['tls'] and tb_accounts_backend['tls']['allow-invalid-certs'] else "false" %}
 [store."tb-accounts".tls]
 enable={{ tls_enable }}
 allow-invalid-certs={{ tls_invalid_certs }}
-{% endif %}
+{%- endif %}
 
 [store."s3"]
 type="s3"
@@ -101,16 +100,22 @@ enable=true
 user="admin"
 secret="{{ fallback_admin_password }}"
 
-{% if jmap %}{{ jmap_toml }}{% endif %}
-
-{%- if jmap -%}
+{% if jmap %}{{ jmap_toml }}{% endif -%}
+{%- if 'management' in node_services or 'https' in node_services -%}
 [server.http]
 allowed-endpoint=[
-    {if="starts_with(url_path, '/jmap')",then="200"},
+{%-   if 'management' in node_services %}
+  "200"
+{%    elif 'https' in node_services %}
+    {if="remote_ip == '127.0.0.1'",then="200"},
     {if="starts_with(url_path, '/.well-known/')",then="200"},
     {if="starts_with(url_path, '/healthz/ready')",then="200"},
     {if="starts_with(url_path, '/robots.txt')",then="200"},
-    {if="remote_ip == '127.0.0.1'",then="200"},
-    {else="404"}]
-{% endif -%}
+{%-     for path in https_paths.split(',') %}
+    {if="starts_with(url_path, '{{path}}')",then="200"},
+{%-     endfor %}
+    {else="404"}
+{%    endif -%}
+]
+{%  endif %}
 {% endblock %}

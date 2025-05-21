@@ -51,12 +51,12 @@ In the broadest strokes:
 
 - This repo's `bootstrap` directory contains a script and related files that will eventually run on a Stalwart node at
   launch time to configure a running Stalwart instance there.
-- The `stalwart.StalwartCluster` class (in `stalwart.py`) zips up these bootstrapping files, base64-encodes the zip, and
-  injects that string into a Bash script template (`stalwart_instance_user_data.sh.j2`).
+- The `stalwart.StalwartCluster` class (in `stalwart.py`) tarballs these bootstrapping files, bzip2-compresses them,
+  base64-encodes that, and then injects that string into a Bash script template (`stalwart_instance_user_data.sh.j2`).
 - That script gets set as the instance's user data script, such that when the instance is first launched, the script
   runs.
-- Additional configuration is stored either as tags on the instance or as secrets (credentials, etc.)
-- The first bootstrap stage unpacks the stage-two zip file and runs the Python script contained therein.
+- Additional configuration is stored either as tags on the instance or as secrets (credentials, etc.).
+- The first bootstrap stage unpacks the stage-two tar.bz file and runs the Python script contained therein.
 - The second stage script templates a config file for Stalwart and a systemd service file that runs it as a docker
   container when the instance comes online.
 
@@ -64,6 +64,7 @@ In this way, a `pulumi up` with a proper node configuration can bootstrap a func
 
 
 ## Configuration
+
 
 ### YAML Config
 
@@ -77,6 +78,12 @@ shell:
 resources:
   tb:mailstrom:StalwartCluster:
     thundermail:
+      https_features: # List of supported features of the https service, to be enabled or not cluster-wide.
+        - caldav      # Features must match entries in the StalwartCluster.HTTPS_FEATURES dict and must be explicitly
+        - carddav     # listed to be enabled. Enabling the "management" service on a node allows traffic to all https
+        - jmap        # features because it removes any access restrictions. You should typically deploy a separate
+        - webdav      # node to serve the management page privately (see "Operation" below).
+      stalwart_image: stalwartlabs/mail-server:v0.11 # Set what version you wish to deploy
       nodes:
         "0": # Entries in this list must be stringified integers; this will become the Stalwart cluster node-id.
           disable_api_termination: False # Set to True in production environments; prevent accidental deletion of nodes
@@ -88,10 +95,11 @@ resources:
             - all
           services: # List of services to enable on the node, or "all"
             - all # Enable all services; incompatible with other services
-            # - http
+            # - https # Enables the HTTP server with the various enabled "https_features"
             # - imap
             # - imaps
             # - lmtp
+            # - management # Admin panel is HTTPS, but served over a different port to prevent accidental exposure
             # - managesieve
             # - pop3
             # - pop3s
@@ -101,14 +109,18 @@ resources:
           storage_capacity: 20 # Ephemeral storage volume size in GB
       load_balancer:
         services: # Configuration of service exposure through the load balancer
-          # http: # "http" is the web admin interface, which should never be exposed to the world; you should really
-          #   source_cidrs: ['10.1.0.0/16'] # disable this entirely, but at least restrict access as much as possible.
-          imap: # Actual mail services should be public, though
+          https: # All "https_features" are exposed through this listener
+            source_cidrs: ['0.0.0.0/0']
+          imap: # Mail services should be public
             source_cidrs: ['0.0.0.0/0']
           imaps:
             source_cidrs: ['0.0.0.0/0']
           lmtp:
             source_cidrs: ['0.0.0.0/0']
+          # "management" is the web admin interface, which should never be exposed to the world; you should usually
+          # disable this entirely, but *at least* restrict access as much as possible.
+          management: 
+            source_cidrs: ['10.0.0.0/16']
           managesieve:
             source_cidrs: ['0.0.0.0/0']
           smtp:
@@ -128,6 +140,7 @@ resources:
 ```
 
 Adjust these values to your liking, adding additional nodes as needed.
+
 
 ### Additional Secrets
 
@@ -185,6 +198,7 @@ automatically by the `StalwartCluster` module; you need take no additional actio
 
 ## Operation
 
+
 ### SSH Setup
 
 You may need to gain SSH access to the Stalwart nodes to debug problems. The nodes are all built in private network
@@ -204,12 +218,6 @@ SSH into that machine.
 
 ```bash
 ssh -i ~/.ssh/your_id_rsa ec2-user@1.2.3.4
-```
-
-Install your `id_rsa` and `id_rsa.pub` files into `/home/ec2-user/.ssh/`. Set appropriate file permissions.
-
-```bash
-chmod 0600 /home/ec2-user/.ssh/id_rsa*
 ```
 
 On your local machine, edit your `~/.ssh/config` file to include these sections:
@@ -236,38 +244,44 @@ This key is not known by any other names.
 Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
 ```
 
+
 ### Accessing the Web Admin Panel
 
-If you have the above SSH configuration working, you should also be able to open an SSH tunnel into the privately
+If you have the above SSH configuration working, you should also be able to open an SSH tunnel into a privately
 operating web admin panel.
 
-**Warning!** You should not expose your Stalwart admin web interface to any public network. Configure the node whose
-admin panel you want to access to enable the `http` service (implicit in the `all` service):
+**Warning!** You should not expose your Stalwart admin web interface to any public network. If you must access the admin
+panel, we recommend that you build a bespoke node for this purpose with no services exposed through the load balancer.
+On that node, enable the `management` service:
 
 ```yaml
 nodes:
-  "0":
-    # ...various settings here...
+  "99":
+    # ...
     services:
-      - http
-      # - all
+      - management
 ```
 
-There is no need to expose this service through the load balancer. Instead, establish an SSH tunnel to the service:
+Instead of exposing this service through the load balancer, establish an SSH tunnel to the service:
 
 ```bash
 ssh -L 8080:$node_ip:8080 $node_ip
 ```
 
-Now you have access to the admin panel by pointing a browser on your local machine to http://localhost:8080/
+Now you have access to the admin panel by pointing a browser on your local machine to https://localhost:8080/
+
+**Note:** If you are bootstrapping a brand new cluster that has never been configured, you will not have a certificate
+with which to run TLS. As a result, the admin panel will not load over HTTPS. You will have to disable TLS on this by
+manually editing the service configuration on the node. There are more details on how to manage nodes below.
+
 
 ### Bootstrapping a Stalwart Node
 
 A Stalwart node is an EC2 instance running Stalwart Mail as a Docker service. It runs Amazon Linux 2023 as an operating
-system. The bootstrapping process begins as instance user data. This contains a base64-encoded zip file embedded as a
-string in a Bash script. The user data script unpacks this into `/opt/stalwart-bootstrap`. It then builds a Python
-virtual environment and installs dependencies for the second stage. The output from this script can be found among other
-startup logs in `/var/log/cloud-init-output.log`.
+system. The bootstrapping process begins as instance user data. This contains a base64-encoded, bzip2-compressed tarball
+embedded as a string in a Bash script. The user data script unpacks this into `/opt/stalwart-bootstrap`. It then builds
+a Python virtual environment and installs dependencies for the second stage. The output from this script can be found
+among other startup logs in `/var/log/cloud-init-output.log`.
 
 The Bash script will then run the second stage Python script. This gathers instance tag data from the internal instance
 [metadata service](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/work-with-tags-in-IMDS.html) and secret info like
@@ -293,15 +307,22 @@ to `True` on each node.
 
 ### Re-Running Bootstrapping
 
-The user data script is not available as a file on the system to run, but you can copy and paste it out of the web
-console if you need to do that:
+The user data script is not available as a file on the host system to run, but there are two ways to get ahold of it.
+
+The easiest way is to run a `pulumi preview` or `pulumi up` command and then look at the `user_data.sh` file it
+produces. This is what *would* be set as user data if you were to follow through with a `pulumi up`.
+
+If you have already run a `pulumi up` and applied the user data changes, you can also copy and paste it out of the AWS
+web console:
 
 1. Locate your instance and right-click it.
 2. Click "Instance settings"
 3. Click "Edit user data"
 
+Either way, you can paste that into a file on the host and run it. If all is well, this will automatically execute the
+second stage of bootstrapping.
 
-To re-run the second phase, activate the bootstrap virtual environment and run the script:
+To re-run the second bootstrap phase manually, activate the bootstrap virtual environment and run the script:
 
 ```bash
 cd /opt/stalwart-bootstrap
@@ -309,8 +330,8 @@ source bin/activate
 python bootstrap.py
 ```
 
-This outputs its logs to `/var/log/stalwart-bootstrap.log`. If you are iterating repeatedly, it may help to use this
-command to keep your output fresh with every run:
+Regardless of how you run it, the second stage will output its logs to `/var/log/stalwart-bootstrap.log`. If you are
+iterating repeatedly during development, it may help to use this command to keep your output fresh with every run:
 
 ```bash
 > /var/log/stalwart-bootstrap.log; python bootstrap.py & tail -f /var/log/stalwart-bootstrap.log
@@ -384,7 +405,7 @@ look something like this:
 ```bash
 docker run --rm --name stalwart-mail \ # Name this container, delete stopped containers of the same name before running
   -v /opt/stalwart-mail:/opt/stalwart-mail \ # Mount /opt/stalwart-mail on the host machine into the container
-  -p 8080:8080 \ # List of ports to expose on the host
+  -p 443:443 \ # List of ports to expose on the host
   -p 143:143 \   # One for each service
   -p 993:993 \
   -p 25:25 \
@@ -429,6 +450,8 @@ resources:
       load_balancer:
         excluded_nodes: []
         services:
+          https:
+            source_cidrs: ['0.0.0.0/0']
           imap:
             source_cidrs: ['0.0.0.0/0']
           imaps:
@@ -486,7 +509,8 @@ A `pulumi up` should now want to change the tags of the instance along with the 
 rules are unaware of each other. If a rule is set to be recreated to accomodate a new sequence (something else has been
 added or removed, perhaps) Pulumi may instruct the replacement rule to be created before the old one is deleted. AWS
 doesn't like this and throws a "duplicate rule" error. In these cases, you can usually just run another `pulumi up`
-command to plow through the errors.
+command to plow through the errors. If you must, you can manually delete the security group rule, then run a
+`pulumi refresh` to inform Pulumi that you have deleted it, then continue with a `pulumi up`.
 
 The tags being changed ordinarily inform the bootstrap process how to set up the server. Updating the tags after the
 bootstrapping has initially completed **will not** automatically result in a change to the operating state of that
@@ -526,6 +550,5 @@ A `pulumi up` should now restore service to the node.
 
 
 ### Integration Tests
-
 
 Please see the [Integration tests README](./test/integration/README.md).

@@ -4,6 +4,7 @@ import base64
 import json
 import pulumi
 import pulumi_aws as aws
+import tarfile
 import tb_pulumi
 import tb_pulumi.iam
 import tb_pulumi.network
@@ -15,17 +16,24 @@ from enum import Enum
 from functools import cached_property
 from jinja2 import Template
 from tb_pulumi.constants import ASSUME_ROLE_POLICY, IAM_POLICY_DOCUMENT
-from zipfile import ZipFile
 
+
+#: Mapping of features of the https service and the API paths to enable for them
+HTTPS_FEATURES = {
+    'caldav': '/dav/cal,/dav/pal',
+    'carddav': '/dav/card,/dav/pal',
+    'jmap': '/jmap',
+    'webdav': '/dav/files,/dav/pal',
+}
 
 #: Mapping of supported cluster services to their associated ports
 STALWART_CLUSTER_SERVICES = {
     'all': None,
-    'http': 8080,
+    'https': 443,
     'imap': 143,
     'imaps': 993,
-    'jmap': 443,
     'lmtp': 24,
+    'management': 8080,
     'managesieve': 4190,
     'pop3': 110,
     'pop3s': 995,
@@ -97,6 +105,10 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
     :param cache_parameters: Dictionary of parameters in the parameter group to override.
     :type cache_parameters: dict, optional
 
+    :param https_features: List of features which Stalwart presents over the https service to enable across the cluster.
+        These must match with keys in the HTTPS_FEATURES dict. Defaults to [].
+    :type https_features: dict, optional
+
     :param jmap: Dictionary of options to configure the JMAP configuration on servers running JMAP. This should match
         the options listed in `Stalwart's JMAP documention <https://stalw.art/docs/jmap/overview>`_. A very brief
         and incomplete example:
@@ -112,6 +124,8 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
                 upload:
                     ttl: 1h
                     # ... etc
+
+        Has no effect if ``jmap`` is not specified in ``https_features``.
     :type jmap: dict, optional
 
     :param load_balancer: Configuration for the load balancer, listing services to expose and what other components to
@@ -126,7 +140,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
                 services:
                     imap:
                         source_cidrs: ['0.0.0.0/0']
-                    http:
+                    management:
                         source_security_group_ids: ['sg-abcdef0123456789']
                         source_cidrs: ['10.0.0.0/8']
     :type load_balancer: dict, optional
@@ -153,12 +167,16 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         for granting access to services from sources other than the load balancer. Defaults to {}.
     :type node_additional_ingress_rules: dict, optional
 
-    :param user_data_archive: File on disk in which to store the zip file for the user data bootstrapping stage. This is
-        a temporary file which can be safely deleted after a Pulumi run. This file is intentionally not deleted, as it
-        is valuable for debugging the bootstrapping process. However, any Pulumi command that uses this module will
-        cause the creation of a new archive. This will overwrite any previously existing archive. Use this parameter to
-        specify a different filename if you want to produce a special artifact for some reason. Defaults to
-        "bootstrap.zip".
+    :param stalwart_image: The Docker image to use for the Stalwart service. Defaults to
+        'stalwartlabs/mail-server:v0.11'
+    :type stalwart_image: str
+
+    :param user_data_archive: File on disk in which to store the bzipped tar file for the user data bootstrapping stage.
+        This is a temporary file which can be safely deleted after a Pulumi run. This file is intentionally not deleted,
+        as it is valuable for debugging the bootstrapping process. However, any Pulumi command that uses this module
+        will cause the creation of a new archive. This will overwrite any previously existing archive. Use this
+        parameter to specify a different filename if you want to produce a special artifact for some reason. Defaults to
+        "bootstrap.tbz".
     :type user_data_archive: str
 
     :param user_data_template: File on disk in which to find the Jinja2 template used to generate user data for each
@@ -183,11 +201,13 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         cache_node_count: int = 1,
         cache_node_type: str = 'cache.t3.micro',
         cache_parameters: list = [],
+        https_features: list = [],
         jmap: dict = None,
         load_balancer: dict = {},
         nodes: dict = {},
         node_additional_ingress_rules: list[dict] = [],
-        user_data_archive: str = 'bootstrap.zip',
+        stalwart_image: str = 'stalwartlabs/mail-server:v0.11',
+        user_data_archive: str = 'bootstrap.tbz',
         user_data_template: str = 'stalwart_instance_user_data.sh.j2',
         opts: pulumi.ResourceOptions = None,
         tags: dict = {},
@@ -205,8 +225,10 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
             raise ValueError('You must provide at least one subnet.')
 
         # Internalize some vars we need in the other functions and properties
+        self.https_features = https_features
         self.load_balancer_config = load_balancer
         self.nodes = nodes
+        self.stalwart_image = stalwart_image
         self.subnets = subnets
         self.user_data_archive = user_data_archive
         self.user_data_template = user_data_template
@@ -633,9 +655,9 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         if node_handles_all_services(services=services):
             node_services = STALWART_CLUSTER_SERVICES.copy()
             del node_services['all']
-            node_services_tag = ','.join(node_services.keys())
         else:
-            node_services_tag = ','.join(self.nodes[node_id]['services'])
+            node_services = self.nodes[node_id]['services']
+        node_services_tag = ','.join(node_services)
 
         # Expand the "all" node role into an explicit list
         if node_handles_all_roles(node_roles=node_roles):
@@ -643,10 +665,21 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         else:
             node_roles_tag = ','.join([role.lower() for role in self.nodes[node_id]['node_roles']])
 
+        # Refuse to proceed if we don't recognize an https feature
+        invalid_features = [feature for feature in self.https_features if feature not in HTTPS_FEATURES]
+        if invalid_features:
+            raise ValueError(f'Invalid HTTPS feature(s) provided: {invalid_features}')
+
+        # Some features require multiple paths; some of those paths overlap. Here we join and then split them again
+        # then convert them to a set, which only contains unique paths.
+        https_paths = set(','.join([HTTPS_FEATURES[feature] for feature in self.https_features]).split(','))
+
         # These tags will later get read back when the instance comes online by the postboot process
         postboot_tags = {
             'postboot.stalwart.aws_region': self.project.aws_region,
             'postboot.stalwart.env': self.project.stack,
+            'postboot.stalwart.https_paths': ','.join(https_paths),
+            'postboot.stalwart.image': self.stalwart_image,
             'postboot.stalwart.node_services': node_services_tag,
             'postboot.stalwart.node_id': node_id,
             'postboot.stalwart.node_roles': node_roles_tag,
@@ -704,16 +737,15 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         archive_file_base = './bootstrap'
         archive_files = [
             'bootstrap.py',
-            # 'templates/debug.md.j2',
             'templates/ports.j2',
             'templates/stalwart.toml.j2',
             'templates/thundermail.service.j2',
             'requirements.txt',
         ]
-        with ZipFile(self.user_data_archive, 'w') as archive:
+        with tarfile.open(self.user_data_archive, 'w:bz2') as archive:
             for file in archive_files:
                 source_name = f'{archive_file_base}/{file}'
-                archive.write(source_name, arcname=file, compresslevel=9)
+                archive.add(source_name, arcname=file)
 
         # Now read that file back in and base64-encode it
         with open(self.user_data_archive, 'rb') as archive_fh:
@@ -723,9 +755,13 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         # Do a minimal-effort Jinja template rendering of the user data
         with open(self.user_data_template, 'r') as fh:
             user_data_jinja = fh.read()
-            user_data_values = {'bootstrap_zip_base64': encoded_archive}
+            user_data_values = {'bootstrap_tbz_base64': encoded_archive}
             template = Template(user_data_jinja)
             user_data = template.render(user_data_values)
+
+        # Use for debugging the user data
+        with open('user_data.sh', 'w') as fh:
+            fh.write(user_data)
 
         return user_data
 

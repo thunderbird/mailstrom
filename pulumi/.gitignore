@@ -1,3 +1,4 @@
 *.pyc
 venv/
-bootstrap.zip
+bootstrap.tbz
+user_data.sh
