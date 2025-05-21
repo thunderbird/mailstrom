@@ -17,6 +17,7 @@ TEMPLATE_MAP = {
 }
 # Map of template variable to EC2 tags
 TEMPLATE_VALUE_TAG_MAP = {
+    'https_paths': 'postboot.stalwart.https_paths',
     'node_services': 'postboot.stalwart.node_services',
     'node_id': 'postboot.stalwart.node_id',
     'node_roles': 'postboot.stalwart.node_roles',

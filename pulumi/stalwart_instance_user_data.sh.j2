@@ -3,17 +3,17 @@
 {#  This is a first-stage bootstrapping script which mostly serves to build an environment in which the second-stage
     bootstrapping script can run. The second stage content is contained in the base64-encoded zip file which is
     templated into place by the mailstrom Pulumi code. The bootstrapping process is documented in the readme. Because
-    user data must be small, these files are intentionally not heavy on internal documentation. #}
+    user data must be small, these files are intentionally not heavy on internal documentation. -#}
 
 set -x
 set -e
 
 BOOTSTRAP_DIR=/opt/stalwart-bootstrap
-BOOTSTRAP_ZIP=/root/bootstrap.zip
+BOOTSTRAP_TBZ=/root/bootstrap.tbz
 STALWART_DIR=/opt/stalwart-mail
 
 dnf update -y
-dnf install -y docker python3.12 unzip
+dnf install -y bzip2 docker python3.12
 
 mkdir -p $STALWART_DIR/etc
 
@@ -24,8 +24,8 @@ pip3.12 install virtualenv
 systemctl start docker
 systemctl enable docker
 
-echo '{{ bootstrap_zip_base64 }}' | base64 -d > $BOOTSTRAP_ZIP
-unzip -d $BOOTSTRAP_DIR $BOOTSTRAP_ZIP
+echo '{{ bootstrap_tbz_base64 }}' | base64 -d > $BOOTSTRAP_TBZ
+tar -xvf $BOOTSTRAP_TBZ -C $BOOTSTRAP_DIR
 
 source $BOOTSTRAP_DIR/bin/activate
 pip install -r $BOOTSTRAP_DIR/requirements.txt
