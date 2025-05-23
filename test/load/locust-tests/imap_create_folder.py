@@ -1,11 +1,12 @@
 import datetime
-import logging
+
 import sys
 from locust import User, constant, task
 
 # since we are calling locust cmd line we need to add common to path
 sys.path.append('../')
 from common.IMAP import IMAP
+from common.logger import log
 
 from const import (
     TEST_SERVER_HOST,
@@ -27,8 +28,8 @@ class MailstromIMAPUser(User):
     def on_start(self):
         # runs one time for each user (when the user is spun-up)
         self.folder_count = 0
-        logging.debug(f'user instance {id(self)}: signing in to imap')
-        self.connection = IMAP(TEST_SERVER_HOST, IMAP_PORT, CONNECT_TIMEOUT)
+        log.debug(f'user instance {id(self)}: signing in to imap')
+        self.connection = IMAP(TEST_SERVER_HOST, IMAP_PORT, CONNECT_TIMEOUT, locust=True)
         success = self.connection.login(LOAD_TEST_ACCT_USERNAME, LOAD_TEST_ACCT_PASSWORD)
         assert success, 'expected imap login to be successful'
 
@@ -37,16 +38,16 @@ class MailstromIMAPUser(User):
     def imap_create_folder(self):
         # create a folder (mailbox) in our LOAD_TEST_ACCT
         self.folder_count += 1
-        logging.debug(f'user instance {id(self)}: creating folder {self.folder_count} via imap')
+        log.debug(f'user instance {id(self)}: creating folder {self.folder_count} via imap')
         folder_name = (
             f'{LOAD_TEST_FOLDER_NAME_PREFIX} - User {id(self)} - Folder {self.folder_count} - {datetime.datetime.now()}'
         )
-        self.connection.create_mailbox(folder_name, locust=True)
+        self.connection.create_mailbox(folder_name)
 
         # now subscribe to the mailbox so we can view it in TB if we want to check results after
-        self.connection.subscribe_mailbox(folder_name, locust=True)
+        self.connection.subscribe_mailbox(folder_name)
 
     def on_stop(self):
         # runs one time for each user (when the tests are finished )
-        logging.debug(f'user instance {id(self)}: signing out of imap')
+        log.debug(f'user instance {id(self)}: signing out of imap')
         self.connection.logout()

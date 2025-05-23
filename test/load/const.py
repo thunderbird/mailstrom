@@ -25,3 +25,6 @@ LOAD_TEST_TO_EMAIL_ACCT_PASSWORD = str(os.getenv('LOAD_TEST_TO_EMAIL_ACCT_PASSWO
 LOAD_TEST_EMAIL_SUBJECT_PREFIX = 'Mailstrom Load Test'
 LOAD_TEST_EMAIL_BODY_PREFIX = 'Sent by the mailstrom load tests.'
 LOAD_TEST_FOLDER_NAME_PREFIX = 'Mailstrom Folder Load Test'
+
+# logging level
+LOG_LEVEL = str(os.getenv('LOG_LEVEL', 'INFO')).strip()

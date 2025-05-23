@@ -25,7 +25,7 @@ cp .env.test.example .env.test
 The `.env.test` file is in the gitignore as to prevent checking it into github by mistake! Open the `.env.test` file and
 add the following values:
 
-```
+```dotenv
 TEST_SERVER_HOST = "<server.name.here>"
 TEST_SMTP_PORT = 465
 
@@ -54,8 +54,10 @@ locust -f locust-tests/<load-test-name.py>
 
 ### Enable debug logging
 
-```bash
-locust -f locust-tests/<load-test-name.py> --loglevel=DEBUG
+To enable debug logging for the load tests, edit the `.env.test` file and set:
+
+```dotenv
+LOG_LEVEL = 'DEBUG'
 ```
 
 ### View the locust results

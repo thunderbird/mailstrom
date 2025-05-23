@@ -19,6 +19,3 @@ dev = [
     "pytest==8.3.4",
     "locust==2.36.2",
 ]
-
-[pytest]
-log_cli = 1

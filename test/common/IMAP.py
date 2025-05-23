@@ -33,11 +33,12 @@ from common.const import (
 
 
 class IMAP:
-    def __init__(self, host, port, timeout):
+    def __init__(self, host, port, timeout, locust=False):
         self.connection = None
         self.host = host
         self.port = port
         self.connection_timeout = timeout
+        self.locust = locust
 
     def login(self, username, password):
         """
@@ -117,13 +118,13 @@ class IMAP:
 
         return convert_raw_mailbox_list(raw_data)
 
-    def create_mailbox(self, name, locust=False):
+    def create_mailbox(self, name):
         """
         Create a new mailbox with the given name.
         """
         log.debug(f'creating mailbox: {name}')
 
-        if locust:
+        if self.locust:
             # locust uses gevent greenlets to run concurrent users in single process
             start_time = gevent.get_hub().loop.now()
 
@@ -131,7 +132,7 @@ class IMAP:
         log.debug(f'{status}, {data}')
 
         # if running a locust load test we need to let locust know the create mailbox worked
-        if locust:
+        if self.locust:
             events.request.fire(
                 request_type='imap',
                 name='create_mailbox',
@@ -144,7 +145,7 @@ class IMAP:
             assert status == RESULT_OK, 'expected create to return OK'
             assert MAILBOX_CREATED in data[0], 'expected mailbox created message'
 
-    def subscribe_mailbox(self, name, locust=False):
+    def subscribe_mailbox(self, name):
         """
         Subscribe to the given mailbox. Need to do this so the mailbox appears in some clients like Thunderbird.
         """
@@ -154,7 +155,7 @@ class IMAP:
 
         # if running a locust load test we don't want the load test to stop if subscribe failed
         # as we're only subscribing so that we can view the new folders after if we want to
-        if not locust:
+        if not self.locust:
             assert status == RESULT_OK, 'expected subscribe to return OK'
             assert MAILBOX_SUBSCRIBED in data[0], 'expected mailbox subscribed message'
 

@@ -60,12 +60,13 @@ Run the integration tests via pytest:
 
 ```bash
 cd test/integration
-python -m pytest -v
+python -m pytest -vs
 ```
 
-To run the tests with debug logging:
+### Enable debug logging
 
-```bash
-cd test/integration
-python -m pytest --log-cli-level=DEBUG
+To enable debug logging for the integration tests, edit the `.env.test` file and set:
+
+```dotenv
+LOG_LEVEL = 'DEBUG'
 ```
