@@ -1,19 +1,27 @@
 import pytest
 import time
 
-from IMAP import IMAP
+from common.IMAP import IMAP
 from common.SMTP import SMTP
 
 from common.logger import log
 
+from common.const import (
+    MAILBOX_PREFIX,
+    TEST_MSG_BODY_PREFIX,
+    TEST_MSG_ATTACHMENT,
+    TEST_MSG_SUBJECT_PREFIX,
+    TEST_MSG_DEL_SUBJECT_PREFIX,
+    TEST_MSG_WITH_ATTACHMENT_SUBJECT_PREFIX,
+)
+
 from const import (
     TEST_SERVER_HOST,
     SMTP_PORT,
+    IMAP_PORT,
     CONNECT_TIMEOUT,
     TEST_ACCT_1_EMAIL,
     TEST_ACCT_2_EMAIL,
-    TEST_MSG_BODY_PREFIX,
-    TEST_MSG_ATTACHMENT,
     TEST_ACCT_1_USERNAME,
     TEST_ACCT_1_PASSWORD,
     TEST_ACCT_2_USERNAME,
@@ -22,9 +30,6 @@ from const import (
     IMAP_MSG_TESTS_DRAFT_EMAIL_COUNT,
     IMAP_MSG_TESTS_DEL_EMAIL_COUNT,
     IMAP_MSG_TESTS_EMAIL_WITH_ATTACHMENT_COUNT,
-    TEST_MSG_SUBJECT_PREFIX,
-    TEST_MSG_DEL_SUBJECT_PREFIX,
-    TEST_MSG_WITH_ATTACHMENT_SUBJECT_PREFIX,
 )
 
 
@@ -35,7 +40,7 @@ def imap():
     Before the tests start login to the IMAP server and provide the imap connection instance.
     Only login once per test session; the same login will be used by all of the tests in the session).
     """
-    imap = IMAP()
+    imap = IMAP(TEST_SERVER_HOST, IMAP_PORT, CONNECT_TIMEOUT)
     success = imap.login(TEST_ACCT_1_USERNAME, TEST_ACCT_1_PASSWORD)
     assert success, 'expected auth to be successful'
     yield imap
@@ -74,15 +79,17 @@ def setup_env():
     tests. We do it here at the start so that we can always go in and look at the email account mailboxes
     if we want to check the state after the tests ran (but before running them again).
     """
-    imap = IMAP()
+    imap = IMAP(TEST_SERVER_HOST, IMAP_PORT, CONNECT_TIMEOUT)
     success = imap.login(TEST_ACCT_1_USERNAME, TEST_ACCT_1_PASSWORD)
     assert success, 'expected imap auth to be successful'
 
     log.debug('cleaning up test mailboxes')
-    imap.cleanup_test_mailboxes()
+    imap.cleanup_test_mailboxes(MAILBOX_PREFIX)
 
     log.debug('cleaning up test emails')
-    imap.cleanup_test_messages()
+    imap.cleanup_test_messages(
+        [TEST_MSG_SUBJECT_PREFIX, TEST_MSG_DEL_SUBJECT_PREFIX, TEST_MSG_WITH_ATTACHMENT_SUBJECT_PREFIX]
+    )
 
     log.debug('cleaning up draft test emails')
     imap.cleanup_draft_test_messages()
@@ -109,7 +116,7 @@ def populate_inbox():
     log.debug('populating test_acct_1 for imap messaging tests')
 
     # first check how many messags exist in the test_acct_1 inbox
-    imap = IMAP()
+    imap = IMAP(TEST_SERVER_HOST, IMAP_PORT, CONNECT_TIMEOUT)
     success = imap.login(TEST_ACCT_1_USERNAME, TEST_ACCT_1_PASSWORD)
     assert success, 'expected imap auth to be successful'
 
@@ -182,7 +189,11 @@ def populate_inbox():
 
     # now create our draft test messages
     for x in range(IMAP_MSG_TESTS_DRAFT_EMAIL_COUNT):
-        success = imap.create_draft_email(subject=f'{TEST_MSG_SUBJECT_PREFIX} Draft {x + 1}')
+        success = imap.create_draft_email(
+            from_address=TEST_ACCT_1_EMAIL,
+            to_address=TEST_ACCT_2_EMAIL,
+            subject=f'{TEST_MSG_SUBJECT_PREFIX} Draft {x + 1}',
+        )
         assert success, 'expected to be able to create draft email via imap'
         time.sleep(1)
 

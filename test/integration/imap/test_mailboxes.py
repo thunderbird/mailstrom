@@ -1,14 +1,14 @@
 import datetime
 
 from common.logger import log
+from common.utils import convert_raw_mailbox_list
 
-from const import (
-    DEFAULT_MAILBOX_LIST,
-    MAILBOX_PREFIX,
+from common.const import (
     RESULT_NO,
     ALREADY_EXISTS,
     MISSING_ARGS,
     NOT_FOUND,
+    MAILBOX_PREFIX,
     MAILBOX_ALREADY_SUBSCRIBED,
     MAILBOX_NAME_MISSING,
     MAILBOX_NOT_EXIST,
@@ -20,7 +20,10 @@ from const import (
     RESULT_OK,
     MAILBOX_CLOSE_ILLEGAL_STATE,
 )
-from utils import convert_raw_mailbox_list
+
+from const import (
+    DEFAULT_MAILBOX_LIST,
+)
 
 
 class TestIMAPMailboxes:

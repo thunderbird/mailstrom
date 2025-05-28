@@ -1,10 +1,12 @@
 from const import TEST_ACCT_1_USERNAME, TEST_ACCT_1_PASSWORD
-from IMAP import IMAP
+from common.IMAP import IMAP
+
+from const import TEST_SERVER_HOST, IMAP_PORT, CONNECT_TIMEOUT
 
 
 class TestIMAPAuth:
     def test_login_logout(self):
-        imap = IMAP()
+        imap = IMAP(TEST_SERVER_HOST, IMAP_PORT, CONNECT_TIMEOUT)
         success = imap.login(TEST_ACCT_1_USERNAME, TEST_ACCT_1_PASSWORD)
         assert success, 'expected auth to be successful'
 

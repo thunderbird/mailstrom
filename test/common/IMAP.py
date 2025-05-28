@@ -1,15 +1,16 @@
+import gevent
 import time
 
 from email.message import EmailMessage
 from email import message_from_bytes
 from imaplib import IMAP4_SSL
 
+from locust import events
+
+from common.utils import convert_raw_mailbox_list
 from common.logger import log
 
-from const import (
-    TEST_SERVER_HOST,
-    IMAP_PORT,
-    CONNECT_TIMEOUT,
+from common.const import (
     RESULT_OK,
     STATE_NONAUTH,
     STATE_LOGOUT,
@@ -18,45 +19,42 @@ from const import (
     MAILBOX_DELETED,
     MAILBOX_UNSUBSCRIBED,
     LOGOUT_BYE,
-    MAILBOX_PREFIX,
     MAILBOX_RENAMED,
     STATE_SELECTED,
     STATE_AUTH,
     MAILBOX_CLOSE_COMPLETED,
-    TEST_MSG_SUBJECT_PREFIX,
-    TEST_MSG_DEL_SUBJECT_PREFIX,
-    TEST_MSG_WITH_ATTACHMENT_SUBJECT_PREFIX,
-    TEST_MSG_BODY_PREFIX,
-    TEST_ACCT_1_EMAIL,
-    TEST_ACCT_2_EMAIL,
     APPEND_COMPLETED,
     MSG_DELETED_FLAG,
     MSG_SEEN_FLAG,
     MSG_COPIED,
+    TEST_MSG_SUBJECT_PREFIX,
+    TEST_MSG_BODY_PREFIX,
 )
-
-from utils import convert_raw_mailbox_list
 
 
 class IMAP:
-    def __init__(self):
+    def __init__(self, host, port, timeout, locust=False):
         self.connection = None
+        self.host = host
+        self.port = port
+        self.connection_timeout = timeout
+        self.locust = locust
 
     def login(self, username, password):
         """
         Connect and log into the imap server as defined in the .env.test file.
         """
         success = False
-        log.debug(f'connecting to imap host: {TEST_SERVER_HOST}')
+        log.debug(f'connecting to imap host: {self.host}')
 
         try:
-            self.connection = IMAP4_SSL(TEST_SERVER_HOST, IMAP_PORT, timeout=CONNECT_TIMEOUT)
+            self.connection = IMAP4_SSL(self.host, self.port, timeout=self.connection_timeout)
             if self.connection.state == STATE_NONAUTH:
                 log.debug('connected, now signing in to imap')
                 self.connection.login(username, password)
                 if self.connection.state == STATE_AUTH:
                     success = True
-                    log.debug(f'successfully signed into imap host: {TEST_SERVER_HOST}')
+                    log.debug(f'successfully signed into imap host: {self.host}')
 
         except Exception as e:
             log.debug(f'{str(e)}')
@@ -68,7 +66,7 @@ class IMAP:
         Log out of the IMAP server.
         """
         if self.connection is not None and self.connection.state != STATE_LOGOUT:
-            log.debug(f'logging out of imap host: {TEST_SERVER_HOST}')
+            log.debug(f'logging out of imap host: {self.host}')
 
             try:
                 resp = IMAP4_SSL.logout(self.connection)
@@ -76,7 +74,7 @@ class IMAP:
                 log.debug(f'{str(e)}')
 
             if LOGOUT_BYE in resp and self.connection.state == STATE_LOGOUT:
-                log.debug(f'successfullly signed out of imap host: {TEST_SERVER_HOST}')
+                log.debug(f'successfullly signed out of imap host: {self.host}')
                 return True
         else:
             log.debug('logout called however you are not currenty logged in to imap')
@@ -125,10 +123,27 @@ class IMAP:
         Create a new mailbox with the given name.
         """
         log.debug(f'creating mailbox: {name}')
+
+        if self.locust:
+            # locust uses gevent greenlets to run concurrent users in single process
+            start_time = gevent.get_hub().loop.now()
+
         status, data = self.connection.create(f'"{name}"')  # need double quotes b/c spaces in name
         log.debug(f'{status}, {data}')
-        assert status == RESULT_OK, 'expected create to return OK'
-        assert MAILBOX_CREATED in data[0], 'expected mailbox created message'
+
+        # if running a locust load test we need to let locust know the create mailbox worked
+        if self.locust:
+            events.request.fire(
+                request_type='imap',
+                name='create_mailbox',
+                response_time=(gevent.get_hub().loop.now() - start_time) * 1000,  # convert to ms
+                response_length=len(data[0]),
+                context=None,
+                exception=data[0] if status != RESULT_OK else None,
+            )
+        else:
+            assert status == RESULT_OK, 'expected create to return OK'
+            assert MAILBOX_CREATED in data[0], 'expected mailbox created message'
 
     def subscribe_mailbox(self, name):
         """
@@ -137,8 +152,12 @@ class IMAP:
         log.debug(f'subscribing to mailbox: {name}')
         status, data = self.connection.subscribe(f'"{name}"')
         log.debug(f'{status}, {data}')
-        assert status == RESULT_OK, 'expected subscribe to return OK'
-        assert MAILBOX_SUBSCRIBED in data[0], 'expected mailbox subscribed message'
+
+        # if running a locust load test we don't want the load test to stop if subscribe failed
+        # as we're only subscribing so that we can view the new folders after if we want to
+        if not self.locust:
+            assert status == RESULT_OK, 'expected subscribe to return OK'
+            assert MAILBOX_SUBSCRIBED in data[0], 'expected mailbox subscribed message'
 
     def unsubscribe_mailbox(self, name):
         """
@@ -241,9 +260,9 @@ class IMAP:
         assert status == RESULT_OK, 'expected close to return OK'
         assert MAILBOX_CLOSE_COMPLETED in data[0], 'expected close completed message'
 
-    def cleanup_test_mailboxes(self):
+    def cleanup_test_mailboxes(self, mailbox_prefix):
         """
-        Find all existing mailboxes that were previously created by these tests and delete them.
+        Find all existing mailboxes with a name that match the given prefix  and delete them.
         Mailboxes might have children i.e. subfolders, and we must delete the mailboxes in order
         from lowest to highest levels; the solution is to sort the list of mailboxes to delete
         based on the name and delete the longest names (lowest level subfolders) first.
@@ -252,7 +271,7 @@ class IMAP:
         sorted_mailboxes = sorted(existing_mailboxes, key=lambda x: x['name'], reverse=True)
 
         for mailbox in sorted_mailboxes:
-            if MAILBOX_PREFIX in mailbox['name']:
+            if mailbox_prefix in mailbox['name']:
                 log.debug(f'deleting mailbox: {mailbox["name"]}')
                 try:
                     self.delete_mailbox(mailbox['name'])
@@ -260,18 +279,18 @@ class IMAP:
                     # we don't really care if it failed for some reason as just cleaning up
                     pass
 
-    def cleanup_test_messages(self):
+    def cleanup_test_messages(self, msg_subject_prefix_list):
         """
-        Find all existing email messages that were previously created by these tests and delete them.
+        Find all existing email messages that match the given subject prefixes and delete them.
         """
         self.select_mailbox()  # select inbox
-        prev_test_msgs = self.search_messages('SUBJECT', TEST_MSG_SUBJECT_PREFIX)
-        more_prev_test_msgs = self.search_messages('SUBJECT', TEST_MSG_DEL_SUBJECT_PREFIX)
-        even_more_prev_test_msgs = self.search_messages('SUBJECT', TEST_MSG_WITH_ATTACHMENT_SUBJECT_PREFIX)
-        prev_test_msgs.extend(more_prev_test_msgs)
-        prev_test_msgs.extend(even_more_prev_test_msgs)
 
-        for msg_id in prev_test_msgs:
+        msgs_to_del = []
+        for subject_prefix in msg_subject_prefix_list:
+            found_test_msgs = self.search_messages('SUBJECT', subject_prefix)
+            msgs_to_del.extend(found_test_msgs)
+
+        for msg_id in msgs_to_del:
             log.debug(f'deleting old test email {msg_id}')
             try:
                 self.connection.store(msg_id, '+FLAGS', '\\Deleted')
@@ -281,7 +300,7 @@ class IMAP:
                 pass
 
         # now permanently delete the deleted emails
-        if prev_test_msgs:
+        if msgs_to_del:
             try:
                 log.debug('expunging deleted messages')
                 self.permanently_delete_msgs()
@@ -337,7 +356,7 @@ class IMAP:
 
         return found_msg_ids_list
 
-    def create_draft_email(self, subject='Test email'):
+    def create_draft_email(self, from_address, to_address, subject='Test email'):
         # create a draft email to test_acct_1 (from test_acct_2)
         log.debug(f'creating draft email from test_acct_2 to test_acct_1 with the subject: {subject}')
 
@@ -345,8 +364,8 @@ class IMAP:
 
         msg = EmailMessage()
         msg['Subject'] = subject
-        msg['From'] = TEST_ACCT_1_EMAIL
-        msg['To'] = TEST_ACCT_2_EMAIL
+        msg['From'] = from_address
+        msg['To'] = to_address
         msg.set_content(TEST_MSG_BODY_PREFIX)
 
         result, data = self.connection.append('Drafts', '\\Draft', None, str(msg).encode('utf-8'))
@@ -451,14 +470,14 @@ class IMAP:
         assert result == RESULT_OK, 'expected copy message to return OK'
         assert MSG_COPIED in data[0], 'expected message copied message'
 
-    def append_message_to_inbox(self, subject='Test message'):
+    def append_message_to_inbox(self, from_address, to_address, subject='Test message'):
         # use append to write a message directly to the inbox
         log.debug(f'creating and appending messge to test_acct_1 inbox with the subject: {subject}')
 
         msg = EmailMessage()
         msg['Subject'] = subject
-        msg['From'] = TEST_ACCT_1_EMAIL
-        msg['To'] = TEST_ACCT_2_EMAIL
+        msg['From'] = from_address
+        msg['To'] = to_address
         msg.set_content(TEST_MSG_BODY_PREFIX)
 
         result, data = self.connection.append('INBOX', None, None, str(msg).encode('utf-8'))

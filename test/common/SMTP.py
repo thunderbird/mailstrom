@@ -12,11 +12,12 @@ from common.logger import log
 
 
 class SMTP:
-    def __init__(self, host, port, timeout):
+    def __init__(self, host, port, timeout, locust=False):
         self.connection = None
         self.host = host
         self.port = port
         self.connection_timeout = timeout
+        self.locust = locust
 
     def login(self, username, password):
         """
@@ -46,7 +47,7 @@ class SMTP:
         log.debug(f'{result}, {data}')
         return True if b'Bye' in data else False
 
-    def send_test_email(self, to_email, from_email, subject, body, attachment, locust=False):
+    def send_test_email(self, to_email, from_email, subject, body, attachment):
         # send an email using smtp
         msg = EmailMessage()
 
@@ -67,7 +68,7 @@ class SMTP:
         log.debug(f'sending an email from {from_email[:3]}*** to {to_email[:3]}*** with the subject: {subject}')
         send_exception = None
 
-        if locust:
+        if self.locust:
             # locust uses gevent greenlets to run concurrent users in single process
             start_time = gevent.get_hub().loop.now()
 
@@ -83,7 +84,7 @@ class SMTP:
                 send_exception = type(e)
 
         # if running a locust load test we need to let locust know the smtp send worked
-        if locust:
+        if self.locust:
             events.request.fire(
                 request_type='smtp',
                 name='send_message',

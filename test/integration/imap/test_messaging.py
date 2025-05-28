@@ -4,23 +4,13 @@ import pytest
 import time
 import uuid
 
-from IMAP import IMAP
-
+from common.IMAP import IMAP
 from common.logger import log
 
-from const import (
-    IMAP_MSG_TESTS_EMAIL_COUNT,
-    IMAP_MSG_TESTS_DRAFT_EMAIL_COUNT,
+from common.const import (
     RESULT_NO,
-    TEST_ACCT_1_EMAIL,
-    TEST_ACCT_2_EMAIL,
-    TEST_MSG_SUBJECT_PREFIX,
-    TEST_MSG_DEL_SUBJECT_PREFIX,
-    TEST_MSG_WITH_ATTACHMENT_SUBJECT_PREFIX,
-    TEST_MSG_BODY_PREFIX,
     TEST_MSG_MIME_VER,
     MSG_SEEN_FLAG,
-    MAILBOX_PREFIX,
     MSG_COPY_SAME_LOCATION,
     CONTENT_TYPE_TEXT_PLAIN,
     CONTENT_TYPE_MULTI_MIXED,
@@ -29,9 +19,24 @@ from const import (
     TRANS_ENCODING_BASE64,
     CONTENT_DISP_ATTACHMENT,
     DOWNLOAD_EMAIL_ATTACHMENTS_PATH,
+    TEST_MSG_SUBJECT_PREFIX,
+    TEST_MSG_DEL_SUBJECT_PREFIX,
+    TEST_MSG_WITH_ATTACHMENT_SUBJECT_PREFIX,
+    TEST_MSG_BODY_PREFIX,
+    MAILBOX_PREFIX,
     TEST_MSG_ATTACHMENT,
+)
+
+from const import (
+    TEST_SERVER_HOST,
+    IMAP_PORT,
+    CONNECT_TIMEOUT,
+    TEST_ACCT_1_EMAIL,
+    TEST_ACCT_2_EMAIL,
     TEST_ACCT_1_USERNAME,
     TEST_ACCT_1_PASSWORD,
+    IMAP_MSG_TESTS_EMAIL_COUNT,
+    IMAP_MSG_TESTS_DRAFT_EMAIL_COUNT,
 )
 
 
@@ -444,7 +449,7 @@ class TestIMAPMessaging:
     def test_append_message_to_inbox(self, imap):
         # put a new message directly in the inbox using append and verify
         msg_subject = f'{TEST_MSG_SUBJECT_PREFIX} Appended {datetime.datetime.now()}'
-        imap.append_message_to_inbox(msg_subject)
+        imap.append_message_to_inbox(from_address=TEST_ACCT_1_EMAIL, to_address=TEST_ACCT_2_EMAIL, subject=msg_subject)
         time.sleep(1)
         imap.select_mailbox()
         found_id = imap.search_messages('SUBJECT', msg_subject)
@@ -454,7 +459,7 @@ class TestIMAPMessaging:
         # able to open multiple imap connections and select a mailbox and search using each connection
         c1 = imap
         log.debug('creating 2nd imap connection')
-        c2 = IMAP()
+        c2 = imap = IMAP(TEST_SERVER_HOST, IMAP_PORT, CONNECT_TIMEOUT)
         success = c2.login(TEST_ACCT_1_USERNAME, TEST_ACCT_1_PASSWORD)
         assert success, 'expected imap auth to be successful'
 
@@ -484,7 +489,7 @@ class TestIMAPMessaging:
         # able to open multiple imap connections and fetch a message using each connection
         c1 = imap
         log.debug('creating 2nd imap connection')
-        c2 = IMAP()
+        c2 = imap = IMAP(TEST_SERVER_HOST, IMAP_PORT, CONNECT_TIMEOUT)
         success = c2.login(TEST_ACCT_1_USERNAME, TEST_ACCT_1_PASSWORD)
         assert success, 'expected imap auth to be successful'
 
@@ -529,7 +534,7 @@ class TestIMAPMessaging:
         # then verify the other connections see the same message marked as read
         c1 = imap
         log.debug('creating 2nd imap connection')
-        c2 = IMAP()
+        c2 = imap = IMAP(TEST_SERVER_HOST, IMAP_PORT, CONNECT_TIMEOUT)
         success = c2.login(TEST_ACCT_1_USERNAME, TEST_ACCT_1_PASSWORD)
         assert success, 'expected imap auth to be successful'
 
