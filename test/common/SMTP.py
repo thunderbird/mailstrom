@@ -147,6 +147,10 @@ class SMTP:
 
         log.debug(f'{log_txt} with the subject: {subject}')
 
+        if self.locust:
+            # locust uses gevent greenlets to run concurrent users in single process
+            start_time = gevent.get_hub().loop.now()
+
         try:
             self.connection.sendmail(from_email, all_recipients, msg.as_string())
 
@@ -158,5 +162,16 @@ class SMTP:
                 log.debug(f'failed to send email: {type(e)}')
                 log.debug(e)
                 send_exception = type(e).__name__
+
+        # if running a locust load test we need to let locust know the smtp send worked
+        if self.locust:
+            events.request.fire(
+                request_type='smtp',
+                name='send_message',
+                response_time=(gevent.get_hub().loop.now() - start_time) * 1000,  # convert to ms
+                response_length=len(html_body) if not send_exception else 0,
+                context=None,
+                exception=send_exception,
+            )
 
         return send_exception
