@@ -487,3 +487,26 @@ class IMAP:
         assert APPEND_COMPLETED in data[0]
 
         return True
+
+    def wait_for_message_to_arrive(self, subject):
+        """
+        Check the inbox for a message to arrive with the given subject. If the message hasn't arrived yet wait
+        for it; return the id of the message after it has arrived (or -1 if it never arrived).
+        """
+        max_checks = 18
+        wait_seconds = 5
+        arrived_msg_id = 0
+
+        for checks in range(1, max_checks + 1):
+            self.select_mailbox()
+            log.debug(
+                f'waiting {wait_seconds} seconds for message to arrive in test_acct_1 inbox '
+                f'(check {checks} of {max_checks})'
+            )
+            time.sleep(wait_seconds)
+            found_msg_id = self.search_messages('SUBJECT', subject)
+            if len(found_msg_id) == 1:
+                arrived_msg_id = found_msg_id[0]
+                break
+
+        return arrived_msg_id

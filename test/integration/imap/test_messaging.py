@@ -12,7 +12,7 @@ from common.const import (
     TEST_MSG_MIME_VER,
     MSG_SEEN_FLAG,
     MSG_COPY_SAME_LOCATION,
-    CONTENT_TYPE_TEXT_PLAIN,
+    CONTENT_TYPE_TEXT_PLAIN_UTF,
     CONTENT_TYPE_MULTI_MIXED,
     CONTENT_TYPE_PNG,
     TRANS_ENCODING_7BIT,
@@ -327,7 +327,7 @@ class TestIMAPMessaging:
         assert msg['Content-Transfer-Encoding'] == TRANS_ENCODING_7BIT, (
             'expected message transfer encoding to be correct'
         )
-        assert msg['Content-Type'] == CONTENT_TYPE_TEXT_PLAIN, 'expected message content-type to be correct'
+        assert msg['Content-Type'] == CONTENT_TYPE_TEXT_PLAIN_UTF, 'expected message content-type to be correct'
 
     def test_fetch_message_flags(self, imap):
         # fetch the flags from a test message in the test_acct_1 inbox
@@ -386,7 +386,9 @@ class TestIMAPMessaging:
 
             elif msg_part == 2:
                 # text part of message
-                assert part['Content-Type'] == CONTENT_TYPE_TEXT_PLAIN, 'expected msg part 2 content type to be correct'
+                assert part['Content-Type'] == CONTENT_TYPE_TEXT_PLAIN_UTF, (
+                    'expected msg part 2 content type to be correct'
+                )
                 assert part['Content-Transfer-Encoding'] == TRANS_ENCODING_7BIT, (
                     'expected msg part 2 transfer encoding to be correct'
                 )
@@ -511,7 +513,7 @@ class TestIMAPMessaging:
         assert c1_msg['Content-Transfer-Encoding'] == TRANS_ENCODING_7BIT, (
             'expected message transfer encoding to be correct'
         )
-        assert c1_msg['Content-Type'] == CONTENT_TYPE_TEXT_PLAIN, 'expected message content-type to be correct'
+        assert c1_msg['Content-Type'] == CONTENT_TYPE_TEXT_PLAIN_UTF, 'expected message content-type to be correct'
 
         c2.select_mailbox()
         c2_msg_ids = c2.search_messages('SUBJECT', {TEST_MSG_SUBJECT_PREFIX})

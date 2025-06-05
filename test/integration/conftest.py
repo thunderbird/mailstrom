@@ -60,7 +60,7 @@ def smtp():
     Only login once per test session; the same login will be used by all of the tests in the session).
     """
     smtp = SMTP(TEST_SERVER_HOST, SMTP_PORT, CONNECT_TIMEOUT)
-    success = smtp.login(TEST_ACCT_1_USERNAME, TEST_ACCT_1_PASSWORD)
+    success = smtp.login(TEST_ACCT_2_USERNAME, TEST_ACCT_2_PASSWORD)
     assert success, 'expected smtp auth to be successful'
     yield smtp
 
@@ -75,29 +75,38 @@ def setup_env():
     """
     This fixture automatically runs only once per entire test session. If there is any setup that needs
     to be done before all of the tests start, do it here. For example if there are any Thundermail
-    options that we wish to set. Here we are cleaning up previous mailboxes that were created by these
+    options that we wish to set. Here we are cleaning up previous data that were created by these
     tests. We do it here at the start so that we can always go in and look at the email account mailboxes
     if we want to check the state after the tests ran (but before running them again).
     """
+    log.debug('cleaning up data leftover by previous tests')
+    cleanup_prev_test_data(TEST_ACCT_1_USERNAME, TEST_ACCT_1_PASSWORD)
+    cleanup_prev_test_data(TEST_ACCT_2_USERNAME, TEST_ACCT_2_PASSWORD)
+    log.debug('finished cleaning up previous test data')
+
+
+def cleanup_prev_test_data(test_acct_username, test_acct_password):
+    """
+    Utility function to cleanup previous test data for the given test email account.
+    """
     imap = IMAP(TEST_SERVER_HOST, IMAP_PORT, CONNECT_TIMEOUT)
-    success = imap.login(TEST_ACCT_1_USERNAME, TEST_ACCT_1_PASSWORD)
+    success = imap.login(test_acct_username, test_acct_password)
     assert success, 'expected imap auth to be successful'
 
-    log.debug('cleaning up test mailboxes')
+    log.debug(f'cleaning up {test_acct_username[:3]}*** test mailboxes')
     imap.cleanup_test_mailboxes(MAILBOX_PREFIX)
 
-    log.debug('cleaning up test emails')
+    log.debug(f'cleaning up {test_acct_username[:3]}*** test emails')
     imap.cleanup_test_messages(
         [TEST_MSG_SUBJECT_PREFIX, TEST_MSG_DEL_SUBJECT_PREFIX, TEST_MSG_WITH_ATTACHMENT_SUBJECT_PREFIX]
     )
 
-    log.debug('cleaning up draft test emails')
+    log.debug(f'cleaning up {test_acct_username[:3]}*** draft test emails')
     imap.cleanup_draft_test_messages()
 
     # done with imap
     signed_out = imap.logout()
     assert signed_out, 'expected imap logout to be successful'
-    log.debug('finished cleaning up mailboxes')
 
 
 @pytest.fixture(scope='class')
@@ -137,14 +146,14 @@ def populate_inbox():
             assert success, 'expected smtp auth to be successful'
 
         # send the email
-        success = smtp.send_test_email(
+        send_exception = smtp.send_test_email(
             to_email=TEST_ACCT_1_EMAIL,
             from_email=TEST_ACCT_2_EMAIL,
             subject=f'{TEST_MSG_SUBJECT_PREFIX} {x + 1}',
             body=TEST_MSG_BODY_PREFIX,
             attachment=None,
         )
-        assert success, 'expected to be able to send email via smtp'
+        assert send_exception is None, 'expected send message to be successful'
         time.sleep(1)
 
     # also we need to create some messages to be used for delete tests (special subject)
@@ -157,14 +166,14 @@ def populate_inbox():
             assert success, 'expected smtp auth to be successful'
 
         # send the email
-        success = smtp.send_test_email(
+        send_exception = smtp.send_test_email(
             to_email=TEST_ACCT_1_EMAIL,
             from_email=TEST_ACCT_2_EMAIL,
             subject=f'{TEST_MSG_DEL_SUBJECT_PREFIX} {x + 1}',
             body=TEST_MSG_BODY_PREFIX,
             attachment=None,
         )
-        assert success, 'expected to be able to send email via smtp'
+        assert send_exception is None, 'expected to be able to send email via smtp'
         time.sleep(1)
 
     # also we need to create some messages with attachments (special subject too)
@@ -177,14 +186,14 @@ def populate_inbox():
             assert success, 'expected smtp auth to be successful'
 
         # send the email
-        success = smtp.send_test_email(
+        send_exception = smtp.send_test_email(
             to_email=TEST_ACCT_1_EMAIL,
             from_email=TEST_ACCT_2_EMAIL,
             subject=f'{TEST_MSG_WITH_ATTACHMENT_SUBJECT_PREFIX} {x + 1}',
             body=TEST_MSG_BODY_PREFIX,
             attachment=TEST_MSG_ATTACHMENT,
         )
-        assert success, 'expected to be able to send email with attachment via smtp'
+        assert send_exception is None, 'expected to be able to send email with attachment via smtp'
         time.sleep(1)
 
     # now create our draft test messages
@@ -210,7 +219,7 @@ def populate_inbox():
     max_checks = 6
     wait_seconds = 5
     all_arrived = False
-    _exp_msg_count = (
+    exp_msg_count = (
         before_count
         + IMAP_MSG_TESTS_EMAIL_COUNT
         + IMAP_MSG_TESTS_DEL_EMAIL_COUNT
@@ -225,7 +234,7 @@ def populate_inbox():
         time.sleep(wait_seconds)
         after_count = imap.select_mailbox()  # inbox by default
         log.debug(f'inbox message count is now: {after_count}')
-        if after_count >= (before_count + IMAP_MSG_TESTS_EMAIL_COUNT + IMAP_MSG_TESTS_DEL_EMAIL_COUNT):
+        if after_count >= exp_msg_count:
             all_arrived = True
             break
 

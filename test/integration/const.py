@@ -9,7 +9,6 @@ load_dotenv(find_dotenv('.env.test'), override=True)
 # Mailstrom test server connection info
 TEST_SERVER_HOST = str(os.getenv('TEST_SERVER_HOST')).strip()
 IMAP_PORT = int(os.getenv('TEST_IMAP_PORT'))
-SMTP_HOST = str(os.getenv('TEST_SMTP_HOST')).strip()
 SMTP_PORT = int(os.getenv('TEST_SMTP_PORT'))
 CONNECT_TIMEOUT = 10  # seconds
 
