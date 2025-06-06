@@ -1,37 +1,42 @@
 import datetime
-
 import sys
-from locust import User, constant, task
+
+from locust import constant, task
 
 # since we are calling locust cmd line we need to add common to path
 sys.path.append('../')
 from common.IMAP import IMAP
 from common.logger import log
 
+from MailstromUser import MailstromUser
+
 from const import (
     TEST_SERVER_HOST,
     IMAP_PORT,
     CONNECT_TIMEOUT,
-    LOAD_TEST_ACCT_USERNAME,
-    LOAD_TEST_ACCT_PASSWORD,
     LOAD_TEST_FOLDER_NAME_PREFIX,
 )
 
 
-class MailstromIMAPUser(User):
+class MailstromIMAPUser(MailstromUser):
     # each task is repeated over and over by each test user; wait N seconds after each task is run
-    # with 3 seconds wait, each user will create approximately 20 folders per minute when all spawned
-    wait_time = constant(3)
+    wait_time = constant(1)
     folder_count = 0
     connection = None
 
     def on_start(self):
         # runs one time for each user (when the user is spun-up)
         self.folder_count = 0
-        log.debug(f'user instance {id(self)}: signing in to imap')
+
+        # each user instance grabs one unique test account/credentials
+        test_user = self.get_next_user()
+        log.debug(f'user instance {id(self)}: signing in to imap with username: {test_user["username"][:3]}***')
+
         self.connection = IMAP(TEST_SERVER_HOST, IMAP_PORT, CONNECT_TIMEOUT, locust=True)
-        success = self.connection.login(LOAD_TEST_ACCT_USERNAME, LOAD_TEST_ACCT_PASSWORD)
-        assert success, 'expected imap login to be successful'
+        success = self.connection.login(test_user['username'], test_user['password'])
+        if not success:
+            # exit this user instance but locust test will continue with other users
+            raise Exception(f'user instance {id(self)} imap sign-in failed!')
 
     @task
     # this task will be repeated over and over by each user (until the test run-time is met)
