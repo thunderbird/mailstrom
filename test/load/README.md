@@ -46,18 +46,18 @@ LOAD_TEST_TO_EMAIL_ACCT_PASSWORD = "<password>"
 
 ### User Test Account Credentials & Email Addresses
 
-The load tests sign in to mailstrom with multiple users and perform load test tasks for each user (in parallel). Stage server test accounts must already exist to be used with the load tests. You provide the credentials for these test accounts in a local `.load_test_users.csv` file. This file is in the .gitignore; be sure to NEVER check this file into the repo!
+The load tests sign in to mailstrom with multiple users and perform load test tasks for each user (in parallel). Stage server test accounts must already exist to be used with the load tests. You provide the credentials for these test accounts in a local `test/load/test_files/.load_test_users.csv` file. This file is in the .gitignore; be sure to NEVER check this file into the repo!
 
 **Note:**
 The tests will leave behind lots of data (i.e. mailboxes/folders/emails) so it is highly recommended you use mailstrom test accounts and not your own personal accounts!
 
 The following information is required for each mailstrom load test account:
 
-stage-server-username: The mailstrom stage test account username<br>
-user-password: The mailstrom stage test account user password<br>
-user-email-address: The mailstrom email address that is already configured and exists for the given mailstrom user
+* stage-server-username: The mailstrom stage test account username
+* user-password: The mailstrom stage test account user password
+* user-email-address: The mailstrom email address that is already configured and exists for the given mailstrom user
 
-To provide the test account user information for the load test, create a local `test/load/.load_test_users.csv` CSV file.<br>
+To provide the test account user information for the load test, create a local `test/load/test_files/.load_test_users` file.<br>
 Add a line in the CSV file for each stage load test account, using the following format for each line/user:
 
 `stage-server-username,user-password,user-email-address`
@@ -73,7 +73,7 @@ Edit the `test/load/locust.conf` and set the parameters for the load test. Impor
 
 ```bash
 cd test/load
-locust -f locust-tests/<load-test-name.py>
+locust -f locust_tests/<load-test-name.py>
 ```
 
 ### Enable debug logging
@@ -87,7 +87,7 @@ LOG_LEVEL = 'DEBUG'
 ### View the locust results
 
 After running the tests locust writes an HTML results report which includes performance numbers and charts.
-The report will be found at `/mailstrom/test/load/locust-output/locust-report.html`.
+The report will be found at `/mailstrom/test/load/locust_output/locust-report.html`.
 
 ### Using the locust dashboard
 

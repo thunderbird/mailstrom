@@ -50,8 +50,8 @@ class MailstromSMTPUser(MailstromUser):
         # smtp rate limited to sending 10 emails per session, must reconnect to avoid
         if self.email_count % 10 == 0:
             log.debug(
-                f'user instance {id(self)} {self.test_user["username"][:3]}***: disconnecting and \
-                      reconnecting smtp to avoid session rate limiting'
+                f'user instance {id(self)} {self.test_user["username"][:3]}***: disconnecting and '
+                + 'reconnecting smtp to avoid session rate limiting'
             )
             signed_out = self.connection.logout()
             assert signed_out, 'expected smtp logout to be successful'
@@ -59,12 +59,12 @@ class MailstromSMTPUser(MailstromUser):
             assert success, 'expected smtp login to be successful'
 
         log.debug(
-            f'user instance {id(self)} {self.test_user["username"][:3]}***: sending email message \
-                  {self.email_count} via smtp'
+            f'user instance {id(self)} {self.test_user["username"][:3]}***: sending email message '
+            + f'{self.email_count} via smtp'
         )
         subject = (
             f'{LOAD_TEST_EMAIL_SUBJECT_PREFIX} (user instance {id(self)} '
-            f'msg {self.email_count}) {datetime.datetime.now()}'
+            + f'msg {self.email_count}) {datetime.datetime.now()}'
         )
         self.connection.send_test_email_multipart(
             to_email=LOAD_TEST_TO_EMAIL,

@@ -11,7 +11,7 @@ TEST_SERVER_HOST = str(os.getenv('TEST_SERVER_HOST')).strip()
 SMTP_PORT = int(os.getenv('TEST_SMTP_PORT'))
 IMAP_PORT = int(os.getenv('TEST_IMAP_PORT'))
 CONNECT_TIMEOUT = 10  # seconds
-LOAD_TEST_USERS_CSV = '.load_test_users.csv'
+LOAD_TEST_USERS_CSV = './test_files/.load_test_users.csv'
 
 # test email and associated credentials where the load test emails will be sent to (same server)
 LOAD_TEST_TO_EMAIL = str(os.getenv('LOAD_TEST_TO_EMAIL')).strip()

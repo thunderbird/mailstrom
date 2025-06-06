@@ -15,18 +15,15 @@ from const import (
 USER_CREDENTIALS = None
 
 
-"""
-MailstromUser class, use this as our base clase for every load test. Inherits from locust User.
-Enables reading mailstrom test account credentials from the local credentials CSV file, and
-provide the credentials to the load tests. Each locust load test user instance will use one
-unique test account and associated credentials from the local credentials file.
-"""
-
-
 class MailstromUser(User):
-    # must set this since we are inheriting the locust User base class but not providing
-    # an actual locust task here; the task will be provided in our subclass that inherits this
-    abstract = True
+    """
+    MailstromUser class, use this as our base clase for every load test. Inherits from locust User.
+    Enables reading mailstrom test account credentials from the local credentials CSV file, and
+    provide the credentials to the load tests. Each locust load test user instance will use one
+    unique test account and associated credentials from the local credentials file.
+    """
+
+    abstract = True  # only inheriting locust User; actual task provided in subclass
 
     def __init__(self, environment):
         # read our user credentials from the local credentials file (NOT in the repo!); reading from the
@@ -42,6 +39,8 @@ class MailstromUser(User):
                 with open(LOAD_TEST_USERS_CSV, newline='') as creds_csv:
                     reader = csv.reader(creds_csv)
                     for cred in reader:
+                        if len(cred) != 3:
+                            raise Exception('local credentials file not formatted correctly')
                         USER_CREDENTIALS.append(
                             {
                                 'username': cred[0],
@@ -60,4 +59,4 @@ class MailstromUser(User):
             return USER_CREDENTIALS.pop()
         else:
             # exit this user instance but locust test will continue with other users
-            raise Exception('attempting to spin up new user but ran out of credentials in credentials file')
+            raise RuntimeError('attempting to spin up new user but ran out of credentials in credentials file')
