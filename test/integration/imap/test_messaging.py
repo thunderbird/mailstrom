@@ -35,8 +35,8 @@ from const import (
     TEST_ACCT_2_EMAIL,
     TEST_ACCT_1_USERNAME,
     TEST_ACCT_1_PASSWORD,
-    IMAP_MSG_TESTS_EMAIL_COUNT,
-    IMAP_MSG_TESTS_DRAFT_EMAIL_COUNT,
+    MSG_TESTS_EMAIL_COUNT,
+    MSG_TESTS_DRAFT_EMAIL_COUNT,
 )
 
 
@@ -47,7 +47,7 @@ class TestIMAPMessaging:
     These tests require specific emails to already exist in the test_acct_1 inbox. These emails
     are automatically created and sent to our test_acct_1 email by the populate_inbox pytest fixture
     which runs one time before any of these tests start. So before the tests start the test_acct_1
-    inbox will contain at least IMAP_MSG_TESTS_EMAIL_COUNT messages. These tests are specifically
+    inbox will contain at least MSG_TESTS_EMAIL_COUNT messages. These tests are specifically
     for IMAP messaging even though they use SMTP to populate the inbox first; there will be separate
     tests specifically for SMTP.
     """
@@ -56,16 +56,16 @@ class TestIMAPMessaging:
         # select inbox and search for all messages
         imap.select_mailbox()
         found_msgs = imap.search_messages('ALL')
-        assert len(found_msgs) >= IMAP_MSG_TESTS_EMAIL_COUNT, (
-            f'expected at least {IMAP_MSG_TESTS_EMAIL_COUNT} messages to have been found'
+        assert len(found_msgs) >= MSG_TESTS_EMAIL_COUNT, (
+            f'expected at least {MSG_TESTS_EMAIL_COUNT} messages to have been found'
         )
 
     def test_search_messages_matching_to(self, imap):
         # search inbox for messages with specific email in to: field
         imap.select_mailbox()
         found_msgs = imap.search_messages('TO', TEST_ACCT_1_EMAIL)
-        assert len(found_msgs) >= IMAP_MSG_TESTS_EMAIL_COUNT, (
-            f'expected at least {IMAP_MSG_TESTS_EMAIL_COUNT} messages to have been found'
+        assert len(found_msgs) >= MSG_TESTS_EMAIL_COUNT, (
+            f'expected at least {MSG_TESTS_EMAIL_COUNT} messages to have been found'
         )
 
         # now search using an email we know doesn't exist, so should return 0 messages
@@ -76,8 +76,8 @@ class TestIMAPMessaging:
         # search inbox for messages with specific email in from: field
         imap.select_mailbox()
         found_msgs = imap.search_messages('FROM', TEST_ACCT_2_EMAIL)
-        assert len(found_msgs) >= IMAP_MSG_TESTS_EMAIL_COUNT, (
-            f'expected at least {IMAP_MSG_TESTS_EMAIL_COUNT} messages to have been found'
+        assert len(found_msgs) >= MSG_TESTS_EMAIL_COUNT, (
+            f'expected at least {MSG_TESTS_EMAIL_COUNT} messages to have been found'
         )
 
         # now search using an email we know doesn't exist, so should return 0 messages
@@ -88,8 +88,8 @@ class TestIMAPMessaging:
         # search inbox for messages that contain specified text in message subject
         imap.select_mailbox()
         found_msgs = imap.search_messages('SUBJECT', TEST_MSG_SUBJECT_PREFIX)
-        assert len(found_msgs) >= IMAP_MSG_TESTS_EMAIL_COUNT, (
-            f'expected at least {IMAP_MSG_TESTS_EMAIL_COUNT} messages to have been found'
+        assert len(found_msgs) >= MSG_TESTS_EMAIL_COUNT, (
+            f'expected at least {MSG_TESTS_EMAIL_COUNT} messages to have been found'
         )
 
         # now search using a subject we know doesn't exist, so should return 0 messages
@@ -100,8 +100,8 @@ class TestIMAPMessaging:
         # search inbox for messages that contain specified text in message body
         imap.select_mailbox()
         found_msgs = imap.search_messages('BODY', TEST_MSG_BODY_PREFIX)
-        assert len(found_msgs) >= IMAP_MSG_TESTS_EMAIL_COUNT, (
-            f'expected at least {IMAP_MSG_TESTS_EMAIL_COUNT} messages to have been found'
+        assert len(found_msgs) >= MSG_TESTS_EMAIL_COUNT, (
+            f'expected at least {MSG_TESTS_EMAIL_COUNT} messages to have been found'
         )
 
         # now search using a text we know won't exist in any message body, so should return 0 messages
@@ -112,8 +112,8 @@ class TestIMAPMessaging:
         # search for draft messages
         imap.select_mailbox('Drafts')
         found_msgs = imap.search_messages('DRAFT')
-        assert len(found_msgs) >= IMAP_MSG_TESTS_DRAFT_EMAIL_COUNT, (
-            f'expected at least {IMAP_MSG_TESTS_DRAFT_EMAIL_COUNT} draft messages to have been found'
+        assert len(found_msgs) >= MSG_TESTS_DRAFT_EMAIL_COUNT, (
+            f'expected at least {MSG_TESTS_DRAFT_EMAIL_COUNT} draft messages to have been found'
         )
 
     def test_search_messages_deleted(self, imap):
@@ -160,8 +160,8 @@ class TestIMAPMessaging:
         imap.select_mailbox()
         today = datetime.datetime.now().strftime('%d-%b-%Y')  # IMAP requires dd-mm-yyyy ie. 23-Apr-2025
         found_msgs = imap.search_messages(f'ON {today}')
-        assert len(found_msgs) >= IMAP_MSG_TESTS_EMAIL_COUNT, (
-            f'expected at least {IMAP_MSG_TESTS_EMAIL_COUNT} messages to have been found'
+        assert len(found_msgs) >= MSG_TESTS_EMAIL_COUNT, (
+            f'expected at least {MSG_TESTS_EMAIL_COUNT} messages to have been found'
         )
 
         # search inbox for messages received on a date that we know we never received any msgs on
@@ -479,8 +479,8 @@ class TestIMAPMessaging:
         assert msg_count != 0, 'expected drafts folder to have messages'
 
         found_msgs = c2.search_messages('DRAFT')
-        assert len(found_msgs) >= IMAP_MSG_TESTS_DRAFT_EMAIL_COUNT, (
-            f'expected at least {IMAP_MSG_TESTS_DRAFT_EMAIL_COUNT} draft messages to have been found'
+        assert len(found_msgs) >= MSG_TESTS_DRAFT_EMAIL_COUNT, (
+            f'expected at least {MSG_TESTS_DRAFT_EMAIL_COUNT} draft messages to have been found'
         )
 
         # done with the second connection

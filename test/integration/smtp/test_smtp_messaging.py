@@ -245,9 +245,6 @@ class TestSMTPMessaging:
         for part in msg.walk():
             msg_part += 1
             if msg_part == 1:
-                log.debug('part 1')
-                log.debug(part)
-
                 # message top-level
                 assert CONTENT_TYPE_MULTI_MIXED in part['Content-Type'], (
                     'expected top-level msg content type to be correct'

@@ -3,6 +3,7 @@ import time
 
 from common.IMAP import IMAP
 from common.SMTP import SMTP
+from common.JMAP import JMAP
 
 from common.logger import log
 
@@ -26,10 +27,10 @@ from const import (
     TEST_ACCT_1_PASSWORD,
     TEST_ACCT_2_USERNAME,
     TEST_ACCT_2_PASSWORD,
-    IMAP_MSG_TESTS_EMAIL_COUNT,
-    IMAP_MSG_TESTS_DRAFT_EMAIL_COUNT,
-    IMAP_MSG_TESTS_DEL_EMAIL_COUNT,
-    IMAP_MSG_TESTS_EMAIL_WITH_ATTACHMENT_COUNT,
+    MSG_TESTS_EMAIL_COUNT,
+    MSG_TESTS_DRAFT_EMAIL_COUNT,
+    MSG_TESTS_DEL_EMAIL_COUNT,
+    MSG_TESTS_EMAIL_WITH_ATTACHMENT_COUNT,
 )
 
 
@@ -38,7 +39,7 @@ def imap():
     """
     This fixture runs only once per entire test session, when included in any test definition.
     Before the tests start login to the IMAP server and provide the imap connection instance.
-    Only login once per test session; the same login will be used by all of the tests in the session).
+    Only login once per test session; the same login will be used by all of the tests in the session.
     """
     imap = IMAP(TEST_SERVER_HOST, IMAP_PORT, CONNECT_TIMEOUT)
     success = imap.login(TEST_ACCT_1_USERNAME, TEST_ACCT_1_PASSWORD)
@@ -57,7 +58,8 @@ def smtp():
     """
     This fixture runs only once per entire test session, when included in any test definition.
     Before the tests start login to the SMTP server and provide the SMTP connection instance.
-    Only login once per test session; the same login will be used by all of the tests in the session).
+    Only login once per test session; the same login will be used by all of the tests in the session.
+    We sign into SMTP as TEST_ACCT_2 as we want to send emails from TEST_ACCT_2 to TEST_ACCT_1.
     """
     smtp = SMTP(TEST_SERVER_HOST, SMTP_PORT, CONNECT_TIMEOUT)
     success = smtp.login(TEST_ACCT_2_USERNAME, TEST_ACCT_2_PASSWORD)
@@ -68,6 +70,38 @@ def smtp():
     if success:
         signed_out = smtp.logout()
         assert signed_out, 'expected smtp logout to be successful'
+
+
+@pytest.fixture(scope='session')
+def jmap_acct_1():
+    """
+    JMAP client instance for use with TEST_ACCT_1. Sign into JMAP TEST_ACCT_1 when we want
+    to use/search/retrieve emails that exist in TEST_ACCT_1, or for mailbox tests.
+    This fixture runs only once per entire test session, when included in any test definition.
+    Before the tests start connect to the server and provide a JMAP client instance. Creates
+    one client per test session; the same client will be used by all of the tests in the session.
+    """
+    jmap_acct_1 = JMAP(TEST_SERVER_HOST, TEST_ACCT_1_USERNAME, TEST_ACCT_1_PASSWORD)
+    assert jmap_acct_1.client is not None, 'expected jmap client'
+    yield jmap_acct_1
+    # no need to close the client/connection (client sends requests and gets responses) but if we
+    # need any post-jmap client creation code, put it here
+
+
+@pytest.fixture(scope='session')
+def jmap_acct_2():
+    """
+    JMAP client instance for use with TEST_ACCT_2. Sign into JMAP TEST_ACCT_2 when we want
+    to send emails from TEST_ACCT_2 (to TEST_ACCT_1).
+    This fixture runs only once per entire test session, when included in any test definition.
+    Before the tests start connect to the server and provide a JMAP client instance. Creates
+    one client per test session; the same client will be used by all of the tests in the session.
+    """
+    jmap_acct_2 = JMAP(TEST_SERVER_HOST, TEST_ACCT_2_USERNAME, TEST_ACCT_2_PASSWORD)
+    assert jmap_acct_2.client is not None, 'expected jmap client'
+    yield jmap_acct_2
+    # no need to close the client/connection (client sends requests and gets responses) but if we
+    # need any post-jmap client creation code, put it here
 
 
 @pytest.fixture(scope='session', autouse=True)
@@ -122,7 +156,7 @@ def populate_inbox():
     Also we pause 1 second after sending each email to avoid rate limiting; although we are also rate
     limited if we send more than 25 emails per (hour?).
     """
-    log.debug('populating test_acct_1 for imap messaging tests')
+    log.debug('populating test_acct_1 for imap and jmap messaging tests')
 
     # first check how many messags exist in the test_acct_1 inbox
     imap = IMAP(TEST_SERVER_HOST, IMAP_PORT, CONNECT_TIMEOUT)
@@ -137,7 +171,7 @@ def populate_inbox():
     success = smtp.login(TEST_ACCT_2_USERNAME, TEST_ACCT_2_PASSWORD)
     assert success, 'expected smtp auth to be successful'
 
-    for x in range(IMAP_MSG_TESTS_EMAIL_COUNT):
+    for x in range(MSG_TESTS_EMAIL_COUNT):
         if x != 0 and x % 10 == 0:
             log.debug("disconnecting and reconnecting smtp so we won't exceed sent messages per session")
             signed_out = smtp.logout()
@@ -157,7 +191,7 @@ def populate_inbox():
         time.sleep(1)
 
     # also we need to create some messages to be used for delete tests (special subject)
-    for x in range(IMAP_MSG_TESTS_DEL_EMAIL_COUNT):
+    for x in range(MSG_TESTS_DEL_EMAIL_COUNT):
         if x != 0 and x % 10 == 0:
             log.debug("disconnecting and reconnecting smtp so we won't exceed sent messages per session")
             signed_out = smtp.logout()
@@ -177,7 +211,7 @@ def populate_inbox():
         time.sleep(1)
 
     # also we need to create some messages with attachments (special subject too)
-    for x in range(IMAP_MSG_TESTS_EMAIL_WITH_ATTACHMENT_COUNT):
+    for x in range(MSG_TESTS_EMAIL_WITH_ATTACHMENT_COUNT):
         if x != 0 and x % 10 == 0:
             log.debug("disconnecting and reconnecting smtp so we won't exceed sent messages per session")
             signed_out = smtp.logout()
@@ -197,7 +231,7 @@ def populate_inbox():
         time.sleep(1)
 
     # now create our draft test messages
-    for x in range(IMAP_MSG_TESTS_DRAFT_EMAIL_COUNT):
+    for x in range(MSG_TESTS_DRAFT_EMAIL_COUNT):
         success = imap.create_draft_email(
             from_address=TEST_ACCT_1_EMAIL,
             to_address=TEST_ACCT_2_EMAIL,
@@ -207,9 +241,7 @@ def populate_inbox():
         time.sleep(1)
 
     draft_count = imap.select_mailbox('Drafts')
-    assert draft_count >= IMAP_MSG_TESTS_DRAFT_EMAIL_COUNT, (
-        f'expected {IMAP_MSG_TESTS_DRAFT_EMAIL_COUNT} draft messages to exist'
-    )
+    assert draft_count >= MSG_TESTS_DRAFT_EMAIL_COUNT, f'expected {MSG_TESTS_DRAFT_EMAIL_COUNT} draft messages to exist'
 
     # done with smtp
     signed_out = smtp.logout()
@@ -220,10 +252,7 @@ def populate_inbox():
     wait_seconds = 5
     all_arrived = False
     exp_msg_count = (
-        before_count
-        + IMAP_MSG_TESTS_EMAIL_COUNT
-        + IMAP_MSG_TESTS_DEL_EMAIL_COUNT
-        + IMAP_MSG_TESTS_EMAIL_WITH_ATTACHMENT_COUNT
+        before_count + MSG_TESTS_EMAIL_COUNT + MSG_TESTS_DEL_EMAIL_COUNT + MSG_TESTS_EMAIL_WITH_ATTACHMENT_COUNT
     )
 
     for checks in range(1, max_checks + 1):

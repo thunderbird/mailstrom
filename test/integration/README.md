@@ -12,10 +12,10 @@ those instructions to activate one and install dependencies for tests.
 ## Environment Setup
 
 The integration tests need two mailstrom test accounts (and associated credentials) that already exist on the host server, as well as the port info.
-Each test account must have a mailstrom email address set up with it already.
+Each test account must have a mailstrom (Thundermail) email address set up with it already, and an associated app password (ie. setup in TB Accounts).
 
 **Note:**
-The tests will leave behind data (i.e. mailboxes/folders/emails) so it is highly recommended you use mailstrom test accounts and not your own personal account.
+The tests will leave behind data (i.e. mailboxes/folders/emails) so it is highly recommended you use mailstrom test accounts and not your own personal account. For the account password you use the app password that you created in TB Accounts, NOT the password you used to sign into TB Accounts itself.
 
 Provide your mailstrom test accounts info in a local .env.test file as follows:
 
@@ -29,15 +29,16 @@ add the following values:
 
 ```
 TEST_SERVER_HOST = "<your mailstrom server host name>"
-TEST_IMAP_PORT = "<your mailstrom IMAP server port>" # Must be a quoted string even though it represents an integer value
-TEST_SMTP_PORT = "<your mailstrom SMTP server port>" # Must be a quoted string even though it represents an integer value
+TEST_IMAP_PORT = <your mailstrom IMAP server port>
+TEST_SMTP_PORT = <your mailstrom SMTP server port>
+TEST_JMAP_PORT = <your mailstrom JMAP server port>
 
 TEST_ACCT_1_USERNAME = "<email address / username that exists on the host>"
-TEST_ACCT_1_PASSWORD = "<associated password>"
+TEST_ACCT_1_PASSWORD = "<associated app password>"
 TEST_ACCT_1_EMAIL = "email address assocated with test_acct_1 creds"
 
 TEST_ACCT_2_USERNAME = "<email address / username that exists on the host>"
-TEST_ACCT_2_PASSWORD = "<associated password>"
+TEST_ACCT_2_PASSWORD = "<associated app password>"
 TEST_ACCT_2_EMAIL = "email address assocated with test_acct_2 creds"
 ```
 
