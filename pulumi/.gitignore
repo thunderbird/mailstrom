@@ -1,4 +1,5 @@
 *.pyc
 venv/
 bootstrap.tbz
+bootstrap.zip
 user_data.sh

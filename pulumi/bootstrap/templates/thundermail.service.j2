@@ -11,15 +11,15 @@ Requires=docker.service
 TimeoutStartSec=0
 Restart=always
 Type=exec
-ExecStartPre=-docker exec stalwart-mail stop
-ExecStartPre=-docker rm stalwart-mail
-ExecStart=docker run --rm --name stalwart-mail \
-    -v /opt/stalwart-mail:/opt/stalwart-mail \
+ExecStartPre=-docker exec stalwart stop
+ExecStartPre=-docker rm stalwart
+ExecStart=docker run --rm --name stalwart \
+    -v /opt/stalwart:/opt/stalwart \
     {% for service in node_services.split(',') -%}
     -p {{ service_ports[service]['port'] }}:{{ service_ports[service]['port'] }} \
     {% endfor -%}
     {{ stalwart_image }}
-ExecStop=docker stop stalwart-mail
+ExecStop=docker stop stalwart
 RestartSec=2
 
 [Install]

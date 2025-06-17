@@ -12,7 +12,7 @@ BOOTSTRAP_LOG = '/var/log/stalwart-bootstrap.log'
 INSTANCE_TAGS = {}
 # Map of template files to target files
 TEMPLATE_MAP = {
-    'stalwart.toml.j2': '/opt/stalwart-mail/etc/config.toml',
+    'stalwart.toml.j2': '/opt/stalwart/etc/config.toml',
     'thundermail.service.j2': '/usr/lib/systemd/system/thundermail.service',
 }
 # Map of template variable to EC2 tags
