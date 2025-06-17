@@ -1,0 +1,5 @@
+# The integration tests use this folder to download email attachments
+# Gave github ignore everything in this directory
+*
+# Except this file
+!.gitignore

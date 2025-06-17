@@ -20,9 +20,9 @@ class TestSMTPAuth:
         assert success, 'expected smtp auth to be successful'
         time.sleep(3)
 
-        log.debug(f'verifying user {TEST_ACCT_2_EMAIL[:3]}*** with SMTP server')
+        log.debug(f'verifying user {TEST_ACCT_2_EMAIL.split("@")[0]} with SMTP server')
         result, data = smtp.connection.verify(TEST_ACCT_2_EMAIL)
-        log.debug(f'{result}, {data[:3]}***')
+        log.debug(f'{result}, {data}')
         assert result == 250, 'expected smtp verify to return 250'
         assert TEST_ACCT_2_EMAIL in data.decode(), 'expected test acct email address to be returned by smtp verify'
 

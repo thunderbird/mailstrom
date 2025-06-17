@@ -57,11 +57,31 @@ When the integration tests start they will clean up any mailboxes/folders and em
 
 ## Run the Tests
 
-Run the integration tests via pytest:
+First in the main mailstrom folder activate your python virtualenv:
+
+```bash
+cd mailstrom
+source .venv/bin/activate
+```
+
+Run all of the integration tests via pytest:
 
 ```bash
 cd test/integration
 python -m pytest -vs
+```
+
+To run the integration tests for only one component (i.e. JMAP tests):
+```bash
+cd test/integration
+python -m pytest -vs jmap
+```
+
+To run a single integration test (i.e. IMAP login):
+
+```bash
+cd test/integration
+python -m pytest -vs imap/test_login.py
 ```
 
 ### Enable debug logging

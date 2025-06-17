@@ -44,7 +44,7 @@ class TestSMTPMessaging:
 
         # now use imap and check if the sent message was received
         msg_arrived = imap.wait_for_message_to_arrive(subject)
-        assert msg_arrived, f'expected the sent message to have arrived at {TEST_ACCT_1_EMAIL[:3]}***'
+        assert msg_arrived, f'expected the sent message to have arrived at {TEST_ACCT_1_EMAIL.split("@")[0]}'
 
     def test_send_email_plain_text_with_attachment(self, smtp, imap):
         subject = f'{TEST_MSG_SUBJECT_PREFIX} SMTP send test with attachment {datetime.datetime.now()}'
@@ -59,7 +59,7 @@ class TestSMTPMessaging:
 
         # now use imap and check if the sent message was received
         msg_arrived = imap.wait_for_message_to_arrive(subject)
-        assert msg_arrived, f'expected the sent message to have arrived at {TEST_ACCT_1_EMAIL[:3]}***'
+        assert msg_arrived, f'expected the sent message to have arrived at {TEST_ACCT_1_EMAIL.split("@")[0]}'
 
         # make sure message has attachment
         msg = imap.fetch_message_details(msg_arrived)
@@ -89,7 +89,7 @@ class TestSMTPMessaging:
                 )
 
                 # actually download the attachment
-                download_to = DOWNLOAD_EMAIL_ATTACHMENTS_PATH + 'smtp-msg-test-download.png'
+                download_to = os.path.join(os.getcwd(), DOWNLOAD_EMAIL_ATTACHMENTS_PATH, 'smtp-msg-test-download.png')
                 log.debug(f'downloading email msg attachment to: {download_to} ')
                 try:
                     with open(download_to, 'wb') as f:
@@ -151,7 +151,7 @@ class TestSMTPMessaging:
 
         # now use imap and check if the sent message was received
         msg_arrived = imap.wait_for_message_to_arrive(subject)
-        assert msg_arrived, f'expected the sent message to have arrived at {TEST_ACCT_1_EMAIL[:3]}***'
+        assert msg_arrived, f'expected the sent message to have arrived at {TEST_ACCT_1_EMAIL.split("@")[0]}'
 
         # get message details
         msg = imap.fetch_message_details(msg_arrived)
@@ -189,7 +189,7 @@ class TestSMTPMessaging:
 
         # now use imap and check if the sent message was received
         msg_arrived = imap.wait_for_message_to_arrive(subject)
-        assert msg_arrived, f'expected the sent message to have arrived at {TEST_ACCT_1_EMAIL[:3]}***'
+        assert msg_arrived, f'expected the sent message to have arrived at {TEST_ACCT_1_EMAIL.split("@")[0]}'
 
         # get message details
         msg = imap.fetch_message_details(msg_arrived)
@@ -233,7 +233,7 @@ class TestSMTPMessaging:
 
         # now use imap and check if the sent message was received
         msg_arrived = imap.wait_for_message_to_arrive(subject)
-        assert msg_arrived, f'expected the sent message to have arrived at {TEST_ACCT_1_EMAIL[:3]}***'
+        assert msg_arrived, f'expected the sent message to have arrived at {TEST_ACCT_1_EMAIL.split("@")[0]}'
 
         # get message details
         msg = imap.fetch_message_details(msg_arrived)
@@ -265,8 +265,12 @@ class TestSMTPMessaging:
                 assert part['Content-Type'] == exp_type, 'expected msg content type to be correct'
 
                 # actually download the attachment
-                download_to = DOWNLOAD_EMAIL_ATTACHMENTS_PATH + 'smtp-multipart-msg-test-download.png'
+                download_to = os.path.join(
+                    os.getcwd(), DOWNLOAD_EMAIL_ATTACHMENTS_PATH, 'smtp-multipart-msg-test-download.png'
+                )
+
                 log.debug(f'downloading email msg attachment to: {download_to} ')
+
                 try:
                     with open(download_to, 'wb') as f:
                         f.write(part.get_payload(decode=True))
@@ -302,7 +306,7 @@ class TestSMTPMessaging:
 
         # now use imap and check if the sent message was received
         msg_arrived = imap.wait_for_message_to_arrive(subject)
-        assert msg_arrived, f'expected the sent message to have arrived at {TEST_ACCT_1_EMAIL[:3]}***'
+        assert msg_arrived, f'expected the sent message to have arrived at {TEST_ACCT_1_EMAIL.split("@")[0]}'
 
         # todo: fetch message and ensure TEST_ACCT_1_EMAIL is cc'd
         msg = imap.fetch_message_details(msg_arrived)
@@ -328,7 +332,7 @@ class TestSMTPMessaging:
 
         # now use imap and check if the sent message was received
         msg_arrived = imap.wait_for_message_to_arrive(subject)
-        assert msg_arrived, f'expected the sent message to have arrived at {TEST_ACCT_1_EMAIL[:3]}***'
+        assert msg_arrived, f'expected the sent message to have arrived at {TEST_ACCT_1_EMAIL.split("@")[0]}'
 
         # todo: fetch message and ensure TEST_ACCT_1_EMAIL is cc'd
         msg = imap.fetch_message_details(msg_arrived)
@@ -354,7 +358,7 @@ class TestSMTPMessaging:
 
         # now use imap and check if the sent message was received
         msg_arrived = imap.wait_for_message_to_arrive(subject)
-        assert msg_arrived, f'expected the sent message to have arrived at {TEST_ACCT_1_EMAIL[:3]}***'
+        assert msg_arrived, f'expected the sent message to have arrived at {TEST_ACCT_1_EMAIL.split("@")[0]}'
 
         # fetch message and verify priority flag set
         msg = imap.fetch_message_details(msg_arrived)

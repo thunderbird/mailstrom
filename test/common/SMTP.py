@@ -48,7 +48,12 @@ class SMTP:
 
     def logout(self):
         log.debug(f'logging out of SMTP host: {self.host}')
-        result, data = self.connection.quit()
+
+        try:
+            result, data = self.connection.quit()
+        except Exception as e:
+            log.debug(f'{str(e)}')
+
         log.debug(f'{result}, {data}')
         return True if b'Bye' in data else False
 
@@ -71,7 +76,9 @@ class SMTP:
                     log.debug(f'{str(e)}')
             msg.add_attachment(img_data, maintype='image', subtype='png')
 
-        log.debug(f'sending an email from {from_email[:3]}*** to {to_email[:3]}*** with the subject: {subject}')
+        log.debug(
+            f'sending an email from {from_email.split("@")[0]} to {to_email.split("@")[0]} with the subject: {subject}'
+        )
 
         if self.locust:
             # locust uses gevent greenlets to run concurrent users in single process
@@ -111,19 +118,19 @@ class SMTP:
         msg['From'] = from_email
         msg['To'] = to_email
         all_recipients = [to_email]
-        log_txt = f'sending an email from {from_email[:3]}*** to {to_email[:3]}***'
+        log_txt = f'sending an email from {from_email.split("@")[0]} to {to_email.split("@")[0]}'
 
         msg['Subject'] = subject
 
         if cc_email:
             msg['CC'] = cc_email
             all_recipients.append(cc_email)
-            log_txt += f' cc {cc_email[:3]}***'
+            log_txt += f' cc {cc_email.split("@")[0]}'
 
         if bcc_email:
             msg['BCC'] = bcc_email
             all_recipients.append(bcc_email)
-            log_txt += f' bcc {bcc_email[:3]}***'
+            log_txt += f' bcc {bcc_email.split("@")[0]}'
 
         if plain_body:
             msg.attach(MIMEText(plain_body, 'plain'))
