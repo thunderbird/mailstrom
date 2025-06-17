@@ -341,12 +341,12 @@ A typical run will look something like this (except with prepended timestamps, w
 and your instance's actual tags and configuration listed):
 
 ```
-INFO - Bootstrapping begins now...
-INFO - Retrieved instance tags: {'Name': 'mailstrom-yourstack-stalwart-1', 'environment': 'yourstack', 'postboot.stalwart.aws_region': 'eu-central-1', 'postboot.stalwart.env': 'yourstack', 'postboot.stalwart.node_id': '1', 'postboot.stalwart.node_roles': 'acme_renew,metrics_calculate,metrics_push,purge_accounts,purge_stores', 'postboot.stalwart.node_services': 'imap,imaps,lmtp,managesieve,pop3,pop3s,smtp,smtps', 'project': 'mailstrom', 'pulumi_last_run_by': 'yourstack@yourmachine', 'pulumi_project': 'mailstrom', 'pulumi_stack': 'yourstack'}
-INFO - Found credentials from IAM Role: mailstrom-yourstack-stalwart-stalwart-node-profile
-INFO - Writing /opt/stalwart-mail/etc/config.toml to disk...
-INFO - Writing /usr/lib/systemd/system/thundermail.service to disk...
-INFO - Bootstrapping complete!
+[2025-06-17 18:08:16,029] INFO - Bootstrapping begins now...
+[2025-06-17 18:08:16,050] INFO - Retrieved instance tags: {'Name': 'mailstrom-stage-stalwart-99', 'environment': 'stage', 'postboot.stalwart.aws_region': 'eu-central-1', 'postboot.stalwart.env': 'stage', 'postboot.stalwart.https_paths': '/dav/pal,/dav/card,/jmap,/dav/cal', 'postboot.stalwart.image': 'stalwartlabs/mail-server:v0.12', 'postboot.stalwart.node_id': '99', 'postboot.stalwart.node_roles': 'acme_renew,metrics_calculate,metrics_push,purge_accounts,purge_stores', 'postboot.stalwart.node_services': 'management', 'project': 'mailstrom', 'pulumi_project': 'mailstrom', 'pulumi_stack': 'stage'}
+[2025-06-17 18:08:16,066] INFO - Found credentials from IAM Role: mailstrom-stage-stalwart-stalwart-node-profile
+[2025-06-17 18:08:16,355] INFO - Writing /opt/stalwart/etc/config.toml to disk...
+[2025-06-17 18:08:16,357] INFO - Writing /usr/lib/systemd/system/thundermail.service to disk...
+[2025-06-17 18:08:16,357] INFO - Bootstrapping complete!
 ```
 
 
@@ -354,7 +354,7 @@ INFO - Bootstrapping complete!
 
 There are currently two files of note on each node:
 
-- `/opt/stalwart-mail/etc/config.toml` - This is the Stalwart config. It contains only those settings that are required
+- `/opt/stalwart/etc/config.toml` - This is the Stalwart config. It contains only those settings that are required
   to be stored on the local machine. This includes the configuration to the database where it can find all the rest of
   the settings.
 - `/usr/lib/systemd/system/thundermail.service` - This configures Stalwart as a monitored systemd service using the
@@ -389,7 +389,7 @@ service gets updated to expose the right ports. See the "Changing Node Services"
 You can access the logs from the current Stalwart session with Docker:
 
 ```bash
-docker logs -f stalwart-mail
+docker logs -f stalwart
 ```
 
 You can access historical logs from the current and previous Stalwart sessions with the system journal:
@@ -403,8 +403,8 @@ nodes can be configured to run different sets of services, this command may be d
 look something like this:
 
 ```bash
-docker run --rm --name stalwart-mail \ # Name this container, delete stopped containers of the same name before running
-  -v /opt/stalwart-mail:/opt/stalwart-mail \ # Mount /opt/stalwart-mail on the host machine into the container
+docker run --rm --name stalwart \ # Name this container, delete stopped containers of the same name before running
+  -v /opt/stalwart:/opt/stalwart \ # Mount /opt/stalwart on the host machine into the container
   -p 443:443 \ # List of ports to expose on the host
   -p 143:143 \   # One for each service
   -p 993:993 \
@@ -521,7 +521,7 @@ for doing that are in the section above. In the end, you will end up running...
 python bootstrap.py
 ```
 
-...and this will cause a new Stalwart configuration file to be deployed to `/opt/stalwart-mail/etc/config.toml`. If you
+...and this will cause a new Stalwart configuration file to be deployed to `/opt/stalwart/etc/config.toml`. If you
 wish, you may verify its contents now, before it is applied, in case you need to make further changes.
 
 The script also causes a new systemd service config to be deployed, and the changes will involve what ports are exposed.
