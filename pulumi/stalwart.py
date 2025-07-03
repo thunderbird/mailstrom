@@ -20,9 +20,9 @@ from tb_pulumi.constants import ASSUME_ROLE_POLICY, IAM_POLICY_DOCUMENT
 
 #: Mapping of features of the https service and the API paths to enable for them
 HTTPS_FEATURES = {
-    'caldav': '/dav/cal,/dav/pal',
-    'carddav': '/dav/card,/dav/pal',
-    'jmap': '/jmap',
+    'caldav': '/dav/cal,/dav/pal,/.well-known/caldav',
+    'carddav': '/dav/card,/dav/pal,/.well-known/carddav',
+    'jmap': '/jmap,/.well-known/jmap',
     'webdav': '/dav/files,/dav/pal',
 }
 
