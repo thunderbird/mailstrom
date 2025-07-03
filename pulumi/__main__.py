@@ -8,6 +8,7 @@ import tb_pulumi.cloudfront
 import tb_pulumi.cloudwatch
 import tb_pulumi.ec2
 import tb_pulumi.elasticache
+import tb_pulumi.iam
 import tb_pulumi.network
 import tb_pulumi.s3
 import stalwart
@@ -157,4 +158,9 @@ monitoring = tb_pulumi.cloudwatch.CloudWatchMonitoringGroup(
     project=project,
     notify_emails=monitoring_opts['notify_emails'],
     config=monitoring_opts,
+)
+
+access_policies = tb_pulumi.iam.StackAccessPolicies(
+    name=f'{project.name_prefix}-sap',
+    project=project,
 )
