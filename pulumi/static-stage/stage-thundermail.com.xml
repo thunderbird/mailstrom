@@ -8,14 +8,14 @@
             <hostname>mail.stage-thundermail.com</hostname>
             <port>993</port>
             <socketType>SSL</socketType>
-            <username>%EMAILLOCALPART%@thunderbird.net</username>
+            <username>%EMAILLOCALPART%@stage-thundermail.com</username>
             <authentication>password-cleartext</authentication>
         </incomingServer>
         <outgoingServer type="smtp">
             <hostname>mail.stage-thundermail.com</hostname>
             <port>465</port>
             <socketType>SSL</socketType>
-            <username>%EMAILLOCALPART%@thunderbird.net</username>
+            <username>%EMAILLOCALPART%@stage-thundermail.com</username>
             <authentication>password-cleartext</authentication>
         </outgoingServer>
     </emailProvider>
