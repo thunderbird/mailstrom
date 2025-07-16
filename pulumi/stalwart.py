@@ -22,7 +22,7 @@ from tb_pulumi.constants import ASSUME_ROLE_POLICY, IAM_POLICY_DOCUMENT
 HTTPS_FEATURES = {
     'caldav': '/dav/cal,/dav/pal,/.well-known/caldav',
     'carddav': '/dav/card,/dav/pal,/.well-known/carddav',
-    'jmap': '/jmap',
+    'jmap': '/jmap,/.well-known/jmap',
     'webdav': '/dav/files,/dav/pal',
 }
 
