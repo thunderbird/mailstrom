@@ -672,7 +672,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
 
         # Some features require multiple paths; some of those paths overlap. Here we join and then split them again
         # then convert them to a set, which only contains unique paths.
-        https_paths = set(','.join([HTTPS_FEATURES[feature] for feature in self.https_features]).split(','))
+        https_paths = sorted(set(','.join([HTTPS_FEATURES[feature] for feature in self.https_features]).split(',')))
 
         # These tags will later get read back when the instance comes online by the postboot process
         postboot_tags = {
