@@ -1,5 +1,4 @@
 import json
-import logging
 import requests
 import time
 
@@ -20,12 +19,6 @@ from jmapc.methods import (
     MailboxGet,
     MailboxGetResponse,
 )
-
-
-# set the loglevel for jmapc to 'ERROR' to reduce log output in CI
-# if you want to debug locally set this to logging.DEBUG
-jmapc_logger = logging.getLogger('jmapc')
-jmapc_logger.setLevel(logging.ERROR)
 
 
 class JMAP:
@@ -168,7 +161,7 @@ class JMAP:
     def get_mailbox_by_name(self, mailbox_name):
         """
         Using a single request with multiple methods, first query for the given mailbox name to get the mailbox
-        id, then get the mailobx details for that mailbox (id).
+        id, then get the mailbox details for that mailbox (id).
         """
         methods = [
             MailboxQuery(filter=MailboxQueryFilterCondition(name=mailbox_name)),
@@ -186,7 +179,7 @@ class JMAP:
             f'expected a MailboxGetResponse but got {type(results[1])}'
         )
 
-        # if mailbox was found return the mailbox details, otherise none
+        # if mailbox was found return the mailbox details, otherwise none
         if len(results[0].response.ids) != 1:
             log.debug(f'mailbox "{mailbox_name}" was not found')
             return None
