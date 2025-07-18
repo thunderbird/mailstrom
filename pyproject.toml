@@ -18,4 +18,5 @@ dev = [
     "python-dotenv==1.0.1",
     "pytest==8.3.4",
     "locust==2.36.2",
+    "jmapc==0.2.23",
 ]

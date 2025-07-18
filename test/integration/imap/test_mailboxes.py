@@ -22,7 +22,7 @@ from common.const import (
 )
 
 from const import (
-    DEFAULT_MAILBOX_LIST,
+    DEFAULT_IMAP_MAILBOX_LIST,
 )
 
 
@@ -34,7 +34,7 @@ class TestIMAPMailboxes:
     def test_list_all_mailboxes(self, imap):
         mailbox_list = imap.get_mailboxes()
         # ensure that the expected default malboxes exist
-        for expected_mailbox in DEFAULT_MAILBOX_LIST:
+        for expected_mailbox in DEFAULT_IMAP_MAILBOX_LIST:
             assert expected_mailbox in mailbox_list, 'expected default mailboxes to exist'
 
     def test_create_mailbox(self, imap):

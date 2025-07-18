@@ -272,7 +272,6 @@ class IMAP:
 
         for mailbox in sorted_mailboxes:
             if mailbox_prefix in mailbox['name']:
-                log.debug(f'deleting mailbox: {mailbox["name"]}')
                 try:
                     self.delete_mailbox(mailbox['name'])
                 except Exception as _ex:
