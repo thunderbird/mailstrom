@@ -5,7 +5,6 @@ resources:
       secret_names:
         - stalwart.postboot.fallback_admin_password
         - stalwart.postboot.postgresql_backend
-        - stalwart.postboot.tb-accounts_backend
         - stalwart.postboot.keycloak_backend
 
   tb:network:MultiCidrVpc:
