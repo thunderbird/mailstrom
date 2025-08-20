@@ -78,7 +78,7 @@ def get_secrets(env: str, aws_region: str) -> dict:
         'redis_backend': f'mailstrom/{env}/stalwart.postboot.redis_backend',
         's3_iam_access_key': f'mailstrom/{env}/iam.user.mailstrom-{env}-stalwart.access_key',
         's3_backend': f'mailstrom/{env}/stalwart.postboot.s3_backend',
-        'keyclock_backend': f'mailstrom/{env}/stalwart.postboot.keycloak_backend',
+        'keycloak_backend': f'mailstrom/{env}/stalwart.postboot.keycloak_backend',
     }
     sm_client = boto3.client('secretsmanager', region_name=aws_region)
 
