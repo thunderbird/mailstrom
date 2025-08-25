@@ -15,7 +15,10 @@ import toml
 from enum import Enum
 from functools import cached_property
 from jinja2 import Template
-from stalwart import redis as stalwart_redis
+from stalwart import (
+    redis as stalwart_redis,
+    s3 as stalwart_s3,
+)
 from tb_pulumi.constants import ASSUME_ROLE_POLICY, IAM_POLICY_DOCUMENT
 
 
@@ -252,54 +255,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         )
 
         # Build an S3 bucket for Stalwart's blob storage
-        bucket_name = f'{self.name}-s3-store'
-        s3_bucket = tb_pulumi.s3.S3Bucket(
-            name=bucket_name,
-            project=self.project,
-            bucket_name=bucket_name,
-            enable_server_side_encryption=True,
-            enable_versioning=True,
-            opts=pulumi.ResourceOptions(parent=self),
-            tags=self.tags,
-        )
-
-        # Build a secret to store the Stalwart S3 config details in
-        s3_secret = tb_pulumi.secrets.SecretsManagerSecret(
-            name=f'{name}-secret-s3',
-            project=self.project,
-            exclude_from_project=True,
-            secret_name=f'mailstrom/{self.project.stack}/stalwart.postboot.s3_backend',
-            secret_value=json.dumps(
-                {
-                    'bucket': bucket_name,
-                    'region': self.project.aws_region,
-                }
-            ),
-            opts=pulumi.ResourceOptions(parent=self),
-        )
-
-        # Build an IAM policy granting bucket access
-        def __s3_policy(bucket_arn: str, bucket_name: str):
-            policy_doc = IAM_POLICY_DOCUMENT.copy()
-            policy_doc['Statement'][0]['Sid'] = 'AllowFullS3Access'
-            policy_doc['Statement'][0].update(
-                {
-                    'Action': ['s3:*'],
-                    'Resource': [bucket_arn, f'{bucket_arn}*'],
-                }
-            )
-            return aws.iam.Policy(
-                f'{self.name}-policy-s3',
-                name=f's3-full-access-{bucket_name}',
-                path='/',
-                description=f'Grants full acccess to the {bucket_name} S3 bucket and its contents',
-                policy=json.dumps(policy_doc),
-            )
-
-        # Build an IAM policy granting bucket access
-        s3_policy = pulumi.Output.all(bucket_arn=s3_bucket.resources['bucket'].arn, bucket_name=s3_bucket.name).apply(
-            lambda outputs: __s3_policy(bucket_arn=outputs['bucket_arn'], bucket_name=outputs['bucket_name'])
-        )
+        s3_bucket, s3_secret, s3_policy = stalwart_s3.s3(self=self)
 
         iam_user_name = f'{self.project.name_prefix}-stalwart'
         iam_user = tb_pulumi.iam.UserWithAccessKey(
