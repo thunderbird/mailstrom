@@ -8,8 +8,8 @@
             <hostname>mail.thundermail.com</hostname>
             <port>993</port>
             <socketType>SSL</socketType>
-            <username>%EMAILLOCALPART%@thunderbird.net</username>
-            <authentication>oauth2</authentication>
+            <username>%EMAILADDRESS%</username>
+            <authentication>OAuth2</authentication>
             <oAuth2>
               <clientID>open</clientID>
               <issuer>https://auth.tb.pro/realms/tbpro</issuer>
@@ -23,8 +23,8 @@
             <hostname>mail.thundermail.com</hostname>
             <port>465</port>
             <socketType>SSL</socketType>
-            <username>%EMAILLOCALPART%@thunderbird.net</username>
-            <authentication>oauth2</authentication>
+            <username>%EMAILADDRESS%</username>
+            <authentication>OAuth2</authentication>
             <oAuth2>
               <clientID>open</clientID>
               <issuer>https://auth.tb.pro/realms/tbpro</issuer>
