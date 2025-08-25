@@ -83,10 +83,10 @@ resources:
           node_roles:
             - all
           services:
-            - api
+            - management
           storage_capacity: 20
 
-      load_balancer:
+      public_load_balancer:
         excluded_nodes: []
         services:
           https:
@@ -105,6 +105,16 @@ resources:
             source_cidrs: ['0.0.0.0/0']
           submission:
             source_cidrs: ['0.0.0.0/0']
+
+      # private_load_balancers:
+      #   management:
+      #     excluded_nodes: []
+      #     # source_cidrs:
+      #     #   - 10.11.0.0/16  # accounts-stage
+      #     source_sgids:
+      #       - sg-0a711c607f9e0b959  # accounts-stage api container
+      #       - sg-02700bcc4c090da45  # accounts-stage celery container
+
       jmap:
         account:
           purge:

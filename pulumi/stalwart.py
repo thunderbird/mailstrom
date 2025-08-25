@@ -29,7 +29,6 @@ HTTPS_FEATURES = {
 #: Mapping of supported cluster services to their associated ports
 STALWART_CLUSTER_SERVICES = {
     'all': None,
-    'api': 8080,
     'https': 443,
     'imap': 143,
     'imaps': 993,
@@ -455,7 +454,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
     # Cache this property because it produces a Pulumi resource. We don't want to define that multiple times.
     @cached_property
     def public_load_balancer_security_group(self):
-        """Defines a security group for the load balancer based on the load_balancer config options."""
+        """Defines a security group for the public load balancer based on the public_load_balancer config options."""
 
         # Build a skeleton for the security group rules, allowing all egress
         lb_sg_rules = {
