@@ -1,7 +1,6 @@
 """A tb_pulumi extension that builds a `Stalwart cluster <https://stalw.art/docs/get-started/>`_."""
 
 import base64
-import json
 import pulumi
 import pulumi_aws as aws
 import tarfile
@@ -16,10 +15,10 @@ from enum import Enum
 from functools import cached_property
 from jinja2 import Template
 from stalwart import (
+    iam as stalwart_iam,
     redis as stalwart_redis,
     s3 as stalwart_s3,
 )
-from tb_pulumi.constants import ASSUME_ROLE_POLICY, IAM_POLICY_DOCUMENT
 
 
 #: Mapping of features of the https service and the API paths to enable for them
@@ -257,59 +256,8 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         # Build an S3 bucket for Stalwart's blob storage
         s3_bucket, s3_secret, s3_policy = stalwart_s3.s3(self=self)
 
-        iam_user_name = f'{self.project.name_prefix}-stalwart'
-        iam_user = tb_pulumi.iam.UserWithAccessKey(
-            name=f'{name}-user',
-            project=self.project,
-            exclude_from_project=True,
-            user_name=iam_user_name,
-            policies=[s3_policy],
-            opts=pulumi.ResourceOptions(parent=self, depends_on=[s3_policy]),
-        )
-
-        # Build a policy which will grant the nodes access to their own configuration data
-        bootstrap_secret_arns = [
-            (
-                'arn:aws:secretsmanager:'
-                + f'{self.project.aws_region}:{self.project.aws_account_id}'
-                + f':secret:mailstrom/{self.project.stack}/stalwart.postboot.*'
-            ),
-            (
-                'arn:aws:secretsmanager:'
-                + f'{self.project.aws_region}:{self.project.aws_account_id}'
-                + f':secret:mailstrom/{self.project.stack}/iam.user.{iam_user_name}.access_key*'
-            ),
-        ]
-        profile_policy_doc = IAM_POLICY_DOCUMENT.copy()
-        profile_policy_doc['Statement'][0].update(
-            {
-                'Sid': 'AllowPostbootSecretAccess',
-                'Action': ['secretsmanager:GetSecretValue'],
-                'Resource': bootstrap_secret_arns,
-            }
-        )
-        profile_policy = aws.iam.Policy(
-            f'{self.name}-policy-nodeprofile',
-            path='/',
-            description='Policy for the Stalwart node instance profile',
-            policy=json.dumps(profile_policy_doc),
-        )
-        arp = ASSUME_ROLE_POLICY.copy()
-        arp['Statement'][0]['Principal']['Service'] = 'ec2.amazonaws.com'
-        role = aws.iam.Role(
-            f'{self.name}-role-nodeprofile',
-            name=f'{self.name}-stalwart-node-profile',
-            assume_role_policy=json.dumps(arp),
-            path='/',
-        )
-        profile_attachment = aws.iam.RolePolicyAttachment(
-            f'{self.name}-rpa-nodeprofile',
-            role=role.name,
-            policy_arn=profile_policy.arn,
-        )
-        profile = aws.iam.InstanceProfile(
-            f'{self.name}-ip-nodeprofile', name=f'{self.name}-nodeprofile', role=role.name
-        )
+        # Build an IAM role with a policy to enable node bootstrapping
+        iam_user, profile_policy, role, profile_attachment, profile = stalwart_iam.iam(self, s3_policy=s3_policy)
 
         # Store a TOML version of the JMAP config in Secrets Manager for nodes to read back later
         jmap_dict = {'jmap': jmap} if jmap else {}  # Ensure every TOML option gets the "jmap" text in it
