@@ -29,6 +29,7 @@ HTTPS_FEATURES = {
 #: Mapping of supported cluster services to their associated ports
 STALWART_CLUSTER_SERVICES = {
     'all': None,
+    'api': 8080,
     'https': 443,
     'imap': 143,
     'imaps': 993,

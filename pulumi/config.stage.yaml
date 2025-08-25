@@ -74,6 +74,17 @@ resources:
             - smtps
             - submission
           storage_capacity: 20
+        "50":
+          disable_api_termination: True
+          ignore_ami_changes: True
+          ignore_user_data_changes: True
+          instance_type: t3.micro
+          key_name: mailstrom-stage
+          node_roles:
+            - all
+          services:
+            - api
+          storage_capacity: 20
 
       load_balancer:
         excluded_nodes: []
