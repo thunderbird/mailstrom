@@ -1,0 +1,9 @@
+config:
+  mailstrom:stalwart.postboot.postgresql_backend:
+    secure: AAABAHs1i8bx6N7vK2kFNS/kfL4H8h9lsqTitkbv5PBKMdM1myzViBV+rvyksQ==
+  mailstrom:stalwart.postboot.fallback_admin_password:
+    secure: AAABAMrfwyebYspk7l7oi8AH7R/q1Bjkl+8gMZl6iUOyUG9menHQmmkyZ5wjMH0=
+  mailstrom:stalwart.postboot.keycloak_backend:
+    secure: AAABALiauSmY6KlPSwb6Ve+WsBdBtbfDFQSO55oYsqz0M1SodAQBLjY/5/b/og==
+  clouodflare:apiToken:
+    secure: AAABAFVIjUlRLp1MnjouJgRSC+zYTWIDZinmmFIex5ocMM3eDXfy+Ik=

@@ -9,20 +9,20 @@ resources:
 
   tb:network:MultiCidrVpc:
     vpc:
-      cidr_block: 10.1.0.0/16
+      cidr_block: 10.2.0.0/16
       subnets:
         eu-central-1a:
-          - 10.1.0.0/17
+          - 10.2.0.0/17
         eu-central-1b:
-          - 10.1.128.0/17
+          - 10.2.128.0/17
       enable_internet_gateway: True
       egress_via_internet_gateway: True
       enable_dns_hostnames: True
       endpoint_interfaces:
         - secretsmanager
-      additional_routes:
-        - destination_cidr_block: 10.11.0.0/16  # accounts-stage
-          vpc_peering_connection_id: pcx-0522c0f470450e165
+      # additional_routes:
+      #   - destination_cidr_block: 10.11.0.0/16  # accounts-stage
+      #     vpc_peering_connection_id: pcx-0522c0f470450e165
 
   tb:elasticache:ElastiCacheReplicationGroup:
     stalwart:
@@ -54,7 +54,7 @@ resources:
         - caldav
         - carddav
         - jmap
-      stalwart_image: stalwartlabs/stalwart:v0.13
+      stalwart_image: stalwartlabs/stalwart:v0.13.2
       nodes:
         "0": # Must be a unique, stringified integer
           disable_api_termination: True
@@ -87,7 +87,7 @@ resources:
           storage_capacity: 20
 
       public_load_balancer:
-        excluded_nodes: []
+        excluded_nodes: ["50"]
         services:
           https:
             source_cidrs: ['0.0.0.0/0']
@@ -108,7 +108,7 @@ resources:
 
       private_load_balancers:
         management:
-          excluded_nodes: []
+          excluded_nodes: ["0"]
           # source_cidrs:
           #   - 10.11.0.0/16  # accounts-stage
           source_security_group_ids:
@@ -169,18 +169,18 @@ resources:
 
   tb:s3:S3BucketWebsite:
     autoconfig:
-      bucket_name: tb-mailstrom-stage-autoconfig-site
+      bucket_name: tb-mailstrom-rjung-autoconfig-site
       object_dir: static-stage
       website_config:
         error_document:
           key: 4xx.html
         index_document:
-          suffix: stage-thundermail.com.xml
+          suffix: rjung-thundermail.com.xml
         routing_rules:
           - condition:
               http_error_code_returned_equals: "404"
             redirect:
-              replace_key_with: "stage-thundermail.com.xml"
+              replace_key_with: "rjung-thundermail.com.xml"
   
   tb:cloudfront:CloudFrontDistribution:
     autoconfig:
@@ -188,8 +188,8 @@ resources:
       certificate_arn: arn:aws:acm:us-east-1:768512802988:certificate/a765b321-ac88-473a-a0de-b777a3faf53e
       distribution:
         aliases:
-          - autoconfig.stage-thundermail.com
-        comment: mailstrom-stage autoconfig
+          - autoconfig.rjung-thundermail.com
+        comment: mailstrom-rjung autoconfig
         default_cache_behavior:
           allowed_methods:
             - GET
@@ -207,12 +207,12 @@ resources:
           geo_restriction:
             restriction_type: none
       forcibly_destroy_bucket: True
-      logging_bucket_name: tb-mailstrom-stage-autoconfig-logs
+      logging_bucket_name: tb-mailstrom-rjung-autoconfig-logs
 
   tb:cloudwatch:CloudWatchMonitoringGroup:
     alarms: {}
     notify_emails:
-      - thunderbird-services-monitoring+mailstrom-stage@thunderbird.net
+      - thunderbird-services-monitoring+mailstrom-rjung@thunderbird.net
     # alarms:
     #   alarm_group_name:
     #     alarm_name:

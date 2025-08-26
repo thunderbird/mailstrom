@@ -11,6 +11,7 @@ import tb_pulumi.s3
 import tb_pulumi.secrets
 import toml
 
+from copy import deepcopy
 from enum import Enum
 from functools import cached_property
 from jinja2 import Template
@@ -27,6 +28,20 @@ HTTPS_FEATURES = {
     'carddav': '/dav/card,/dav/pal,/.well-known/carddav',
     'jmap': '/jmap,/.well-known/jmap',
     'webdav': '/dav/files,/dav/pal',
+}
+
+#: Starting point for making security group rules for load balancers
+LOAD_BALANCER_SECURITY_GROUP_RULE_SKELETON = {
+    'egress': [
+        {
+            'description': 'Allow traffic outbound from the load balancer',
+            'protocol': 'tcp',
+            'from_port': 0,
+            'to_port': 65535,
+            'cidr_blocks': ['0.0.0.0/0'],
+        }
+    ],
+    'ingress': [],
 }
 
 #: Mapping of supported cluster services to their associated ports
@@ -131,23 +146,6 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         Has no effect if ``jmap`` is not specified in ``https_features``.
     :type jmap: dict, optional
 
-    :param load_balancer: Configuration for the load balancer, listing services to expose and what other components to
-        expose them to. Must contain a `services` dict, whose keys must be valid :py:data:`STALWART_CLUSTER_SERVICES`.
-        Those values must contain at least one (or both) of a list of ``source_cidrs`` or a list of
-        ``source_security_group_ids``. For example:
-
-        .. code-block:: yaml
-            :linenos:
-
-            load_balancer:
-                services:
-                    imap:
-                        source_cidrs: ['0.0.0.0/0']
-                    management:
-                        source_security_group_ids: ['sg-abcdef0123456789']
-                        source_cidrs: ['10.0.0.0/8']
-    :type load_balancer: dict, optional
-
     :param nodes: Dict describing the individual nodes of the cluster. Each key is a node_id, which must be a
         stringified integer (a restriction imposed by Stalwart), and each value is a dict of supported values describing
         a node configuration. The configuration is composed of inputs to :py:meth:`StalwartCluster.node`. The values
@@ -169,6 +167,61 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
     :param node_additional_ingress_rules: Dict describing additional ingress rules to apply to the node. This is useful
         for granting access to services from sources other than the load balancer. Defaults to {}.
     :type node_additional_ingress_rules: dict, optional
+
+    :param private_load_balancers: Dict describing configurations for service-specific private load balancers. The keys
+        must be valid :py:data:`STALWART_CLUSTER_SERVICES`. The values must be dicts containing any of the following
+        options:
+
+        - ``excluded_nodes``: List of node IDs to remove from rotation.
+
+        - ``source_cidrs``: List of CIDRs to allow access to the private service.
+
+        - ``source_security_group_ids``: List of security group IDs to allow access to the private service.
+
+        For example:
+
+        .. code-block:: yaml
+            :linenos:
+
+            private_load_balancers:
+                management:
+                    excluded_nodes:
+                        - "19"
+                        - "42"
+                    source_cidrs:
+                        - 10.11.0.0/16
+                        - 10.21.0.0/16
+                    source_security_group_ids:
+                        - sg-abcdef0123456789
+    :type private_load_balancers: dict
+
+    :param public_load_balancer: Dict describing the configuration for a public-facing load balancer exposing Stalwart
+        services to the public Internet. Contains the following keys:
+
+        - ``excluded_nodes``: List of node IDs to remove from rotation.
+
+        - ``services``: Dict where the keys are valid :py:data:`STALWART_CLUSTER_SERVICES` and whose values are dicts
+            which may contain either of these keys:
+
+            - ``source_cidrs``: List of CIDRs to allow access to all public services (``0.0.0.0/0`` being the most
+                permissive value).
+
+            - ``source_security_group_ids``: List of security group IDs to allow access to all public services
+                (we do not recommend setting this, as this strongly counteracts the concept of a public service).
+
+        For example:
+
+        .. code-block:: yaml
+            :linenos:
+
+            load_balancer:
+                services:
+                    imap:
+                        source_cidrs: ['0.0.0.0/0']
+                    management:
+                        source_security_group_ids: ['sg-abcdef0123456789']
+                        source_cidrs: ['10.0.0.0/8']
+    :type public_load_balancer: dict, optional
 
     :param stalwart_image: The Docker image to use for the Stalwart service. Defaults to
         'stalwartlabs/mail-server:v0.11'
@@ -208,6 +261,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         jmap: dict = None,
         nodes: dict = {},
         node_additional_ingress_rules: list[dict] = [],
+        private_load_balancers: dict = {},
         public_load_balancer: dict = {},
         stalwart_image: str = 'stalwartlabs/mail-server:v0.11',
         user_data_archive: str = 'bootstrap.tbz',
@@ -229,8 +283,9 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
 
         # Internalize some vars we need in the other functions and properties
         self.https_features = https_features
-        self.public_load_balancer_config = public_load_balancer
         self.nodes = nodes
+        self.private_load_balancers = private_load_balancers
+        self.public_load_balancer_config = public_load_balancer
         self.stalwart_image = stalwart_image
         self.subnets = subnets
         self.user_data_archive = user_data_archive
@@ -272,9 +327,10 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         )
 
         # Pipe the node configs into a series of StalwartClusterNodes
+        # TODO: rjung: Make instances allow access from the right lb_sg
         instances = {}
         for idx, node_id in enumerate(nodes):
-            subnet = self.subnets[idx % len(self.subnets)]
+            subnet = self.subnets[idx % len(self.subnets)]  # Distribute across subnets
             instances[node_id] = self.node(
                 node_id=node_id,
                 subnet=subnet,
@@ -283,6 +339,36 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
                 **nodes[node_id],
             )
 
+        # Build the private load balancers
+        private_lb_sgs = {
+            service: self.private_load_balancer_security_group(service=service)
+            for service in self.private_load_balancers.keys()
+        }
+        private_lb_sg_ids = [sg.resources['sg'].id for sg in private_lb_sgs.values()]
+        private_lbs = {
+            service: StalwartLoadBalancer(
+                # AWS imposes a 32-character max on this
+                name=f'{self.project.project}-{self.project.stack}-priv-{service}',
+                project=self.project,
+                internal=True,
+                instances=instances,  # How is this handled?
+                node_config=self.nodes,  # What is this?
+                security_group_ids=private_lb_sg_ids,
+                service_config={
+                    service: {
+                        'source_cidrs': config.get('source_cidrs', []),
+                        'source_security_group_ids': config.get('source_security_group_ids', []),
+                    }
+                },
+                subnets=self.subnets,
+                excluded_nodes=config.get('excluded_nodes', []),
+                opts=pulumi.ResourceOptions(parent=self, depends_on=[*private_lb_sgs.values(), *self.subnets]),
+                tags=self.tags,
+            )
+            for service, config in self.private_load_balancers.items()
+        }
+
+        # Build the public load balancer
         public_lb_sg_id = pulumi.Output.all(**self.public_load_balancer_security_group.resources).apply(
             lambda resources: resources['sg'].id
         )
@@ -296,8 +382,9 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
             public_lb_services = self.public_load_balancer_config['services']
 
         public_lb = StalwartLoadBalancer(
-            name=f'{self.project.project}-{self.project.stack}',  # AWS imposes a 32-character max on this
+            name=f'{self.project.project}-{self.project.stack}-pub',  # AWS imposes a 32-character max on this
             project=self.project,
+            internal=False,
             instances=instances,
             node_config=self.nodes,
             security_group_ids=[public_lb_sg_id],
@@ -310,10 +397,19 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
             tags=self.tags,
         )
 
+        # We want to be able to fine-tune access rules per private service. This is normally done by allowing access to
+        # a service via a security group rule granting access from the other service's security group. In the case of
+        # the public load balancer above, the services are public and we don't restrict access by source. This allows us
+        # to use one LB with multiple target groups. Security groups don't attach to target groups, though, only to load
+        # balancers. This means that the kind of fine-tuned access we want to grant necessitates a load balancer per-
+        # service and we cannot do a single LB with multiple target groups.
+
         self.finish(
             resources={
                 'instances': instances,
                 'jmap_secret': jmap_secret,
+                'private_lbs': private_lbs,
+                'private_lb_sgs': private_lb_sgs,
                 'public_lb': public_lb,
                 'public_lb_sg': self.public_load_balancer_security_group,
                 'node_profile': profile,
@@ -329,24 +425,60 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
             }
         )
 
+    def private_load_balancer_security_group(self, service: str):
+        """Returns a SecurityGroupWithRules granting the access specified in the ``config``.
+
+        :param service: _description_
+        :type service: str
+        :param config: _description_
+        :type config: dict
+        :return: _description_
+        :rtype: _type_
+        """
+
+        config = self.private_load_balancers.get(service, {})
+        lb_sg_rules = deepcopy(LOAD_BALANCER_SECURITY_GROUP_RULE_SKELETON)
+
+        # Specify all source CIDRs in a single rule
+        if 'source_cidrs' in config:
+            lb_sg_rules['ingress'].append(
+                {
+                    'description': 'Allow {service} traffic',
+                    'protocol': 'tcp',
+                    'from_port': STALWART_CLUSTER_SERVICES[service],
+                    'to_port': STALWART_CLUSTER_SERVICES[service],
+                    'source_cidrs': config['source_cidrs'],
+                }
+            )
+
+        # But each source security group rule requires its own rule
+        for sgid in config.get('source_sgids', []):
+            lb_sg_rules['ingress'].append(
+                {
+                    'description': 'Allow {service} traffic',
+                    'protocol': 'tcp',
+                    'from_port': STALWART_CLUSTER_SERVICES[service],
+                    'to_port': STALWART_CLUSTER_SERVICES[service],
+                    'source_security_group_id': sgid,
+                }
+            )
+
+        return tb_pulumi.network.SecurityGroupWithRules(
+            f'{self.name}-privlbsg-{service}',
+            project=self.project,
+            rules=lb_sg_rules,
+            vpc_id=self.vpc_id,
+            opts=pulumi.ResourceOptions(parent=self),
+            tags=self.tags,
+        )
+
     # Cache this property because it produces a Pulumi resource. We don't want to define that multiple times.
     @cached_property
     def public_load_balancer_security_group(self):
         """Defines a security group for the public load balancer based on the public_load_balancer config options."""
 
         # Build a skeleton for the security group rules, allowing all egress
-        lb_sg_rules = {
-            'egress': [
-                {
-                    'description': 'Allow traffic outbound from the load balancer',
-                    'protocol': 'tcp',
-                    'from_port': 0,
-                    'to_port': 65535,
-                    'cidr_blocks': ['0.0.0.0/0'],
-                }
-            ],
-            'ingress': [],
-        }
+        lb_sg_rules = deepcopy(LOAD_BALANCER_SECURITY_GROUP_RULE_SKELETON)
 
         # Determine an explicit list of services, expanding the "all" shorthand into a complete list
         if self.expose_all_services:
@@ -394,7 +526,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
 
         # Pipe the whole rule config into a SecurityGroupWithRules pattern
         return tb_pulumi.network.SecurityGroupWithRules(
-            name=f'{self.name}-lbsg',
+            name=f'{self.name}-publbsg',
             project=self.project,
             rules=lb_sg_rules,
             vpc_id=self.vpc_id,
@@ -742,6 +874,7 @@ class StalwartLoadBalancer(tb_pulumi.ThunderbirdComponentResource):
         self,
         name: str,
         project: tb_pulumi.ThunderbirdPulumiProject,
+        internal: bool,
         instances: dict,
         node_config: dict,
         security_group_ids: list[str],
@@ -762,9 +895,9 @@ class StalwartLoadBalancer(tb_pulumi.ThunderbirdComponentResource):
         # Build a single load balancer
         load_balancer = aws.lb.LoadBalancer(
             f'{self.name}-lb',
-            name=f'{self.name}-stalwart',
+            name=name[:32],
             enable_cross_zone_load_balancing=True,
-            internal=False,
+            internal=internal,
             load_balancer_type='network',
             security_groups=security_group_ids,
             subnets=[subnet.id for subnet in subnets],
