@@ -87,7 +87,7 @@ resources:
           storage_capacity: 20
 
       public_load_balancer:
-        excluded_nodes: []
+        excluded_nodes: ["50"]
         services:
           https:
             source_cidrs: ['0.0.0.0/0']
@@ -108,7 +108,7 @@ resources:
 
       private_load_balancers:
         management:
-          excluded_nodes: []
+          excluded_nodes: ["0"]
           # source_cidrs:
           #   - 10.11.0.0/16  # accounts-stage
           source_security_group_ids:
