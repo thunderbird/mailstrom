@@ -82,8 +82,6 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
 
         - *instances* - Dict of :py:class:`StalwartClusterNode`s, identified by their node_id.
         - *jmap_secret* - :py:class:`tb_pulumi.secrets.SecretsManagerSecret` containing the TOML-formatted JMAP config.
-        - *lb* - :py:class:`StalwartLoadBalancer` defining the way service traffic is routed through the cluster.
-        - *lb_sg* - :py:class:`tb_pulumi.network.SecurityGroupWithRules` created for the cluster's load balancer.
         - *node_profile* - The instance profile used for each cluster node.
         - *node_profile_policy* - The `aws.iam.Policy
           <https://www.pulumi.com/registry/packages/aws/api-docs/iam/policy/>`_ attached to the instance profile.
@@ -92,6 +90,17 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
           policy and the instance profile.
         - *node_sgs* - Dict of :py:class:`tb_pulumi.network.SecurityGroupWithRules` created for each node to support its
           enabled services, identified by their node_id.
+        - *private_lbs* - Dict mapping service names to the :py:class:`StalwartLoadBalancer` s which expose those
+          services to private audiences.
+        - *private_lb_dns* - Dict mapping service names to the `cloudflare.DnsRecord
+          <https://www.pulumi.com/registry/packages/cloudflare/api-docs/dnsrecord/>`_ their private load balancers are
+          accessible through.
+        - *private_lb_sgs* - Dict mapping service names to the :py:class:`tb_pulumi.network.SecurityGroupWithRules`
+          controlling traffic to the services' private load balancers.
+        - *public_lb* - The :py:class:`StalwartLoadBalancer` representing the public-facing load balancer routing
+          traffic for exposed services.
+        - *public_lb_sg* - The :py:class:`tb_pulumi.network.SecurityGroupWithRules` controlling traffic through the
+          public load balancer.
         - *redis* - :py:class:`tb_pulumi.elasticache.ElastiCacheReplicationGroup` which Stalwart uses for its in-
           memory store.
         - *redis_secret* - :py:class:`tb_pulumi.secrets.SecretsManagerSecret` containing the Redis connection details.
@@ -423,15 +432,15 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
             resources={
                 'instances': instances,
                 'jmap_secret': jmap_secret,
+                'node_profile': profile,
+                'node_profile_policy': profile_policy,
+                'node_profile_policy_attachment': profile_attachment,
+                'node_sgs': self.node_sgs,
                 'private_lbs': private_lbs,
                 'private_lb_dns': private_lb_dns,
                 'private_lb_sgs': self.private_load_balancer_security_groups,
                 'public_lb': public_lb,
                 'public_lb_sg': self.public_load_balancer_security_group,
-                'node_profile': profile,
-                'node_profile_policy': profile_policy,
-                'node_profile_policy_attachment': profile_attachment,
-                'node_sgs': self.node_sgs,
                 'redis': redis,
                 'redis_secret': redis_secret,
                 's3': s3_bucket,
