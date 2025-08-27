@@ -420,13 +420,6 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
             tags=self.tags,
         )
 
-        # We want to be able to fine-tune access rules per private service. This is normally done by allowing access to
-        # a service via a security group rule granting access from the other service's security group. In the case of
-        # the public load balancer above, the services are public and we don't restrict access by source. This allows us
-        # to use one LB with multiple target groups. Security groups don't attach to target groups, though, only to load
-        # balancers. This means that the kind of fine-tuned access we want to grant necessitates a load balancer per-
-        # service and we cannot do a single LB with multiple target groups.
-
         self.finish(
             resources={
                 'instances': instances,
