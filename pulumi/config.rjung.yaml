@@ -1,5 +1,6 @@
 ---
 resources:
+
   tb:secrets:PulumiSecretsManager:
     secrets:
       secret_names:
@@ -20,9 +21,9 @@ resources:
       enable_dns_hostnames: True
       endpoint_interfaces:
         - secretsmanager
-      # additional_routes:
-      #   - destination_cidr_block: 10.11.0.0/16  # accounts-stage
-      #     vpc_peering_connection_id: pcx-0522c0f470450e165
+      additional_routes:
+        - destination_cidr_block: 10.11.0.0/16  # accounts-stage
+          vpc_peering_connection_id: pcx-09bd7bddf627a2b1a
 
   tb:elasticache:ElastiCacheReplicationGroup:
     stalwart:

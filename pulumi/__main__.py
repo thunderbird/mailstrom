@@ -11,7 +11,6 @@ import tb_pulumi.elasticache
 import tb_pulumi.network
 import tb_pulumi.s3
 import stalwart
-import sys
 
 from tb_pulumi.constants import CLOUDFRONT_CACHE_POLICY_ID_OPTIMIZED
 
@@ -76,7 +75,6 @@ def __stalwart_cluster(jumphost_rules: list[dict]):
         opts=pulumi.ResourceOptions(depends_on=[vpc]),
         **stalwart_opts,
     )
-
 
 project.resources['stalwart_cluster'] = jumphost_rules.apply(
     lambda jumphost_rules: __stalwart_cluster(jumphost_rules=jumphost_rules)

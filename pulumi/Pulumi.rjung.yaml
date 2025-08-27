@@ -7,3 +7,7 @@ config:
     secure: AAABALiauSmY6KlPSwb6Ve+WsBdBtbfDFQSO55oYsqz0M1SodAQBLjY/5/b/og==
   clouodflare:apiToken:
     secure: AAABAFVIjUlRLp1MnjouJgRSC+zYTWIDZinmmFIex5ocMM3eDXfy+Ik=
+  mailstrom:cloudflare_zone_id:
+    secure: AAABAFutGJMA/mPU9lAbzaa8/86kpVqAwbuGSqzjP0zEX7uUfCEHwpzpYddTecNX52VZY4wx5rBLgixl41nMcw==
+  cloudflare:apiToken:
+    secure: AAABAFLuzCvjROjCLkjRB47DMb63GOI63hBqBhOGahaceyzZLrfMpaOOSOVASzosdisDWL9OOCBLBGr8V4j+uCUVxm18nDH5
