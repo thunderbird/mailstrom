@@ -1,5 +1,6 @@
 import pulumi_cloudflare as cloudflare
 
+
 def private_load_balancer_dns(self, private_lbs):
     cloudflare_zone_id = self.project.pulumi_config.require_secret('cloudflare_zone_id')
     return {

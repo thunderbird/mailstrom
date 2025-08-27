@@ -23,7 +23,7 @@ def iam(
     :return: Series of IAM resources for Stalwart.
     :rtype: tuple[ tb_pulumi.iam.UserWithAccessKey, aws.iam.Policy, aws.iam.Role, aws.iam.RolePolicyAttachment,
         aws.iam.InstanceProfile ]
-    """    
+    """
 
     iam_user_name = f'{self.project.name_prefix}-stalwart'
     iam_user = tb_pulumi.iam.UserWithAccessKey(
