@@ -370,8 +370,8 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
                 name=f'{self.project.project}-{self.project.stack}-priv-{service}',
                 project=self.project,
                 internal=True,
-                instances=instances,  # How is this handled?
-                node_config=self.nodes,  # What is this?
+                instances=instances,
+                node_config=self.nodes,
                 security_group_ids=private_lb_sg_ids,
                 service_config={
                     service: {
