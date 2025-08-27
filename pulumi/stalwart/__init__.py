@@ -345,7 +345,6 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         )
 
         # Pipe the node configs into a series of StalwartClusterNodes
-        # TODO: rjung: Make instances allow access from the right lb_sg
         instances = {}
         for idx, node_id in enumerate(nodes):
             subnet = self.subnets[idx % len(self.subnets)]  # Distribute across subnets
