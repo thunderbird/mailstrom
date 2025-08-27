@@ -442,15 +442,14 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
             }
         )
 
-    def private_load_balancer_security_group(self, service: str):
+    def private_load_balancer_security_group(self, service: str) -> tb_pulumi.network.SecurityGroupWithRules:
         """Returns a SecurityGroupWithRules granting the access specified in the ``config``.
 
-        :param service: _description_
+        :param service: Name of the service to expose through a private load balancer.
         :type service: str
-        :param config: _description_
-        :type config: dict
-        :return: _description_
-        :rtype: _type_
+
+        :return: Security group for this service's load balancer.
+        :rtype: tb_pulumi.network.SecurityGroupWithRules
         """
 
         config = self.private_load_balancers.get(service, {})
