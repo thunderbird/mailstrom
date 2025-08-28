@@ -81,7 +81,7 @@ project.resources['stalwart_cluster'] = jumphost_rules.apply(
     lambda jumphost_rules: __stalwart_cluster(jumphost_rules=jumphost_rules)
 )
 
-# Build a secure S3 website to host our autoconfig files in
+# # Build a secure S3 website to host our autoconfig files in
 project.resources['autoconfig_website'] = tb_pulumi.s3.S3BucketSecureWebsite(
     f'{project.name_prefix}-autoconfig_site',
     project=project,
@@ -146,7 +146,6 @@ project.resources['cloudfront_distribution'] = tb_pulumi.cloudfront.CloudFrontDi
     tags=project.common_tags,
     opts=pulumi.ResourceOptions(
         depends_on=[project.resources['autoconfig_website'],
-                    # project.resources['public_access_block'],
                     project.resources['autoconfig_oac'],
         ]
     ),
