@@ -5,7 +5,7 @@ resources:
       secret_names:
         - stalwart.postboot.fallback_admin_password
         - stalwart.postboot.postgresql_backend
-        - stalwart.postboot.tb-accounts_backend
+        - stalwart.postboot.keycloak_backend
 
   tb:network:MultiCidrVpc:
     vpc:
@@ -20,6 +20,9 @@ resources:
       enable_dns_hostnames: True
       endpoint_interfaces:
         - secretsmanager
+      additional_routes:
+        - destination_cidr_block: 10.11.0.0/16  # accounts-stage
+          vpc_peering_connection_id: pcx-0522c0f470450e165
 
   tb:elasticache:ElastiCacheReplicationGroup:
     stalwart:
@@ -71,9 +74,20 @@ resources:
             - smtps
             - submission
           storage_capacity: 20
+        "50":
+          disable_api_termination: True
+          ignore_ami_changes: True
+          ignore_user_data_changes: True
+          instance_type: t3.micro
+          key_name: mailstrom-stage
+          node_roles:
+            - all
+          services:
+            - management
+          storage_capacity: 20
 
-      load_balancer:
-        excluded_nodes: []
+      public_load_balancer:
+        excluded_nodes: ["50"]
         services:
           https:
             source_cidrs: ['0.0.0.0/0']
@@ -91,6 +105,14 @@ resources:
             source_cidrs: ['0.0.0.0/0']
           submission:
             source_cidrs: ['0.0.0.0/0']
+
+      private_load_balancers:
+        management:
+          excluded_nodes: ["0"]
+          source_security_group_ids:
+            - sg-0a711c607f9e0b959  # accounts-stage api container
+            - sg-02700bcc4c090da45  # accounts-stage celery container
+
       jmap:
         account:
           purge:

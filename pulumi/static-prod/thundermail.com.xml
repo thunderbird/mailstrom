@@ -8,14 +8,30 @@
             <hostname>mail.thundermail.com</hostname>
             <port>993</port>
             <socketType>SSL</socketType>
-            <username>%EMAILLOCALPART%@thunderbird.net</username>
+            <username>%EMAILADDRESS%</username>
+            <authentication>OAuth2</authentication>
+            <oAuth2>
+              <clientID>open</clientID>
+              <issuer>https://auth.tb.pro/realms/tbpro</issuer>
+              <scope>openid offline_access</scope>
+              <authURL>https://auth.tb.pro/realms/tbpro/protocol/openid-connect/auth</authURL>
+              <tokenURL>https://auth.tb.pro/realms/tbpro/protocol/openid-connect/token</tokenURL>
+            </oAuth2>
             <authentication>password-cleartext</authentication>
         </incomingServer>
         <outgoingServer type="smtp">
             <hostname>mail.thundermail.com</hostname>
             <port>465</port>
             <socketType>SSL</socketType>
-            <username>%EMAILLOCALPART%@thunderbird.net</username>
+            <username>%EMAILADDRESS%</username>
+            <authentication>OAuth2</authentication>
+            <oAuth2>
+              <clientID>open</clientID>
+              <issuer>https://auth.tb.pro/realms/tbpro</issuer>
+              <scope>openid offline_access</scope>
+              <authURL>https://auth.tb.pro/realms/tbpro/protocol/openid-connect/auth</authURL>
+              <tokenURL>https://auth.tb.pro/realms/tbpro/protocol/openid-connect/token</tokenURL>
+            </oAuth2>
             <authentication>password-cleartext</authentication>
         </outgoingServer>
     </emailProvider>
