@@ -81,8 +81,8 @@ project.resources['stalwart_cluster'] = jumphost_rules.apply(
     lambda jumphost_rules: __stalwart_cluster(jumphost_rules=jumphost_rules)
 )
 
-# Build an S3 website to host our autoconfig files in
-project.resources['autoconfig_website'] = tb_pulumi.s3.S3BucketWebsite(
+# Build a secure S3 website to host our autoconfig files in
+project.resources['autoconfig_website'] = tb_pulumi.s3.S3BucketSecureWebsite(
     f'{project.name_prefix}-autoconfig_site',
     project=project,
     **resources['tb:s3:S3BucketWebsite']['autoconfig'],
@@ -90,7 +90,7 @@ project.resources['autoconfig_website'] = tb_pulumi.s3.S3BucketWebsite(
 
 # Determine the bucket's domain name
 website_bucket_regional_domain_name = (
-    f'{resources["tb:s3:S3BucketWebsite"]["autoconfig"]["bucket_name"]}.s3-website.{project.aws_region}.amazonaws.com'
+    f'{resources["tb:s3:S3BucketWebsite"]["autoconfig"]["bucket_name"]}.s3.{project.aws_region}.amazonaws.com'
 )
 
 # Create an Origin Access Control to use when CloudFront talks to S3
@@ -107,19 +107,17 @@ project.resources['autoconfig_oac'] = aws.cloudfront.OriginAccessControl(
 tb_distro_config = resources['tb:cloudfront:CloudFrontDistribution']['autoconfig']
 aws_distro_config = tb_distro_config.pop('distribution', {})
 
-# Define the distro's origin as an S3 website
-website_origin = {
+# Use a static string for origin_id
+origin_id = f'{project.name_prefix}-autoconfig-s3-origin'
+
+# Define the distro's origin as an S3 origin with OAC
+s3_origin = {
     'domain_name': website_bucket_regional_domain_name,
     'origin_id': website_bucket_regional_domain_name,
-    # 'origin_access_control_id': project.resources['autoconfig_oac'].id,
-    'custom_origin_config': {
-        'http_port': 80,
-        'https_port': 443,
-        'origin_protocol_policy': 'http-only',
-        'origin_ssl_protocols': ['SSLv3', 'TLSv1', 'TLSv1.1', 'TLSv1.2'],
-    },
+    'origin_access_control_id': project.resources['autoconfig_oac'].id,
 }
-aws_distro_config['origins'] = [website_origin]
+
+aws_distro_config['origins'] = [s3_origin]
 
 # Update (or create wholesale if necessary) the default cache behavior
 default_cache_behavior = aws_distro_config.pop('default_cache_behavior', {})
@@ -143,10 +141,14 @@ aws_distro_config['viewer_certificate'] = {
 project.resources['cloudfront_distribution'] = tb_pulumi.cloudfront.CloudFrontDistribution(
     name=f'{project.name_prefix}-autoconfig_distro',
     project=project,
+    service_bucket_name=resources['tb:s3:S3BucketWebsite']['autoconfig']['bucket_name'],
     distribution=aws_distro_config,
     tags=project.common_tags,
     opts=pulumi.ResourceOptions(
-        depends_on=[project.resources['autoconfig_website'], project.resources['autoconfig_oac']]
+        depends_on=[project.resources['autoconfig_website'],
+                    # project.resources['public_access_block'],
+                    project.resources['autoconfig_oac'],
+        ]
     ),
     **tb_distro_config,
 )
