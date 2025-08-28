@@ -145,8 +145,9 @@ project.resources['cloudfront_distribution'] = tb_pulumi.cloudfront.CloudFrontDi
     distribution=aws_distro_config,
     tags=project.common_tags,
     opts=pulumi.ResourceOptions(
-        depends_on=[project.resources['autoconfig_website'],
-                    project.resources['autoconfig_oac'],
+        depends_on=[
+            project.resources['autoconfig_website'],
+            project.resources['autoconfig_oac'],
         ]
     ),
     **tb_distro_config,
