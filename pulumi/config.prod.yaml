@@ -20,6 +20,9 @@ resources:
       enable_dns_hostnames: True
       endpoint_interfaces:
         - secretsmanager
+      additional_routes:
+        - destination_cidr_block: 10.10.0.0/16  # accounts-prod
+          vpc_peering_connection_id: pcx-01a454bbabc04e61b
 
   tb:elasticache:ElastiCacheReplicationGroup:
     stalwart:
