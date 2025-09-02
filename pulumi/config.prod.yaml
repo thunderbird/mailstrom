@@ -71,9 +71,20 @@ resources:
             - smtps
             - submission
           storage_capacity: 20
+        "50":
+          disable_api_termination: True
+          ignore_ami_changes: True
+          ignore_user_data_changes: True
+          instance_type: t3.micro
+          key_name: mailstrom-prod
+          node_roles:
+            - all
+          services:
+            - management
+          storage_capacity: 20
 
-      load_balancer:
-        excluded_nodes: []
+      public_load_balancer:
+        excluded_nodes: [ "50" ]
         services:
           https:
             source_cidrs: ['0.0.0.0/0']
@@ -91,6 +102,14 @@ resources:
             source_cidrs: ['0.0.0.0/0']
           submission:
             source_cidrs: ['0.0.0.0/0']
+
+      private_load_balancers:
+        management:
+          excluded_nodes: ["0"]
+          source_security_group_ids: []
+            # - sg-0a711c607f9e0b959  # accounts-stage api container
+            # - sg-02700bcc4c090da45  # accounts-stage celery container
+
       jmap:
         account:
           purge:
