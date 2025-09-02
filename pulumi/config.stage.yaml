@@ -22,7 +22,7 @@ resources:
         - secretsmanager
       additional_routes:
         - destination_cidr_block: 10.11.0.0/16  # accounts-stage
-          vpc_peering_connection_id: pcx-0522c0f470450e165
+          vpc_peering_connection_id: pcx-01404a628c7756197
 
   tb:elasticache:ElastiCacheReplicationGroup:
     stalwart:
