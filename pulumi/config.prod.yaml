@@ -109,9 +109,9 @@ resources:
       private_load_balancers:
         management:
           excluded_nodes: ["0"]
-          source_security_group_ids: []
-            # - sg-0a711c607f9e0b959  # accounts-stage api container
-            # - sg-02700bcc4c090da45  # accounts-stage celery container
+          source_security_group_ids:
+            - sg-034b36952ac31b87b  # accounts-prod api container
+            - sg-0e2628172e0d95cc3  # accounts-prod celery container
 
       jmap:
         account:
