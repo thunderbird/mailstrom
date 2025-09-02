@@ -20,6 +20,9 @@ resources:
       enable_dns_hostnames: True
       endpoint_interfaces:
         - secretsmanager
+      additional_routes:
+        - destination_cidr_block: 10.10.0.0/16  # accounts-prod
+          vpc_peering_connection_id: pcx-01a454bbabc04e61b
 
   tb:elasticache:ElastiCacheReplicationGroup:
     stalwart:
@@ -71,9 +74,20 @@ resources:
             - smtps
             - submission
           storage_capacity: 20
+        "50":
+          disable_api_termination: True
+          ignore_ami_changes: True
+          ignore_user_data_changes: True
+          instance_type: t3.micro
+          key_name: mailstrom-prod
+          node_roles:
+            - all
+          services:
+            - management
+          storage_capacity: 20
 
-      load_balancer:
-        excluded_nodes: []
+      public_load_balancer:
+        excluded_nodes: [ "50" ]
         services:
           https:
             source_cidrs: ['0.0.0.0/0']
@@ -91,6 +105,14 @@ resources:
             source_cidrs: ['0.0.0.0/0']
           submission:
             source_cidrs: ['0.0.0.0/0']
+
+      private_load_balancers:
+        management:
+          excluded_nodes: ["0"]
+          source_security_group_ids:
+            - sg-034b36952ac31b87b  # accounts-prod api container
+            - sg-0e2628172e0d95cc3  # accounts-prod celery container
+
       jmap:
         account:
           purge:
