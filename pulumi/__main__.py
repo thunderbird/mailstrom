@@ -1,6 +1,7 @@
 #!/bin/env python3
 
 
+import json
 import pulumi
 import pulumi_aws as aws
 import tb_pulumi
@@ -81,9 +82,10 @@ project.resources['stalwart_cluster'] = jumphost_rules.apply(
     lambda jumphost_rules: __stalwart_cluster(jumphost_rules=jumphost_rules)
 )
 
+service_bucket_name = resources['tb:s3:S3BucketWebsite']['autoconfig']['bucket_name']
 # # Build a secure S3 website to host our autoconfig files in
-project.resources['autoconfig_website'] = tb_pulumi.s3.S3BucketSecureWebsite(
-    f'{project.name_prefix}-autoconfig_site',
+project.resources['autoconfig_website'] = tb_pulumi.s3.S3BucketPrivate(
+    service_bucket_name,
     project=project,
     **resources['tb:s3:S3BucketWebsite']['autoconfig'],
 )
@@ -137,11 +139,14 @@ aws_distro_config['viewer_certificate'] = {
     'ssl_support_method': 'sni-only',
 }
 
+# Add default root object
+default_root_object = 'f{project.stack}-thundermail.xml'
+
 # Build a CloudFront Distribution to serve autoconfig from edge locations and to terminate SSL
-project.resources['cloudfront_distribution'] = tb_pulumi.cloudfront.CloudFrontDistribution(
+# project.resources['cloudfront_distribution'] = tb_pulumi.cloudfront.CloudFrontDistribution(
+cloudfront_distribution = tb_pulumi.cloudfront.CloudFrontDistribution(
     name=f'{project.name_prefix}-autoconfig_distro',
     project=project,
-    service_bucket_name=resources['tb:s3:S3BucketWebsite']['autoconfig']['bucket_name'],
     distribution=aws_distro_config,
     tags=project.common_tags,
     opts=pulumi.ResourceOptions(
@@ -151,6 +156,36 @@ project.resources['cloudfront_distribution'] = tb_pulumi.cloudfront.CloudFrontDi
         ]
     ),
     **tb_distro_config,
+)
+
+# Create policy document for service bucket
+policy_json = tb_pulumi.constants.IAM_POLICY_DOCUMENT.copy()
+policy_json['Statement'] = cloudfront_distribution.resources['cloudfront_distribution'].arn.apply(
+            lambda arn: [
+                {
+                    'Sid': 'AllowCloudFrontPrincipalReadOnly',
+                    'Effect': 'Allow',
+                    'Principal': {'Service': 'cloudfront.amazonaws.com'},
+                    'Action': ['s3:GetObject'],
+                    'Resource': f'arn:aws:s3:::{service_bucket_name}/*',
+                    'Condition': {'StringEquals': {'AWS:SourceArn': f'{arn}'}},
+                },
+                {
+                    'Sid': 'AllowCloudFrontS3ListBucket',
+                    'Effect': 'Allow',
+                    'Principal': {'Service': 'cloudfront.amazonaws.com'},
+                    'Action': ['s3:ListBucket'],
+                    'Resource': f'arn:aws:s3:::{service_bucket_name}',
+                    'Condition': {'StringEquals': {'AWS:SourceArn': f'{arn}'}},
+                },
+            ]
+        )
+
+service_bucket_policy = aws.s3.BucketPolicy(
+    f'{project.name_prefix}-cf-policy',
+    bucket=service_bucket_name,
+    policy=policy_json,
+    opts=pulumi.ResourceOptions(depends_on=[project.resources['autoconfig_website'], cloudfront_distribution]),
 )
 
 monitoring_opts = resources['tb:cloudwatch:CloudWatchMonitoringGroup']
