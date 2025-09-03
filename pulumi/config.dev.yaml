@@ -99,16 +99,6 @@ resources:
     autoconfig:
       bucket_name: tb-mailstrom-dev-autoconfig-site
       object_dir: static-dev
-      website_config:
-        error_document:
-          key: 4xx.html
-        index_document:
-          suffix: thundermail.com.xml
-        routing_rules:
-          - condition:
-              http_error_code_returned_equals: "404"
-            redirect:
-              replace_key_with: "thundermail.com.xml"
 
   tb:cloudfront:CloudFrontDistribution:
     autoconfig:
@@ -130,22 +120,10 @@ resources:
           # origins: set in code
           # target_origin_id: set in code
           viewer_protocol_policy: redirect-to-https
+        default_root_object: dev-thundermail.xml
         enabled: True
         restrictions:
           geo_restriction:
             restriction_type: none
       forcibly_destroy_bucket: True
       logging_bucket_name: tb-mailstrom-dev-autoconfig-logs
-
-  # tb:cloudfront:CloudFrontS3Service:
-  #   autoconfig:
-  #     service_bucket_name: tb-mailstrom-dev-autoconfig-site
-  #     # This cert must be hosted in us-east-1; this limitation is imposed by CloudFront
-  #     certificate_arn: arn:aws:acm:us-east-1:768512802988:certificate/df8623a3-5737-4894-bcc4-1b49b8e51fb9
-  #     distribution:
-  #       aliases:
-  #         - autoconfig.thunderbird.dev
-  #       comment: Autoconfig dev site
-  #       # Do not define ordered cache behaviors here; they are programmatically overridden
-  #       logging_config:
-  #         include_cookies: True

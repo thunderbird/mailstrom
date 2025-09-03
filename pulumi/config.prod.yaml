@@ -169,16 +169,6 @@ resources:
     autoconfig:
       bucket_name: tb-mailstrom-prod-autoconfig-site
       object_dir: static-prod
-      website_config:
-        error_document:
-          key: 4xx.html
-        index_document:
-          suffix: thundermail.com.xml
-        routing_rules:
-          - condition:
-              http_error_code_returned_equals: "404"
-            redirect:
-              replace_key_with: "thundermail.com.xml"
   
   tb:cloudfront:CloudFrontDistribution:
     autoconfig:
@@ -204,6 +194,7 @@ resources:
         restrictions:
           geo_restriction:
             restriction_type: none
+        default_root_object: thundermail.xml
       forcibly_destroy_bucket: True
       logging_bucket_name: tb-mailstrom-prod-autoconfig-logs
 
