@@ -95,7 +95,7 @@ resources:
           smtps:
             source_cidrs: ['0.0.0.0/0']
         
-  tb:s3:S3BucketWebsite:
+  tb:s3:S3PrivateBucket:
     autoconfig:
       bucket_name: tb-mailstrom-dev-autoconfig-site
       object_dir: static-dev

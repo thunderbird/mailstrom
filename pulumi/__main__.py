@@ -80,17 +80,17 @@ project.resources['stalwart_cluster'] = jumphost_rules.apply(
     lambda jumphost_rules: __stalwart_cluster(jumphost_rules=jumphost_rules)
 )
 
-service_bucket_name = resources['tb:s3:S3BucketWebsite']['autoconfig']['bucket_name']
+service_bucket_name = resources['tb:s3:S3PrivateBucket']['autoconfig']['bucket_name']
 # # Build a secure S3 website to host our autoconfig files in
-project.resources['autoconfig_website'] = tb_pulumi.s3.S3BucketPrivate(
+project.resources['autoconfig_website'] = tb_pulumi.s3.S3Bucket(
     service_bucket_name,
     project=project,
-    **resources['tb:s3:S3BucketWebsite']['autoconfig'],
+    **resources['tb:s3:S3PrivateBucket']['autoconfig'],
 )
 
 # Determine the bucket's domain name
 website_bucket_regional_domain_name = (
-    f'{resources["tb:s3:S3BucketWebsite"]["autoconfig"]["bucket_name"]}.s3.{project.aws_region}.amazonaws.com'
+    f'{resources["tb:s3:S3PrivateBucket"]["autoconfig"]["bucket_name"]}.s3.{project.aws_region}.amazonaws.com'
 )
 
 # Create an Origin Access Control to use when CloudFront talks to S3
@@ -100,7 +100,7 @@ project.resources['autoconfig_oac'] = aws.cloudfront.OriginAccessControl(
     signing_behavior='always',
     signing_protocol='sigv4',
     description=f'Serve {project.name_prefix} autoconfig contents via CDN',
-    name=resources['tb:s3:S3BucketWebsite']['autoconfig']['bucket_name'],
+    name=resources['tb:s3:S3PrivateBucket']['autoconfig']['bucket_name'],
 )
 
 # Break configs out into distinct parts to make this cleaner

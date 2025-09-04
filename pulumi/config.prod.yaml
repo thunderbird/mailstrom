@@ -165,7 +165,7 @@ resources:
           throttle: 1s
           timeout: 10m
 
-  tb:s3:S3BucketWebsite:
+  tb:s3:S3PrivateBucket:
     autoconfig:
       bucket_name: tb-mailstrom-prod-autoconfig-site
       object_dir: static-prod
