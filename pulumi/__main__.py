@@ -1,4 +1,5 @@
 #!/bin/env python3
+
 import pulumi
 import pulumi_aws as aws
 import tb_pulumi
@@ -191,4 +192,9 @@ monitoring = tb_pulumi.cloudwatch.CloudWatchMonitoringGroup(
     project=project,
     notify_emails=monitoring_opts['notify_emails'],
     config=monitoring_opts,
+)
+
+sap = tb_pulumi.iam.StackAccessPolicies(
+    f'{project.name_prefix}-sap',
+    project=project,
 )
