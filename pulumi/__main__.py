@@ -1,7 +1,4 @@
 #!/bin/env python3
-
-
-import json
 import pulumi
 import pulumi_aws as aws
 import tb_pulumi
@@ -161,25 +158,25 @@ cloudfront_distribution = tb_pulumi.cloudfront.CloudFrontDistribution(
 # Create policy document for service bucket
 policy_json = tb_pulumi.constants.IAM_POLICY_DOCUMENT.copy()
 policy_json['Statement'] = cloudfront_distribution.resources['cloudfront_distribution'].arn.apply(
-            lambda arn: [
-                {
-                    'Sid': 'AllowCloudFrontPrincipalReadOnly',
-                    'Effect': 'Allow',
-                    'Principal': {'Service': 'cloudfront.amazonaws.com'},
-                    'Action': ['s3:GetObject'],
-                    'Resource': f'arn:aws:s3:::{service_bucket_name}/*',
-                    'Condition': {'StringEquals': {'AWS:SourceArn': f'{arn}'}},
-                },
-                {
-                    'Sid': 'AllowCloudFrontS3ListBucket',
-                    'Effect': 'Allow',
-                    'Principal': {'Service': 'cloudfront.amazonaws.com'},
-                    'Action': ['s3:ListBucket'],
-                    'Resource': f'arn:aws:s3:::{service_bucket_name}',
-                    'Condition': {'StringEquals': {'AWS:SourceArn': f'{arn}'}},
-                },
-            ]
-        )
+    lambda arn: [
+        {
+            'Sid': 'AllowCloudFrontPrincipalReadOnly',
+            'Effect': 'Allow',
+            'Principal': {'Service': 'cloudfront.amazonaws.com'},
+            'Action': ['s3:GetObject'],
+            'Resource': f'arn:aws:s3:::{service_bucket_name}/*',
+            'Condition': {'StringEquals': {'AWS:SourceArn': f'{arn}'}},
+        },
+        {
+            'Sid': 'AllowCloudFrontS3ListBucket',
+            'Effect': 'Allow',
+            'Principal': {'Service': 'cloudfront.amazonaws.com'},
+            'Action': ['s3:ListBucket'],
+            'Resource': f'arn:aws:s3:::{service_bucket_name}',
+            'Condition': {'StringEquals': {'AWS:SourceArn': f'{arn}'}},
+        },
+    ]
+)
 
 service_bucket_policy = aws.s3.BucketPolicy(
     f'{project.name_prefix}-cf-policy',
