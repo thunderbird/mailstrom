@@ -165,20 +165,10 @@ resources:
           throttle: 1s
           timeout: 10m
 
-  tb:s3:S3BucketWebsite:
+  tb:s3:S3PrivateBucket:
     autoconfig:
       bucket_name: tb-mailstrom-stage-autoconfig-site
       object_dir: static-stage
-      website_config:
-        error_document:
-          key: 4xx.html
-        index_document:
-          suffix: stage-thundermail.com.xml
-        routing_rules:
-          - condition:
-              http_error_code_returned_equals: "404"
-            redirect:
-              replace_key_with: "stage-thundermail.com.xml"
   
   tb:cloudfront:CloudFrontDistribution:
     autoconfig:
@@ -204,6 +194,7 @@ resources:
         restrictions:
           geo_restriction:
             restriction_type: none
+        default_root_object: stage-thundermail.com.xml
       forcibly_destroy_bucket: True
       logging_bucket_name: tb-mailstrom-stage-autoconfig-logs
 

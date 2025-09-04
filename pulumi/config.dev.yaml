@@ -95,3 +95,35 @@ resources:
           smtps:
             source_cidrs: ['0.0.0.0/0']
         
+  tb:s3:S3PrivateBucket:
+    autoconfig:
+      bucket_name: tb-mailstrom-dev-autoconfig-site
+      object_dir: static-dev
+
+  tb:cloudfront:CloudFrontDistribution:
+    autoconfig:
+      # cache_policy_id: set in code
+      certificate_arn: arn:aws:acm:us-east-1:768512802988:certificate/df8623a3-5737-4894-bcc4-1b49b8e51fb9
+      distribution:
+        aliases:
+          - autoconfig.thunderbird.dev
+        comment: mailstrom-dev autoconfig
+        default_cache_behavior:
+          allowed_methods:
+            - GET
+            - HEAD
+            - OPTIONS
+          cached_methods:
+            - GET
+            - HEAD
+          compress: True
+          # origins: set in code
+          # target_origin_id: set in code
+          viewer_protocol_policy: redirect-to-https
+        default_root_object: dev-thundermail.xml
+        enabled: True
+        restrictions:
+          geo_restriction:
+            restriction_type: none
+      forcibly_destroy_bucket: True
+      logging_bucket_name: tb-mailstrom-dev-autoconfig-logs

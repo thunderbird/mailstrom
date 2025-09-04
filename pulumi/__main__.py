@@ -80,16 +80,17 @@ project.resources['stalwart_cluster'] = jumphost_rules.apply(
     lambda jumphost_rules: __stalwart_cluster(jumphost_rules=jumphost_rules)
 )
 
-# Build an S3 website to host our autoconfig files in
-project.resources['autoconfig_website'] = tb_pulumi.s3.S3BucketWebsite(
-    f'{project.name_prefix}-autoconfig_site',
+service_bucket_name = resources['tb:s3:S3PrivateBucket']['autoconfig']['bucket_name']
+# # Build a secure S3 website to host our autoconfig files in
+project.resources['autoconfig_website'] = tb_pulumi.s3.S3Bucket(
+    service_bucket_name,
     project=project,
-    **resources['tb:s3:S3BucketWebsite']['autoconfig'],
+    **resources['tb:s3:S3PrivateBucket']['autoconfig'],
 )
 
 # Determine the bucket's domain name
 website_bucket_regional_domain_name = (
-    f'{resources["tb:s3:S3BucketWebsite"]["autoconfig"]["bucket_name"]}.s3-website.{project.aws_region}.amazonaws.com'
+    f'{resources["tb:s3:S3PrivateBucket"]["autoconfig"]["bucket_name"]}.s3.{project.aws_region}.amazonaws.com'
 )
 
 # Create an Origin Access Control to use when CloudFront talks to S3
@@ -99,26 +100,24 @@ project.resources['autoconfig_oac'] = aws.cloudfront.OriginAccessControl(
     signing_behavior='always',
     signing_protocol='sigv4',
     description=f'Serve {project.name_prefix} autoconfig contents via CDN',
-    name=resources['tb:s3:S3BucketWebsite']['autoconfig']['bucket_name'],
+    name=resources['tb:s3:S3PrivateBucket']['autoconfig']['bucket_name'],
 )
 
 # Break configs out into distinct parts to make this cleaner
 tb_distro_config = resources['tb:cloudfront:CloudFrontDistribution']['autoconfig']
 aws_distro_config = tb_distro_config.pop('distribution', {})
 
-# Define the distro's origin as an S3 website
-website_origin = {
+# Use a static string for origin_id
+origin_id = f'{project.name_prefix}-autoconfig-s3-origin'
+
+# Define the distro's origin as an S3 origin with OAC
+s3_origin = {
     'domain_name': website_bucket_regional_domain_name,
     'origin_id': website_bucket_regional_domain_name,
-    # 'origin_access_control_id': project.resources['autoconfig_oac'].id,
-    'custom_origin_config': {
-        'http_port': 80,
-        'https_port': 443,
-        'origin_protocol_policy': 'http-only',
-        'origin_ssl_protocols': ['SSLv3', 'TLSv1', 'TLSv1.1', 'TLSv1.2'],
-    },
+    'origin_access_control_id': project.resources['autoconfig_oac'].id,
 }
-aws_distro_config['origins'] = [website_origin]
+
+aws_distro_config['origins'] = [s3_origin]
 
 # Update (or create wholesale if necessary) the default cache behavior
 default_cache_behavior = aws_distro_config.pop('default_cache_behavior', {})
@@ -138,16 +137,53 @@ aws_distro_config['viewer_certificate'] = {
     'ssl_support_method': 'sni-only',
 }
 
+# Add default root object
+default_root_object = 'f{project.stack}-thundermail.xml'
+
 # Build a CloudFront Distribution to serve autoconfig from edge locations and to terminate SSL
-project.resources['cloudfront_distribution'] = tb_pulumi.cloudfront.CloudFrontDistribution(
+# project.resources['cloudfront_distribution'] = tb_pulumi.cloudfront.CloudFrontDistribution(
+cloudfront_distribution = tb_pulumi.cloudfront.CloudFrontDistribution(
     name=f'{project.name_prefix}-autoconfig_distro',
     project=project,
     distribution=aws_distro_config,
     tags=project.common_tags,
     opts=pulumi.ResourceOptions(
-        depends_on=[project.resources['autoconfig_website'], project.resources['autoconfig_oac']]
+        depends_on=[
+            project.resources['autoconfig_website'],
+            project.resources['autoconfig_oac'],
+        ]
     ),
     **tb_distro_config,
+)
+
+# Create policy document for service bucket
+policy_json = tb_pulumi.constants.IAM_POLICY_DOCUMENT.copy()
+policy_json['Statement'] = cloudfront_distribution.resources['cloudfront_distribution'].arn.apply(
+    lambda arn: [
+        {
+            'Sid': 'AllowCloudFrontPrincipalReadOnly',
+            'Effect': 'Allow',
+            'Principal': {'Service': 'cloudfront.amazonaws.com'},
+            'Action': ['s3:GetObject'],
+            'Resource': f'arn:aws:s3:::{service_bucket_name}/*',
+            'Condition': {'StringEquals': {'AWS:SourceArn': f'{arn}'}},
+        },
+        {
+            'Sid': 'AllowCloudFrontS3ListBucket',
+            'Effect': 'Allow',
+            'Principal': {'Service': 'cloudfront.amazonaws.com'},
+            'Action': ['s3:ListBucket'],
+            'Resource': f'arn:aws:s3:::{service_bucket_name}',
+            'Condition': {'StringEquals': {'AWS:SourceArn': f'{arn}'}},
+        },
+    ]
+)
+
+service_bucket_policy = aws.s3.BucketPolicy(
+    f'{project.name_prefix}-cf-policy',
+    bucket=service_bucket_name,
+    policy=policy_json,
+    opts=pulumi.ResourceOptions(depends_on=[project.resources['autoconfig_website'], cloudfront_distribution]),
 )
 
 monitoring_opts = resources['tb:cloudwatch:CloudWatchMonitoringGroup']
