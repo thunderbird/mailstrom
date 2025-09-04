@@ -194,7 +194,7 @@ resources:
         restrictions:
           geo_restriction:
             restriction_type: none
-        default_root_object: stage-thundermail.xml
+        default_root_object: stage-thundermail.com.xml
       forcibly_destroy_bucket: True
       logging_bucket_name: tb-mailstrom-stage-autoconfig-logs
 

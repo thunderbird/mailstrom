@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<clientConfig version="1.1">
+    <emailProvider id="stage-thundermail.com">
+        <domain>stage-thundermail.com</domain>
+        <displayName>Thundermail (Stage)</displayName>
+        <displayShortName>TMail Stage</displayShortName>
+        <incomingServer type="imap">
+            <hostname>mail.stage-thundermail.com</hostname>
+            <port>993</port>
+            <socketType>SSL</socketType>
+            <username>%EMAILADDRESS%</username>
+            <authentication>OAuth2</authentication>
+            <oAuth2>
+              <clientID>open</clientID>
+              <issuer>https://auth-stage.tb.pro/realms/tbpro</issuer>
+              <scope>openid offline_access</scope>
+              <authURL>https://auth-stage.tb.pro/realms/tbpro/protocol/openid-connect/auth</authURL>
+              <tokenURL>https://auth-stage.tb.pro/realms/tbpro/protocol/openid-connect/token</tokenURL>
+            </oAuth2>
+            <authentication>password-cleartext</authentication>
+        </incomingServer>
+        <outgoingServer type="smtp">
+            <hostname>mail.stage-thundermail.com</hostname>
+            <port>465</port>
+            <socketType>SSL</socketType>
+            <username>%EMAILADDRESS%</username>
+            <authentication>OAuth2</authentication>
+            <oAuth2>
+              <clientID>open</clientID>
+              <issuer>https://auth-stage.tb.pro/realms/tbpro</issuer>
+              <scope>openid offline_access</scope>
+              <authURL>https://auth-stage.tb.pro/realms/tbpro/protocol/openid-connect/auth</authURL>
+              <tokenURL>https://auth-stage.tb.pro/realms/tbpro/protocol/openid-connect/token</tokenURL>
+            </oAuth2>
+            <authentication>password-cleartext</authentication>
+        </outgoingServer>
+    </emailProvider>
+    <clientConfigUpdate url="https://autoconfig.stage-thundermail.com/"></clientConfigUpdate>
+</clientConfig>
