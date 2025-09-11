@@ -36,12 +36,12 @@ auth.secret = "{{ keycloak_backend['auth_secret'] }}"
 endpoint.method = "{{ keycloak_backend['endpoint_method'] }}"
 endpoint.url = "{{ keycloak_backend['endpoint_url'] }}"
 fields.email = "{{ keycloak_backend['fields_email'] }}"
-{% if 'fields_username' in keycloak_backend %}
-fields.username = "{{ keycloak_backend['fields_username'] }}
-{% endif %}
-{% if 'fields_full_name' in keycloak_backend %}
-fields.full-name = "{{ keycloak_backend['fields_full_name'] }}
-{% endif %}
+{%- if 'fields_username' in keycloak_backend %}
+fields.username = "{{ keycloak_backend['fields_username'] }}"
+{%- endif %}
+{%- if 'fields_full_name' in keycloak_backend %}
+fields.full-name = "{{ keycloak_backend['fields_full_name'] }}"
+{%- endif %}
 timeout = "{{ keycloak_backend['timeout'] }}"
 type = "oidc"
 
