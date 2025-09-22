@@ -55,6 +55,9 @@ resources:
 
   tb:mailstrom:StalwartCluster:
     thundermail:
+      enable_legacy_key: True
+      enable_blue_key: False
+      enable_green_key: False
       https_features:
         - caldav
         - carddav

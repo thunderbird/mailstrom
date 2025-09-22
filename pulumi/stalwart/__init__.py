@@ -267,6 +267,9 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         cache_node_count: int = 1,
         cache_node_type: str = 'cache.t3.micro',
         cache_parameters: list = [],
+        enable_blue_key: bool = True,
+        enable_green_key: bool = False,
+        enable_legacy_key: bool = False,
         https_features: list = [],
         jmap: dict = None,
         nodes: dict = {},
@@ -330,7 +333,13 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         s3_bucket, s3_secret, s3_policy = stalwart_s3.s3(self=self)
 
         # Build an IAM role with a policy to enable node bootstrapping
-        iam_user, profile_policy, role, profile_attachment, profile = stalwart_iam.iam(self, s3_policy=s3_policy)
+        iam_user, profile_policy, role, profile_attachment, profile = stalwart_iam.iam(
+            self,
+            s3_policy=s3_policy,
+            enable_legacy_key=enable_legacy_key,
+            enable_blue_key=enable_blue_key,
+            enable_green_key=enable_green_key,
+        )
 
         # Store a TOML version of the JMAP config in Secrets Manager for nodes to read back later
         jmap_dict = {'jmap': jmap} if jmap else {}  # Ensure every TOML option gets the "jmap" text in it
