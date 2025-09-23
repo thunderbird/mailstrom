@@ -67,8 +67,6 @@ allow-invalid-certs={{ tls_invalid_certs }}
 type="s3"
 bucket="{{ s3_backend['bucket'] }}"
 region="{{ s3_backend['region'] }}"
-access-key="{{ s3_iam_access_key['access_key_id'] }}"
-secret-key="{{ s3_iam_access_key['secret_access_key'] }}"
 
 [store."redis"]
 type="redis"
