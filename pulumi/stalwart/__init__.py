@@ -121,6 +121,10 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         in which to build cluster nodes.
     :type subnets: list[aws.ec2.Subnet]
 
+    :param access_keys: Dict of access keys to pass into the :py:class:`tb_pulumi.iam.UserWithAccessKey` constructor.
+        Defaults to ``{}``.
+    :type access_keys: dict
+
     :param cache_node_count: Number of Redis cluster nodes to build. This must be at least 1. When greater than 1, one
         primary "write" node will be created with (n - 1) read-only replicas. Defaults to 1.
     :type cache_node_count: int, optional
@@ -132,6 +136,11 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
 
     :param cache_parameters: Dictionary of parameters in the parameter group to override.
     :type cache_parameters: dict, optional
+
+    :param enable_legacy_access_key: Whether or not to enable the :py:class:`tb_pulumi.iam.UserWithAccessKey`'s legacy
+        access key. Should usually be set to False unless you are migrating off of an old version of this module.
+        Defaults to False.
+    :type enable_legacy_access_key: bool
 
     :param https_features: List of features which Stalwart presents over the https service to enable across the cluster.
         These must match with keys in the HTTPS_FEATURES dict. Defaults to [].
@@ -233,6 +242,9 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
                         source_cidrs: ['10.0.0.0/8']
     :type public_load_balancer: dict, optional
 
+    :param top_level_domain: The domain name to build this Stalwart cluster for. Defaults to ``stage-thundermail.com``.
+    :type top_level_domain: str
+
     :param stalwart_image: The Docker image to use for the Stalwart service. Defaults to
         'stalwartlabs/mail-server:v0.11'
     :type stalwart_image: str
@@ -264,12 +276,11 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         name: str,
         project: tb_pulumi.ThunderbirdPulumiProject,
         subnets: list[aws.ec2.Subnet],
+        access_keys: dict = {},
         cache_node_count: int = 1,
         cache_node_type: str = 'cache.t3.micro',
         cache_parameters: list = [],
-        enable_blue_key: bool = True,
-        enable_green_key: bool = False,
-        enable_legacy_key: bool = False,
+        enable_legacy_access_key: bool = False,
         https_features: list = [],
         jmap: dict = None,
         nodes: dict = {},
@@ -277,6 +288,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         private_load_balancers: dict = {},
         public_load_balancer: dict = {},
         stalwart_image: str = 'stalwartlabs/mail-server:v0.11',
+        top_level_domain: str = 'stage-thundermail.com',
         user_data_archive: str = 'bootstrap.tbz',
         user_data_template: str = 'stalwart_instance_user_data.sh.j2',
         opts: pulumi.ResourceOptions = None,
@@ -336,9 +348,8 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         iam_user, profile_policy, role, profile_attachment, profile = stalwart_iam.iam(
             self,
             s3_policy=s3_policy,
-            enable_legacy_key=enable_legacy_key,
-            enable_blue_key=enable_blue_key,
-            enable_green_key=enable_green_key,
+            access_keys=access_keys,
+            enable_legacy_access_key=enable_legacy_access_key,
         )
 
         # Store a TOML version of the JMAP config in Secrets Manager for nodes to read back later
@@ -398,7 +409,9 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
             for service, config in self.private_load_balancers.items()
         }
 
-        private_lb_dns = stalwart_dns.private_load_balancer_dns(self, private_lbs=private_lbs)
+        private_lb_dns = stalwart_dns.private_load_balancer_dns(
+            self, top_level_domain=top_level_domain, private_lbs=private_lbs
+        )
 
         # Build the public load balancer
         public_lb_sg_id = pulumi.Output.all(**self.public_load_balancer_security_group.resources).apply(
