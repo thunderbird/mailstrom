@@ -55,8 +55,6 @@ resources:
 
   tb:mailstrom:StalwartCluster:
     thundermail:
-      access_keys: {}
-      enable_legacy_access_key: True
       https_features:
         - caldav
         - carddav
