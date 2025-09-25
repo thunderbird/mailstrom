@@ -13,7 +13,7 @@ def iam(
     self,
     s3_policy: aws.iam.Policy,
 ) -> tuple[
-    tb_pulumi.iam.UserWithAccessKey, aws.iam.Policy, aws.iam.Role, aws.iam.RolePolicyAttachment, aws.iam.InstanceProfile
+    aws.iam.Policy, aws.iam.Role, aws.iam.RolePolicyAttachment, aws.iam.RolePolicyAttachment, aws.iam.InstanceProfile
 ]:
     """Build IAM resources needed by Stalwart.
 
