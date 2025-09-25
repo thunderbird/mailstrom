@@ -3,7 +3,6 @@ Small module to build Stalwart IAM resources.
 """
 
 import json
-import pulumi
 import pulumi_aws as aws
 import tb_pulumi.iam
 
