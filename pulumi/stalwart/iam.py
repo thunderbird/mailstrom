@@ -13,8 +13,6 @@ from tb_pulumi.constants import ASSUME_ROLE_POLICY, IAM_POLICY_DOCUMENT
 def iam(
     self,
     s3_policy: aws.iam.Policy,
-    access_keys: dict,
-    enable_legacy_access_key: bool,
 ) -> tuple[
     tb_pulumi.iam.UserWithAccessKey, aws.iam.Policy, aws.iam.Role, aws.iam.RolePolicyAttachment, aws.iam.InstanceProfile
 ]:
