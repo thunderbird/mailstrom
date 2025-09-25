@@ -199,6 +199,8 @@ def __sap_on_apply(resources):
     ci_user_name = f'{project.name_prefix}-ci'
     tb_pulumi.iam.UserWithAccessKey(
         ci_user_name,
+        access_keys={},
+        enable_legacy_access_key=True,
         project=project,
         user_name=ci_user_name,
         groups=[resources['admin_group']],

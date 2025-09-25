@@ -85,9 +85,12 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         - *node_profile* - The instance profile used for each cluster node.
         - *node_profile_policy* - The `aws.iam.Policy
           <https://www.pulumi.com/registry/packages/aws/api-docs/iam/policy/>`_ attached to the instance profile.
-        - *node_profile_policy_attachment* - The `aws.iam.PolicyAttachment
-          <https://www.pulumi.com/registry/packages/aws/api-docs/iam/policyattachment/>`_ resource between the the
-          policy and the instance profile.
+        - *node_profile_postboot_policy_attachment* - The `aws.iam.PolicyAttachment
+          <https://www.pulumi.com/registry/packages/aws/api-docs/iam/policyattachment/>`_ resource between the
+          policy granting access to postboot template values and the instance profile.
+        - *node_profile_s3_policy_attachment* - The `aws.iam.PolicyAttachment
+          <https://www.pulumi.com/registry/packages/aws/api-docs/iam/policyattachment/>`_ resource between the
+          policy granting access to the S3 bucket Stalwart uses for blob storage and the instance profile.
         - *node_sgs* - Dict of :py:class:`tb_pulumi.network.SecurityGroupWithRules` created for each node to support its
           enabled services, identified by their node_id.
         - *private_lbs* - Dict mapping service names to the :py:class:`StalwartLoadBalancer` s which expose those
@@ -108,8 +111,6 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         - *s3_policy* - `aws.iam.Policy <https://www.pulumi.com/registry/packages/aws/api-docs/iam/policy/>`_ granting
           full, unrestricted access to the S3 bucket and all its objects.
         - *s3_secret* - :py:class:`tb_pulumi.secrets.SecretsManagerSecret` containing the S3 bucket details.
-        - *user- :py:class:`tb_pulumi.iam.UserWithAccessKey` which Stalwart itself will use to manipulate the objects in
-          its S3 blob store.
 
     :param name: A string identifying this set of resources.
     :type name: str
@@ -233,6 +234,9 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
                         source_cidrs: ['10.0.0.0/8']
     :type public_load_balancer: dict, optional
 
+    :param top_level_domain: The domain name to build this Stalwart cluster for. Defaults to ``stage-thundermail.com``.
+    :type top_level_domain: str
+
     :param stalwart_image: The Docker image to use for the Stalwart service. Defaults to
         'stalwartlabs/mail-server:v0.11'
     :type stalwart_image: str
@@ -274,6 +278,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         private_load_balancers: dict = {},
         public_load_balancer: dict = {},
         stalwart_image: str = 'stalwartlabs/mail-server:v0.11',
+        top_level_domain: str = 'stage-thundermail.com',
         user_data_archive: str = 'bootstrap.tbz',
         user_data_template: str = 'stalwart_instance_user_data.sh.j2',
         opts: pulumi.ResourceOptions = None,
@@ -330,7 +335,10 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         s3_bucket, s3_secret, s3_policy = stalwart_s3.s3(self=self)
 
         # Build an IAM role with a policy to enable node bootstrapping
-        iam_user, profile_policy, role, profile_attachment, profile = stalwart_iam.iam(self, s3_policy=s3_policy)
+        profile_policy, role, profile_postboot_attachment, profile_s3_attachment, profile = stalwart_iam.iam(
+            self,
+            s3_policy=s3_policy,
+        )
 
         # Store a TOML version of the JMAP config in Secrets Manager for nodes to read back later
         jmap_dict = {'jmap': jmap} if jmap else {}  # Ensure every TOML option gets the "jmap" text in it
@@ -389,7 +397,9 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
             for service, config in self.private_load_balancers.items()
         }
 
-        private_lb_dns = stalwart_dns.private_load_balancer_dns(self, private_lbs=private_lbs)
+        private_lb_dns = stalwart_dns.private_load_balancer_dns(
+            self, top_level_domain=top_level_domain, private_lbs=private_lbs
+        )
 
         # Build the public load balancer
         public_lb_sg_id = pulumi.Output.all(**self.public_load_balancer_security_group.resources).apply(
@@ -426,7 +436,8 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
                 'jmap_secret': jmap_secret,
                 'node_profile': profile,
                 'node_profile_policy': profile_policy,
-                'node_profile_policy_attachment': profile_attachment,
+                'node_profile_postboot_policy_attachment': profile_postboot_attachment,
+                'node_profile_s3_policy_attachment': profile_s3_attachment,
                 'node_sgs': self.node_sgs,
                 'private_lbs': private_lbs,
                 'private_lb_dns': private_lb_dns,
@@ -438,7 +449,6 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
                 's3': s3_bucket,
                 's3_policy': s3_policy,
                 's3_secret': s3_secret,
-                'user': iam_user,
             }
         )
 
