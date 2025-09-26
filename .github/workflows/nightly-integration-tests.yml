@@ -1,0 +1,45 @@
+name: nightly-integration-tests
+
+concurrency:
+  group: nightly-integration-tests
+  cancel-in-progress: true
+
+on:
+  schedule:
+    # run every day at 2am UTC (9PM EST)
+    - cron:  '0 2 * * *'
+  # allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+permissions:
+  contents: read # required for actions checkout
+
+jobs:
+  nightly-integration-tests:
+    name: nightly-integration-tests
+    runs-on: ubuntu-latest
+    environment: staging
+    env:
+      IS_CI_AUTOMATION: "yes"
+      TEST_SERVER_HOST: ${{ secrets.TEST_SERVER_HOST }}
+      TEST_ACCT_1_USERNAME: ${{ secrets.TEST_ACCT_1_USERNAME }}
+      TEST_ACCT_1_PASSWORD: ${{ secrets.TEST_ACCT_1_APP_PASSWORD }}
+      TEST_ACCT_1_EMAIL: ${{ secrets.TEST_ACCT_1_EMAIL }}
+      TEST_ACCT_2_USERNAME: ${{ secrets.TEST_ACCT_2_USERNAME }}
+      TEST_ACCT_2_PASSWORD: ${{ secrets.TEST_ACCT_2_APP_PASSWORD }}
+      TEST_ACCT_2_EMAIL: ${{ secrets.TEST_ACCT_2_EMAIL }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install test dependencies
+        run: |
+          virtualenv .venv
+          source .venv/bin/activate
+          pip install ."[dev]"
+
+      - name: Run integration tests
+        run: |
+          cd test/integration
+          cp .env.test.example .env.test
+          python -m pytest -vs
