@@ -80,8 +80,11 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
 
     Produces the following ``resources``:
 
+        - *email_secret* - :py:class:`tb_pulumi.secrets.SecretsManagerSecret` containing the TOML-formatted
+          email config.
         - *instances* - Dict of :py:class:`StalwartClusterNode`s, identified by their node_id.
-        - *jmap_secret* - :py:class:`tb_pulumi.secrets.SecretsManagerSecret` containing the TOML-formatted JMAP config.
+        - *jmap_secret* - :py:class:`tb_pulumi.secrets.SecretsManagerSecret` containing the TOML-formatted
+          JMAP config.
         - *node_profile* - The instance profile used for each cluster node.
         - *node_profile_policy* - The `aws.iam.Policy
           <https://www.pulumi.com/registry/packages/aws/api-docs/iam/policy/>`_ attached to the instance profile.
@@ -133,6 +136,20 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
 
     :param cache_parameters: Dictionary of parameters in the parameter group to override.
     :type cache_parameters: dict, optional
+
+    :param email: Dictionary of options to configure general email settings. This should match the options listed in
+        `Stalwart's email documentation <https://stalw.art/docs/email/imap>`_. For example, to configure folder names:
+
+        .. code-block: yaml
+
+            email:
+              folders:
+                archive:
+                  name: "Archives"
+                  create: true
+                  subscribe: true
+
+    :type email: dict, optional
 
     :param https_features: List of features which Stalwart presents over the https service to enable across the cluster.
         These must match with keys in the HTTPS_FEATURES dict. Defaults to [].
@@ -271,6 +288,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         cache_node_count: int = 1,
         cache_node_type: str = 'cache.t3.micro',
         cache_parameters: list = [],
+        email: dict = None,
         https_features: list = [],
         jmap: dict = None,
         nodes: dict = {},
@@ -340,17 +358,21 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
             s3_policy=s3_policy,
         )
 
-        # Store a TOML version of the JMAP config in Secrets Manager for nodes to read back later
-        jmap_dict = {'jmap': jmap} if jmap else {}  # Ensure every TOML option gets the "jmap" text in it
-        toml_str = toml.dumps(jmap_dict) if jmap else ''
-        jmap_secret = tb_pulumi.secrets.SecretsManagerSecret(
-            name=f'{self.name}-secret-jmap',
-            project=self.project,
-            exclude_from_project=True,
-            secret_name=f'{self.project.project}/{self.project.stack}/stalwart.postboot.jmap_toml',
-            secret_value=toml_str,
-            opts=pulumi.ResourceOptions(parent=self),
-        )
+        # Store TOML versions of configuration sections in Secrets Manager for nodes to read back later
+        # This allows us to keep complex config in YAML and render it as TOML on the nodes
+        config_params = {'email': email, 'jmap': jmap}
+        config_secrets = {}
+        for config_name, config_value in config_params.items():
+            config_dict = {config_name: config_value} if config_value else {}
+            toml_str = toml.dumps(config_dict) if config_value else ''
+            config_secrets[config_name] = tb_pulumi.secrets.SecretsManagerSecret(
+                name=f'{self.name}-secret-{config_name}',
+                project=self.project,
+                exclude_from_project=True,
+                secret_name=f'{self.project.project}/{self.project.stack}/stalwart.postboot.{config_name}_toml',
+                secret_value=toml_str,
+                opts=pulumi.ResourceOptions(parent=self),
+            )
 
         # Pipe the node configs into a series of StalwartClusterNodes
         instances = {}
@@ -361,7 +383,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
                 subnet=subnet,
                 iam_instance_profile=profile.name,
                 depends_on=[
-                    jmap_secret,
+                    *config_secrets.values(),
                     profile,
                     redis_secret,
                     s3_secret,
@@ -432,8 +454,9 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
 
         self.finish(
             resources={
+                'email_secret': config_secrets['email'],
                 'instances': instances,
-                'jmap_secret': jmap_secret,
+                'jmap_secret': config_secrets['jmap'],
                 'node_profile': profile,
                 'node_profile_policy': profile_policy,
                 'node_profile_postboot_policy_attachment': profile_postboot_attachment,

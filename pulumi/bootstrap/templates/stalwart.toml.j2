@@ -87,7 +87,9 @@ enable=true
 user="admin"
 secret="{{ fallback_admin_password }}"
 
-{% if jmap %}{{ jmap_toml }}{% endif -%}
+{#- Render any TOML configuration sections that were provided -#}
+{% if email_toml %}{{ email_toml }}{% endif -%}
+{% if jmap_toml %}{{ jmap_toml }}{% endif -%}
 {%- if 'management' in node_services or 'https' in node_services -%}
 [http]
 allowed-endpoint=[

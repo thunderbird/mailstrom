@@ -117,6 +117,13 @@ resources:
             - sg-034b36952ac31b87b  # accounts-prod api container
             - sg-0e2628172e0d95cc3  # accounts-prod celery container
 
+      email:
+        folders:
+          archive:
+            name: "Archives"
+            create: true
+            subscribe: true
+
       jmap:
         account:
           purge:
@@ -173,7 +180,7 @@ resources:
     autoconfig:
       bucket_name: tb-mailstrom-prod-autoconfig-site
       object_dir: static-prod
-  
+
   tb:cloudfront:CloudFrontDistribution:
     autoconfig:
       # cache_policy_id: set in code
