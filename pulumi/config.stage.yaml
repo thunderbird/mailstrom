@@ -175,7 +175,7 @@ resources:
     autoconfig:
       bucket_name: tb-mailstrom-stage-autoconfig-site
       object_dir: static-stage
-  
+
   tb:cloudfront:CloudFrontDistribution:
     autoconfig:
       # cache_policy_id: set in code
