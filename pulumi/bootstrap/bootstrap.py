@@ -71,14 +71,15 @@ def get_instance_tags() -> dict:
 
 def get_secrets(env: str, aws_region: str) -> dict:
     # Map of template vars to SM secrets
-    secret_value_map = {
-        'fallback_admin_password': f'mailstrom/{env}/stalwart.postboot.fallback_admin_password',
-        'jmap_toml': f'mailstrom/{env}/stalwart.postboot.jmap_toml',
-        'postgresql_backend': f'mailstrom/{env}/stalwart.postboot.postgresql_backend',
-        'redis_backend': f'mailstrom/{env}/stalwart.postboot.redis_backend',
-        's3_backend': f'mailstrom/{env}/stalwart.postboot.s3_backend',
-        'keycloak_backend': f'mailstrom/{env}/stalwart.postboot.keycloak_backend',
-    }
+    secret_names = [
+        'fallback_admin_password',
+        'jmap_toml',
+        'postgresql_backend',
+        'redis_backend',
+        's3_backend',
+        'keycloak_backend',
+    ]
+    secret_value_map = {name: f'mailstrom/{env}/stalwart.postboot.{name}' for name in secret_names}
     sm_client = boto3.client('secretsmanager', region_name=aws_region)
 
     secrets = {}
