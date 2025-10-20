@@ -4,14 +4,14 @@ import os
 from dotenv import find_dotenv, load_dotenv
 
 # Load our env
-load_dotenv(find_dotenv('.env.test'), override=True)
+load_dotenv(find_dotenv('.env.test'), override=False)
 
 # Mailstrom test server connection info
 TEST_SERVER_HOST = str(os.getenv('TEST_SERVER_HOST')).strip()
 IMAP_PORT = int(os.getenv('TEST_IMAP_PORT'))
 SMTP_PORT = int(os.getenv('TEST_SMTP_PORT'))
 JMAP_PORT = int(os.getenv('TEST_JMAP_PORT'))
-CONNECT_TIMEOUT = 10  # seconds
+CONNECT_TIMEOUT = 60  # (seconds) requests take longer in CI/GHA test env
 
 # Expected JMAP capabilities
 JMAP_CAPABILITY_CORE_MAX_SIZE_UPLOAD = 50000000
@@ -19,6 +19,10 @@ JMAP_CAPABILITY_CORE_MAX_CONCURRENT_UPLOAD = 4
 JMAP_CAPABILITY_CORE_MAX_SIZE_REQUEST = 10000000
 JMAP_CAPABILITY_CORE_MAX_CONCURRENT_REQUESTS = 4
 JMAP_CAPABILITY_CORE_MAX_CALLS_IN_REQUEST = 16
+
+# CalDAV
+TEST_CALDAV_URL = f'https://{TEST_SERVER_HOST}/dav/cal'
+CALDAV_EXP_DEFAULT_CALENDAR_NAME = 'Default Calendar'
 
 # Test accounts that already exist
 TEST_ACCT_1_USERNAME = str(os.getenv('TEST_ACCT_1_USERNAME')).strip()

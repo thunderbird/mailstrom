@@ -45,7 +45,7 @@ except FileNotFoundError:
 # for each of our mailstrom test user accounts, sign in and delete any folders that were left
 # eft behind by previous runs of the mailbox load tests
 for test_account in USER_CREDENTIALS:
-    log.debug(f'cleaning up previous load test data for test user {test_account["username"][:3]}***')
+    log.debug(f'cleaning up previous load test data for test user {test_account["username"].split("@")[0]}')
     success = imap.login(test_account['username'], test_account['password'])
 
     if success:
@@ -56,11 +56,11 @@ for test_account in USER_CREDENTIALS:
         time.sleep(3)
     else:
         # we aren't going to error out as we're just cleaning up old data
-        log.debug(f'failed to sign into test account {test_account["username"][:3]}***')
+        log.debug(f'failed to sign into test account {test_account["username"].split("@")[0]}')
 
 # now cleanup any emails that were left behind by previous runs of the send mail load test
 # (the test sent emails to LOAD_TEST_TO_EMAIL in the LOAD_TEST_TO_EMAIL_ACCT)
-log.info(f'now cleaning up emails that were received by {LOAD_TEST_TO_EMAIL_ACCT_USERNAME[:3]}***')
+log.info(f'now cleaning up emails that were received by {LOAD_TEST_TO_EMAIL_ACCT_USERNAME.split("@")[0]}')
 success = imap.login(LOAD_TEST_TO_EMAIL_ACCT_USERNAME, LOAD_TEST_TO_EMAIL_ACCT_PASSWORD)
 assert success, 'expected to be able to sign into imap'
 imap.cleanup_test_messages([LOAD_TEST_EMAIL_SUBJECT_PREFIX])

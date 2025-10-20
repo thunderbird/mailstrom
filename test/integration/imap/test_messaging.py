@@ -406,7 +406,7 @@ class TestIMAPMessaging:
                 )
 
                 # actually download the attachment
-                download_to = DOWNLOAD_EMAIL_ATTACHMENTS_PATH + 'imap-msg-test-download.png'
+                download_to = os.path.join(os.getcwd(), DOWNLOAD_EMAIL_ATTACHMENTS_PATH, 'imap-msg-test-download.png')
                 log.debug(f'downloading email msg attachment to: {download_to} ')
                 try:
                     with open(download_to, 'wb') as f:

@@ -1,9 +1,13 @@
 import pytest
+import pytz
 import time
+
+from datetime import datetime, timedelta
 
 from common.IMAP import IMAP
 from common.SMTP import SMTP
 from common.JMAP import JMAP
+from common.CalDAV import CalDAV
 
 from common.logger import log
 
@@ -14,6 +18,12 @@ from common.const import (
     TEST_MSG_SUBJECT_PREFIX,
     TEST_MSG_DEL_SUBJECT_PREFIX,
     TEST_MSG_WITH_ATTACHMENT_SUBJECT_PREFIX,
+    CALENDAR_PREFIX,
+    EVENT_PREFIX,
+    TASK_PREFIX,
+    TASK_PRIORITY_MEDIUM,
+    TASK_CATEGORY_FAVOURITES,
+    TEST_SLEEP_1_SECOND,
 )
 
 from const import (
@@ -21,16 +31,17 @@ from const import (
     SMTP_PORT,
     IMAP_PORT,
     CONNECT_TIMEOUT,
-    TEST_ACCT_1_EMAIL,
-    TEST_ACCT_2_EMAIL,
     TEST_ACCT_1_USERNAME,
     TEST_ACCT_1_PASSWORD,
+    TEST_ACCT_1_EMAIL,
     TEST_ACCT_2_USERNAME,
     TEST_ACCT_2_PASSWORD,
+    TEST_ACCT_2_EMAIL,
     MSG_TESTS_EMAIL_COUNT,
     MSG_TESTS_DRAFT_EMAIL_COUNT,
     MSG_TESTS_DEL_EMAIL_COUNT,
     MSG_TESTS_EMAIL_WITH_ATTACHMENT_COUNT,
+    TEST_CALDAV_URL,
 )
 
 
@@ -104,6 +115,67 @@ def jmap_acct_2():
     # need any post-jmap client creation code, put it here
 
 
+@pytest.fixture(scope='session')
+def caldav():
+    """
+    This fixture runs only once per entire test session, when included in any test definition.
+    Before the tests start login to the CalDAV server and provide a CalDAV connection client.
+    Creates one client per test session; the same client will be used by all of the tests in the session.
+    """
+    caldav = CalDAV(TEST_CALDAV_URL, CONNECT_TIMEOUT)
+    login_success = caldav.login(TEST_ACCT_1_USERNAME, TEST_ACCT_1_PASSWORD)
+    assert login_success, 'expected to be able to connect to caldav server'
+    yield caldav
+
+    # this runs after all of the tests in the class are finished; close the CalDAV client session
+    if login_success:
+        caldav.logout()
+
+
+@pytest.fixture(scope='session')
+def test_calendar():
+    """
+    This fixture runs only once per entire test session, when included in any test definition.
+    Before the tests start login to the CalDAV server and create a test calendar to be used by
+    all of the tests; the same test calendar will be used by all of the tests in the session.
+    """
+    caldav = CalDAV(TEST_CALDAV_URL, CONNECT_TIMEOUT)
+    login_success = caldav.login(TEST_ACCT_1_USERNAME, TEST_ACCT_1_PASSWORD)
+    assert login_success, 'expected to be able to connect to caldav server'
+
+    test_calendar = caldav.make_calendar(f'{CALENDAR_PREFIX} created at {datetime.now()}')
+
+    # create an event in our test calendar that starts 5 minutes from now, for 2 hours
+    time.sleep(TEST_SLEEP_1_SECOND)
+    tz_tor = pytz.timezone('America/Toronto')
+    event_start = datetime.now(tz=tz_tor) + timedelta(minutes=5)
+    event_end = event_start + timedelta(hours=2)
+
+    event_props = {
+        'dtstart': event_start,
+        'dtend': event_end,
+        'summary': f'{EVENT_PREFIX} created at start of test suite at {datetime.now()}',
+    }
+    caldav.create_event(test_calendar, event_props)
+
+    # create a task in our test calendar
+    time.sleep(TEST_SLEEP_1_SECOND)
+    task_props = {
+        'summary': f'{TASK_PREFIX} created at the start of test suite at {datetime.now()}',
+        'description': 'This is a task created at the start of the mailstrom integration tests.',
+        'priority': TASK_PRIORITY_MEDIUM,
+        'categories': TASK_CATEGORY_FAVOURITES,
+        'dtstart': datetime.now(),
+        'due': datetime.now() + timedelta(days=7),
+    }
+    caldav.create_task(test_calendar, task_props)
+
+    # done with caldav here
+    caldav.logout()
+
+    yield test_calendar
+
+
 @pytest.fixture(scope='session', autouse=True)
 def setup_env():
     """
@@ -127,20 +199,30 @@ def cleanup_prev_test_data(test_acct_username, test_acct_password):
     success = imap.login(test_acct_username, test_acct_password)
     assert success, 'expected imap auth to be successful'
 
-    log.debug(f'cleaning up {test_acct_username[:3]}*** test mailboxes')
+    log.debug(f'cleaning up {test_acct_username.split("@")[0]} test mailboxes')
     imap.cleanup_test_mailboxes(MAILBOX_PREFIX)
 
-    log.debug(f'cleaning up {test_acct_username[:3]}*** test emails')
+    log.debug(f'cleaning up {test_acct_username.split("@")[0]} test emails')
     imap.cleanup_test_messages(
         [TEST_MSG_SUBJECT_PREFIX, TEST_MSG_DEL_SUBJECT_PREFIX, TEST_MSG_WITH_ATTACHMENT_SUBJECT_PREFIX]
     )
 
-    log.debug(f'cleaning up {test_acct_username[:3]}*** draft test emails')
+    log.debug(f'cleaning up {test_acct_username.split("@")[0]} draft test emails')
     imap.cleanup_draft_test_messages()
 
     # done with imap
     signed_out = imap.logout()
     assert signed_out, 'expected imap logout to be successful'
+
+    caldav = CalDAV(TEST_CALDAV_URL, CONNECT_TIMEOUT)
+    login_success = caldav.login(test_acct_username, test_acct_password)
+    assert login_success, 'expected to be able to connect to caldav server'
+
+    log.debug(f'cleaning up {test_acct_username.split("@")[0]} caldav test calendars')
+    caldav.cleanup_test_calendars(CALENDAR_PREFIX)
+
+    # done with caldav
+    caldav.logout()
 
 
 @pytest.fixture(scope='class')

@@ -277,7 +277,7 @@ class TestJMAPEmail:
 
         # now wait for the message to arrive at TEST_ACCT_1 (poll if necessary)
         msg_arrived = jmap_acct_1.wait_for_message_to_arrive(subject)
-        assert msg_arrived, f'expected the sent message to have arrived at {TEST_ACCT_1_EMAIL[:3]}***'
+        assert msg_arrived, f'expected the sent message to have arrived at {TEST_ACCT_1_EMAIL.split("@")[0]}'
 
     def test_send_email_html(self, jmap_acct_1, jmap_acct_2):
         # send an email with html body content
@@ -294,7 +294,7 @@ class TestJMAPEmail:
 
         # now wait for the message to arrive at TEST_ACCT_1 (poll if necessary)
         msg_arrived = jmap_acct_1.wait_for_message_to_arrive(subject)
-        assert msg_arrived, f'expected the sent message to have arrived at {TEST_ACCT_1_EMAIL[:3]}***'
+        assert msg_arrived, f'expected the sent message to have arrived at {TEST_ACCT_1_EMAIL.split("@")[0]}'
 
     def test_send_email_with_cc(self, jmap_acct_1, jmap_acct_2):
         # send an email from TEST_ACCT_2 to self and cc TEST_ACCT_1
@@ -312,12 +312,12 @@ class TestJMAPEmail:
 
         # now wait for the message to arrive at TEST_ACCT_2 (poll if necessary)
         msg_arrived = jmap_acct_2.wait_for_message_to_arrive(subject)
-        assert msg_arrived, f'expected the sent message to have arrived at {TEST_ACCT_2_EMAIL[:3]}***'
+        assert msg_arrived, f'expected the sent message to have arrived at {TEST_ACCT_2_EMAIL.split("@")[0]}'
         # todo
 
         # now wait for the cc'd message to arrive at TEST_ACCT_1 (poll if necessary)
         msg_arrived = jmap_acct_1.wait_for_message_to_arrive(subject)
-        assert msg_arrived, f"expected the sent cc'd message to have arrived at {TEST_ACCT_1_EMAIL[:3]}***"
+        assert msg_arrived, f"expected the sent cc'd message to have arrived at {TEST_ACCT_1_EMAIL.split('@')[0]}"
         # todo
 
     def test_send_email_with_bcc(self, jmap_acct_1, jmap_acct_2):
@@ -336,8 +336,8 @@ class TestJMAPEmail:
 
         # now wait for the message to arrive at TEST_ACCT_2 (poll if necessary)
         msg_arrived = jmap_acct_2.wait_for_message_to_arrive(subject)
-        assert msg_arrived, f'expected the sent message to have arrived at {TEST_ACCT_2_EMAIL[:3]}***'
+        assert msg_arrived, f'expected the sent message to have arrived at {TEST_ACCT_2_EMAIL.split("@")[0]}'
 
         # now wait for the cc'd message to arrive at TEST_ACCT_1 (poll if necessary)
         msg_arrived = jmap_acct_1.wait_for_message_to_arrive(subject)
-        assert msg_arrived, f"expected the sent bcc'd message to have arrived at {TEST_ACCT_1_EMAIL[:3]}***"
+        assert msg_arrived, f"expected the sent bcc'd message to have arrived at {TEST_ACCT_1_EMAIL.split('@')[0]}"
