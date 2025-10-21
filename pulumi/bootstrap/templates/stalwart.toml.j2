@@ -11,6 +11,7 @@ local-keys = [ "store.*", "directory.*", "tracer.*", "!server.blocked-ip.*", "!s
 node-id={{ node_id }}
 bind-addr="[::]"
 bind-port=1179
+coordinator="redis"
 
 {#- Set up a listener for every service #}
 {%- set node_services = node_services.split(',') %}
