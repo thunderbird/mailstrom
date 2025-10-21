@@ -29,7 +29,7 @@ resources:
       description: Redis memory cache for Stalwart
       engine: redis
       engine_version: 7.1
-      node_type: cachhe.t3.micro
+      node_type: cache.t3.micro
       num_cache_nodes: 1
       automatic_failover_enabled: False # Must be false when num_cache_nodes is 1
       parameter_group_family: redis7
@@ -117,6 +117,13 @@ resources:
             - sg-034b36952ac31b87b  # accounts-prod api container
             - sg-0e2628172e0d95cc3  # accounts-prod celery container
 
+      spam_filter:
+        bayes:
+          account:
+            enable: true # Enables per-account spam training
+        score:
+          spam: "8.0" # Minimum score to put email in Junk folder
+
       jmap:
         account:
           purge:
@@ -173,7 +180,7 @@ resources:
     autoconfig:
       bucket_name: tb-mailstrom-prod-autoconfig-site
       object_dir: static-prod
-  
+
   tb:cloudfront:CloudFrontDistribution:
     autoconfig:
       # cache_policy_id: set in code

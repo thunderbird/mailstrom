@@ -157,6 +157,21 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         Has no effect if ``jmap`` is not specified in ``https_features``.
     :type jmap: dict, optional
 
+    :param spam_filter: Dictionary of options to configure spam filtering. This should match the options listed in
+        `Stalwart's spam filter documentation <https://stalw.art/docs/spamfilter/overview>`_. A brief example:
+
+        .. code-block: yaml
+
+            spam_filter:
+              bayes:
+                account:
+                  enable: true
+              score:
+                spam: "8.0"
+                reject: "15.0"
+
+    :type spam_filter: dict, optional
+
     :param nodes: Dict describing the individual nodes of the cluster. Each key is a node_id, which must be a
         stringified integer (a restriction imposed by Stalwart), and each value is a dict of supported values describing
         a node configuration. The configuration is composed of inputs to :py:meth:`StalwartCluster.node`. The values
@@ -277,6 +292,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         node_additional_ingress_rules: list[dict] = [],
         private_load_balancers: dict = {},
         public_load_balancer: dict = {},
+        spam_filter: dict = None,
         stalwart_image: str = 'stalwartlabs/mail-server:v0.11',
         top_level_domain: str = 'stage-thundermail.com',
         user_data_archive: str = 'bootstrap.tbz',
@@ -340,17 +356,25 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
             s3_policy=s3_policy,
         )
 
-        # Store a TOML version of the JMAP config in Secrets Manager for nodes to read back later
-        jmap_dict = {'jmap': jmap} if jmap else {}  # Ensure every TOML option gets the "jmap" text in it
-        toml_str = toml.dumps(jmap_dict) if jmap else ''
-        jmap_secret = tb_pulumi.secrets.SecretsManagerSecret(
-            name=f'{self.name}-secret-jmap',
-            project=self.project,
-            exclude_from_project=True,
-            secret_name=f'{self.project.project}/{self.project.stack}/stalwart.postboot.jmap_toml',
-            secret_value=toml_str,
-            opts=pulumi.ResourceOptions(parent=self),
-        )
+        # Store TOML configuration sections in Secrets Manager for nodes to read back later
+        # Maps parameter name to (value, TOML key name)
+        config_params = {
+            'jmap': (jmap, 'jmap'),
+            'spam_filter': (spam_filter, 'spam-filter'),
+        }
+
+        config_secrets = {}
+        for config_name, (config_value, toml_key) in config_params.items():
+            config_dict = {toml_key: config_value} if config_value else {}
+            toml_str = toml.dumps(config_dict) if config_value else ''
+            config_secrets[config_name] = tb_pulumi.secrets.SecretsManagerSecret(
+                name=f'{self.name}-secret-{config_name.replace("_", "-")}',
+                project=self.project,
+                exclude_from_project=True,
+                secret_name=f'{self.project.project}/{self.project.stack}/stalwart.postboot.{config_name}_toml',
+                secret_value=toml_str,
+                opts=pulumi.ResourceOptions(parent=self),
+            )
 
         # Pipe the node configs into a series of StalwartClusterNodes
         instances = {}
@@ -361,7 +385,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
                 subnet=subnet,
                 iam_instance_profile=profile.name,
                 depends_on=[
-                    jmap_secret,
+                    *config_secrets.values(),
                     profile,
                     redis_secret,
                     s3_secret,
@@ -433,7 +457,8 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         self.finish(
             resources={
                 'instances': instances,
-                'jmap_secret': jmap_secret,
+                'jmap_secret': config_secrets['jmap'],
+                'spam_filter_secret': config_secrets['spam_filter'],
                 'node_profile': profile,
                 'node_profile_policy': profile_policy,
                 'node_profile_postboot_policy_attachment': profile_postboot_attachment,

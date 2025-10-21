@@ -119,6 +119,13 @@ resources:
             - sg-0a711c607f9e0b959  # accounts-stage api container
             - sg-02700bcc4c090da45  # accounts-stage celery container
 
+      spam_filter:
+        bayes:
+          account:
+            enable: true # Enables per-account spam training
+        score:
+          spam: "8.0" # Minimum score to put email in Junk folder
+
       jmap:
         account:
           purge:
