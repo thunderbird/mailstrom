@@ -612,7 +612,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
                     'cidr_blocks': ['0.0.0.0/0'],
                 }
             ],
-            'ingress': [{}],
+            'ingress': [],
         }
 
         # Expand "all" services into an explicit list of services
