@@ -88,6 +88,7 @@ user="admin"
 secret="{{ fallback_admin_password }}"
 
 {% if jmap %}{{ jmap_toml }}{% endif -%}
+{% if spam_filter %}{{ spam_filter_toml }}{% endif -%}
 {%- if 'management' in node_services or 'https' in node_services -%}
 [http]
 allowed-endpoint=

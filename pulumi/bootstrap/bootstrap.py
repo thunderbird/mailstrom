@@ -74,6 +74,7 @@ def get_secrets(env: str, aws_region: str) -> dict:
     secret_names = [
         'fallback_admin_password',
         'jmap_toml',
+        'spam_filter_toml',
         'postgresql_backend',
         'redis_backend',
         's3_backend',
