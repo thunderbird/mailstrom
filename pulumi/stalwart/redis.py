@@ -2,7 +2,6 @@
 Small module to build Redis resources
 """
 
-import json
 import pulumi
 import tb_pulumi.elasticache
 import tb_pulumi.secrets
