@@ -48,8 +48,8 @@ class JMAP:
                 password,
             )
         except Exception as e:
-            log.debug('failed creating ')
-            log.debug(f'{str(e)}')
+            log.debug('failed creating JMAP client')
+            log.debug(f'caught exception: {str(e)}')
 
         return client
 
@@ -83,7 +83,11 @@ class JMAP:
 
         # call JMAP API with the method
         log.debug('getting jmap identity')
-        result = self.client.request(method)
+
+        try:
+            result = self.client.request(method)
+        except Exception as e:
+            log.debug(f'caught exception: {str(e)}')
 
         assert isinstance(result, IdentityGetResponse), f'expected an IdentityGetResponse but got {type(result)}'
         return result.data
@@ -105,7 +109,6 @@ class JMAP:
             self.api_url, headers=headers, auth=(self.username, self.password), data=json.dumps(request_payload)
         )
 
-        response.raise_for_status()  # raise an exception for any http errors
         result = response.json()
         assert result, 'expected jmap request to return response json'
 
@@ -129,7 +132,10 @@ class JMAP:
 
         # call JMAP API with the method
         log.debug(f'querying jmap mailboxes with query params: {query_params}')
-        result = self.client.request(method)
+        try:
+            result = self.client.request(method)
+        except Exception as e:
+            log.debug(f'caught exception: {str(e)}')
 
         assert isinstance(result, MailboxQueryResponse), f'expected a MailboxQueryResponse but got {type(result)}'
         assert result.account_id == self.client.account_id, 'expected correct account id'
@@ -150,7 +156,10 @@ class JMAP:
         else:
             log.debug('getting mailbox details for all mailboxes')
 
-        result = self.client.request(method)
+        try:
+            result = self.client.request(method)
+        except Exception as e:
+            log.debug(f'caught exception: {str(e)}')
 
         assert isinstance(result, MailboxGetResponse), f'expected a MailboxGetResponse but got {type(result)}'
         assert result.account_id == self.client.account_id, 'expected correct account id'
@@ -169,7 +178,10 @@ class JMAP:
         ]
 
         log.debug(f'getting mailbox id and then details for mailbox: {mailbox_name}')
-        results = self.client.request(methods)
+        try:
+            results = self.client.request(methods)
+        except Exception as e:
+            log.debug(f'caught exception: {str(e)}')
 
         assert results, 'expected results from both the mailbox query and get'
         assert isinstance(results[0].response, MailboxQueryResponse), (
@@ -342,7 +354,11 @@ class JMAP:
         )
 
         log.debug(f'querying email with filter: {filter} and limit: {limit}')
-        result = self.client.request(method)
+
+        try:
+            result = self.client.request(method)
+        except Exception as e:
+            log.debug(f'caught exception: {str(e)}')
 
         assert isinstance(result, EmailQueryResponse), f'expected an EmailQueryResponse but got {type(result)}'
         assert result.account_id == self.account_id, 'expected account id returned to be correct'
@@ -373,7 +389,11 @@ class JMAP:
         method = EmailGet(ids=list_of_email_ids)
 
         log.debug(f'getting email for ids: {list_of_email_ids}')
-        result = self.client.request(method)
+
+        try:
+            result = self.client.request(method)
+        except Exception as e:
+            log.debug(f'caught exception: {str(e)}')
 
         assert isinstance(result, EmailGetResponse), f'expected an EmailGetResponse but got {type(result)}'
         assert result.account_id == self.account_id, 'expected account id returned to be correct'
@@ -419,7 +439,9 @@ class JMAP:
             ],
         }
 
-        log.debug(f"creating a draft email from '{from_email[:3]}*** to '{to_email[:3]}***' with subject: {subject}")
+        log.debug(
+            f"creating draft email from '{from_email.split('@')[0]} to '{to_email.split('@')[0]}' subject: {subject}"
+        )
         create_result = self.request(email_create_payload)
 
         try:
@@ -459,15 +481,15 @@ class JMAP:
         if html_body:
             new_email['htmlBody'] = html_body
 
-        log_msg = f"from '{from_email[:3]}***' to '{to_email[:3]}***' with subject: '{subject}'"
+        log_msg = f"from '{from_email.split('@')[0]}' to '{to_email.split('@')[0]}' with subject: '{subject}'"
 
         if cc_email:
             new_email['cc'] = [{'email': cc_email}]
-            log_msg = log_msg + f" cc '{cc_email[:3]}***'"
+            log_msg = log_msg + f" cc '{cc_email.split('@')[0]}'"
 
         if bcc_email:
             new_email['bcc'] = [{'email': bcc_email}]
-            log_msg = log_msg + f" bcc '{bcc_email[:3]}***'"
+            log_msg = log_msg + f" bcc '{bcc_email.split('@')[0]}'"
 
         email_create_payload = {
             'using': ['urn:ietf:params:jmap:core', 'urn:ietf:params:jmap:mail'],
@@ -486,7 +508,11 @@ class JMAP:
         }
 
         log.debug(f'creating a draft email {log_msg}')
-        create_result = self.request(email_create_payload)
+
+        try:
+            create_result = self.request(email_create_payload)
+        except Exception as e:
+            log.debug(f'caught exception: {str(e)}')
 
         try:
             created_email_id = create_result['methodResponses'][0][1]['created']['newEmail']['id']

@@ -4,7 +4,7 @@ import os
 from dotenv import find_dotenv, load_dotenv
 
 # Load our env
-load_dotenv(find_dotenv('.env.test'), override=True)
+load_dotenv(find_dotenv('.env.test'), override=False)
 
 # host, ports, and test account credentials
 TEST_SERVER_HOST = str(os.getenv('TEST_SERVER_HOST')).strip()

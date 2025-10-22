@@ -30,7 +30,7 @@ class MailstromIMAPUser(MailstromUser):
 
         # each user instance grabs one unique test account/credentials
         test_user = self.get_next_user()
-        log.debug(f'user instance {id(self)}: signing in to imap with username: {test_user["username"][:3]}***')
+        log.debug(f'user instance {id(self)}: signing in to imap with username: {test_user["username"].split("@")[0]}')
 
         self.connection = IMAP(TEST_SERVER_HOST, IMAP_PORT, CONNECT_TIMEOUT, locust=True)
         success = self.connection.login(test_user['username'], test_user['password'])

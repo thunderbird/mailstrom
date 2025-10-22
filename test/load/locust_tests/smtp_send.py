@@ -33,7 +33,9 @@ class MailstromSMTPUser(MailstromUser):
         # each user instance grabs one unique test account/credentials
         self.test_user = self.get_next_user()
 
-        log.debug(f'user instance {id(self)}: signing in to smtp with username: {self.test_user["username"][:3]}***')
+        log.debug(
+            f'user instance {id(self)}: signing in to smtp with username: {self.test_user["username"].split("@")[0]}'
+        )
         self.connection = SMTP(TEST_SERVER_HOST, SMTP_PORT, CONNECT_TIMEOUT, locust=True)
 
         success = self.connection.login(self.test_user['username'], self.test_user['password'])
@@ -50,7 +52,7 @@ class MailstromSMTPUser(MailstromUser):
         # smtp rate limited to sending 10 emails per session, must reconnect to avoid
         if self.email_count % 10 == 0:
             log.debug(
-                f'user instance {id(self)} {self.test_user["username"][:3]}***: disconnecting and '
+                f'user instance {id(self)} {self.test_user["username"].split("@")[0]}: disconnecting and '
                 + 'reconnecting smtp to avoid session rate limiting'
             )
             signed_out = self.connection.logout()
@@ -59,7 +61,7 @@ class MailstromSMTPUser(MailstromUser):
             assert success, 'expected smtp login to be successful'
 
         log.debug(
-            f'user instance {id(self)} {self.test_user["username"][:3]}***: sending email message '
+            f'user instance {id(self)} {self.test_user["username"].split("@")[0]}: sending email message '
             + f'{self.email_count} via smtp'
         )
         subject = (
