@@ -3,3 +3,5 @@ config:
     secure: AAABADllC4cuKbugAOUc0kU2Gi9fQVk04WGehYncMD9UTN+vzaPl7pJuEpnwFgdnU8PtYFtfHMEhCuPvYvprNTd0tilI3K1EWutatCUnQSmnyBVyutJ6udoapTy6VE45tQlrRmprpUZiCl06FhTsM4xtH9iDUZIcYFD3vxvHBlxRo7dkq1FASf79ql+LJ8G8ZxWMWpjRZuJBjNLAkNdjNMhHxrYAPRyMG/jEEpkZqNiQVdkLzSsGK6Pb8KHpTdvFIYKE+sqVOpgV3IKcsFGie89YsO10ClDnTES2l6qrBOETaECivCHd77H/bhqvzxDNugB0gh37lDp71c3b
   mailstrom:stalwart.postboot.fallback_admin_password:
     secure: AAABAL+Pp9HqNLuWva/DHuBWJu76BIPDwxAUQCXgPkdMrmNAcVqQMdt/QOM3HA==
+  mailstrom:cloudflare_zone_id:
+    value: somevalue

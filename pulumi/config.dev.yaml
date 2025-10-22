@@ -5,21 +5,38 @@ resources:
       secret_names:
         - stalwart.postboot.postgresql_backend
         - stalwart.postboot.fallback_admin_password
+        # - stalwart.postboot.keycloak_backend
       recovery_window_in_days: 0
 
   tb:network:MultiCidrVpc:
     vpc:
       cidr_block: 10.2.0.0/16
-      subnets:
+      private_subnets:
         eu-central-1a:
-          - 10.2.0.0/17
+          - 10.2.0.0/18
         eu-central-1b:
-          - 10.2.128.0/17
+          - 10.2.64.0/18
+      public_subnets:
+        eu-central-1a:
+          - 10.2.128.0/18
+        eu-central-1b:
+          - 10.2.192.0/18
       enable_internet_gateway: True
       egress_via_internet_gateway: True
       enable_dns_hostnames: True
-      endpoint_interfaces:
-        - secretsmanager
+      enable_nat_gateway: True
+      egress_via_nat_gateway: True
+      nat_gateway_allocation_id: eipalloc-0fd0c117569440a4f
+      nat_gateway_secondary_allocation_ids:
+       - eipalloc-037682d640024609a
+       - eipalloc-014cf4b0ce1d34629
+       - eipalloc-0055539e4d56176f1
+       - eipalloc-0e4c84a00b7ece6db
+       - eipalloc-0b09e450502caf17d
+       - eipalloc-038db6049c76498cb
+       - eipalloc-081748c1059a9affd
+      # endpoint_interfaces:
+      #   - secretsmanager
 
   tb:elasticache:ElastiCacheReplicationGroup:
     stalwart:
@@ -39,46 +56,41 @@ resources:
 
   tb:ec2:SshableInstance: {}
   # Fill out this template to build an SSH bastion
-  # tb:ec2:SshableInstance:
-  #   yourname-bastion:
-  #     public_key: |
-  #       ssh-rsa your_public_key_here== user@machine
-  #     source_cidrs:
-  #       - your.public.ip.address/32
+  tb:ec2:SshableInstance:
+    aatchison-bastion:
+      public_key: |
+        ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJZRQw0arI24mOjNHjnFRe11xN9oYYV6Yo5W+BJSfLn8 arron.atchison@gmail.com
+      source_cidrs:
+        - 157.131.101.27/32
+        - 10.2.0.0/16
 
   tb:mailstrom:StalwartCluster:
     thundermail:
       nodes:
-        '1':
-          disable_api_termination: False
+        "0": # Must be a unique, stringified integer
+          disable_api_termination: True
           ignore_ami_changes: True
           ignore_user_data_changes: True
           instance_type: t3.micro
-          key_name: rjung-burrito
+          key_name: mailstrom-stage
           node_roles:
             - all
           services:
-            - imap
-            - imaps
-            - lmtp
-            - managesieve
-            - smtp
-            - smtps
+            - https
           storage_capacity: 20
-        '0':
-          disable_api_termination: False
+        "50":
+          disable_api_termination: True
           ignore_ami_changes: True
           ignore_user_data_changes: True
           instance_type: t3.micro
-          key_name: rjung-burrito
+          key_name: mailstrom-stage
           node_roles:
             - all
           services:
-            - http
-            - smtp
-            - smtps
+            - management
           storage_capacity: 20
-      load_balancer:
+
+      public_load_balancer:
         excluded_nodes:
           - '0'
         services:
