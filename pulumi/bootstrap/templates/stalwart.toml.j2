@@ -71,12 +71,10 @@ region="{{ s3_backend['region'] }}"
 
 [store."redis"]
 type="redis"
-redis-type="single"
-urls="{{ redis_backend['urls'] }}"
-timeout="{{ redis_backend['timeout'] if 'timeout' in redis_backend else '15s' }}"
-{#- TODO: Support Redis clusters.
 redis-type="cluster"
-urls=["url_1", "url_2", "etc"] #}
+urls={{ redis_backend }}
+timeout="{{ redis_backend['timeout'] if 'timeout' in redis_backend else '15s' }}"
+read-from-replicas=true
 
 [tracer."stdout"]
 type="stdout"
