@@ -122,18 +122,6 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         in which to build cluster nodes.
     :type subnets: list[aws.ec2.Subnet]
 
-    :param cache_node_count: Number of Redis cluster nodes to build. This must be at least 1. When greater than 1, one
-        primary "write" node will be created with (n - 1) read-only replicas. Defaults to 1.
-    :type cache_node_count: int, optional
-
-    :param cache_node_type: The `ElastiCache instance type
-        <https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/CacheNodes.SupportedTypes.html>`_ to use when building
-        Redis cache nodes. Defaults to "cache.t3.micro".
-    :type cache_node_type: str, optional
-
-    :param cache_parameters: Dictionary of parameters in the parameter group to override.
-    :type cache_parameters: dict, optional
-
     :param https_features: List of features which Stalwart presents over the https service to enable across the cluster.
         These must match with keys in the HTTPS_FEATURES dict. Defaults to [].
     :type https_features: dict, optional
@@ -156,21 +144,6 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
 
         Has no effect if ``jmap`` is not specified in ``https_features``.
     :type jmap: dict, optional
-
-    :param spam_filter: Dictionary of options to configure spam filtering. This should match the options listed in
-        `Stalwart's spam filter documentation <https://stalw.art/docs/spamfilter/overview>`_. A brief example:
-
-        .. code-block: yaml
-
-            spam_filter:
-              bayes:
-                account:
-                  enable: true
-              score:
-                spam: "8.0"
-                reject: "15.0"
-
-    :type spam_filter: dict, optional
 
     :param nodes: Dict describing the individual nodes of the cluster. Each key is a node_id, which must be a
         stringified integer (a restriction imposed by Stalwart), and each value is a dict of supported values describing
@@ -249,12 +222,30 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
                         source_cidrs: ['10.0.0.0/8']
     :type public_load_balancer: dict, optional
 
-    :param top_level_domain: The domain name to build this Stalwart cluster for. Defaults to ``stage-thundermail.com``.
-    :type top_level_domain: str
+    :param redis_opts: Dictionary of options to pass into the Elasticache cluster constructor.
+    :type redis_opts: dict, optional
+    
+    :param spam_filter: Dictionary of options to configure spam filtering. This should match the options listed in
+        `Stalwart's spam filter documentation <https://stalw.art/docs/spamfilter/overview>`_. A brief example:
+
+        .. code-block: yaml
+
+            spam_filter:
+              bayes:
+                account:
+                  enable: true
+              score:
+                spam: "8.0"
+                reject: "15.0"
+
+    :type spam_filter: dict, optional
 
     :param stalwart_image: The Docker image to use for the Stalwart service. Defaults to
         'stalwartlabs/mail-server:v0.11'
     :type stalwart_image: str
+
+    :param top_level_domain: The domain name to build this Stalwart cluster for. Defaults to ``stage-thundermail.com``.
+    :type top_level_domain: str
 
     :param user_data_archive: File on disk in which to store the bzipped tar file for the user data bootstrapping stage.
         This is a temporary file which can be safely deleted after a Pulumi run. This file is intentionally not deleted,
@@ -283,15 +274,13 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         name: str,
         project: tb_pulumi.ThunderbirdPulumiProject,
         subnets: list[aws.ec2.Subnet],
-        cache_node_count: int = 1,
-        cache_node_type: str = 'cache.t3.micro',
-        cache_parameters: list = [],
         https_features: list = [],
         jmap: dict = None,
         nodes: dict = {},
         node_additional_ingress_rules: list[dict] = [],
         private_load_balancers: dict = {},
         public_load_balancer: dict = {},
+        redis_opts: dict = {},
         spam_filter: dict = None,
         stalwart_image: str = 'stalwartlabs/mail-server:v0.11',
         top_level_domain: str = 'stage-thundermail.com',
@@ -342,9 +331,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         # Build a Redis cluster for Stalwart's in-memory store
         redis, redis_secret = stalwart_redis.redis(
             self=self,
-            cache_node_type=cache_node_type,
-            cache_node_count=cache_node_count,
-            cache_parameters=cache_parameters,
+            redis_opts=redis_opts,
         )
 
         # Build an S3 bucket for Stalwart's blob storage
