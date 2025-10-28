@@ -15,7 +15,7 @@ resources:
         eu-central-1a:
           - 10.2.0.0/18
         eu-central-1b:
-          - 10.2.64.0/18
+          - 10.2.64.0/18 
       public_subnets:
         eu-central-1a:
           - 10.2.128.0/18
@@ -43,7 +43,7 @@ resources:
       description: Redis memory cache for Stalwart
       engine: redis
       engine_version: 7.1
-      node_type: cachhe.t3.micro
+      node_type: cache.t3.micro
       num_cache_nodes: 1
       automatic_failover_enabled: False # Must be false when num_cache_nodes is 1
       parameter_group_family: redis7
@@ -59,20 +59,25 @@ resources:
   tb:ec2:SshableInstance:
     aatchison-bastion:
       public_key: |
-        ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJZRQw0arI24mOjNHjnFRe11xN9oYYV6Yo5W+BJSfLn8 arron.atchison@gmail.com
+        ssh-ed25519 your-key
       source_cidrs:
         - 157.131.101.27/32
         - 10.2.0.0/16
 
   tb:mailstrom:StalwartCluster:
     thundermail:
+      https_features:
+        - caldav
+        - carddav
+      stalwart_image: stalwartlabs/stalwart:v0.13.3
+      top_level_domain: dev-thundermail.com
       nodes:
         "0": # Must be a unique, stringified integer
           disable_api_termination: True
           ignore_ami_changes: True
           ignore_user_data_changes: True
           instance_type: t3.micro
-          key_name: mailstrom-stage
+          key_name: mailstrom-dev
           node_roles:
             - all
           services:
@@ -83,16 +88,15 @@ resources:
           ignore_ami_changes: True
           ignore_user_data_changes: True
           instance_type: t3.micro
-          key_name: mailstrom-stage
+          key_name: mailstrom-dev
           node_roles:
             - all
           services:
             - management
           storage_capacity: 20
-
       public_load_balancer:
-        excluded_nodes:
-          - '0'
+        # excluded_nodes:
+        #   - '0'
         services:
           imap:
             source_cidrs: ['0.0.0.0/0']
