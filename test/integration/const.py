@@ -22,7 +22,11 @@ JMAP_CAPABILITY_CORE_MAX_CALLS_IN_REQUEST = 16
 
 # CalDAV
 TEST_CALDAV_URL = f'https://{TEST_SERVER_HOST}/dav/cal'
-CALDAV_EXP_DEFAULT_CALENDAR_NAME = 'Default Calendar'
+CALDAV_EXP_DEFAULT_CALENDAR_NAME = 'Thundermail Calendar'
+
+# CardDAV
+TEST_CARDDAV_URL = f'https://{TEST_SERVER_HOST}/dav/card'
+CARDDAV_EXP_DEFAULT_ADDRESS_BOOK_NAME = 'Thundermail Address Book'
 
 # Test accounts that already exist
 TEST_ACCT_1_USERNAME = str(os.getenv('TEST_ACCT_1_USERNAME')).strip()

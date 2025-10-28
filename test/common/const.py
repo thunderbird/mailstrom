@@ -67,5 +67,8 @@ TASK_CATEGORY_FAVOURITES = 'Favourites'
 TASK_CATEGORY_BUSINESS = 'Business'
 TASK_CATEGORY_VACATION = 'Vacation'
 
+# Test address book data
+ADDRESS_BOOK_PREFIX = 'AutoTest Address Book'
+
 # Timeouts
 TEST_SLEEP_1_SECOND = 1
