@@ -198,11 +198,11 @@ class CardDAV:
         log.debug('address book created successfully')
         return True
 
-    def delete_address_book_by_href(self, address_book_href):
+    def delete_address_book_by_href(self, address_book_href, address_book_name):
         """
         Delete the given address book (href). When deleting an AB we must provide the full URL including protocol.
         """
-        log.debug(f'deleting address book: {unquote(address_book_href)}')
+        log.debug(f"deleting address book '{address_book_name}' by href: {unquote(address_book_href)}")
 
         try:
             full_ab_url = f'{self.carddav_server_host}{address_book_href}'
@@ -222,7 +222,7 @@ class CardDAV:
         """
         ab_to_del = self.get_address_book_by_name(address_book_name)
         if ab_to_del:
-            success = self.delete_address_book_by_href(ab_to_del['href'])
+            success = self.delete_address_book_by_href(ab_to_del['href'], address_book_name)
             return success
         else:
             log.debug('unable to delete the address book because it does not exist')
@@ -230,7 +230,9 @@ class CardDAV:
 
     def cleanup_test_address_books(self, address_book_prefix):
         """
-        Find all existing carddav address books with a name that match the given prefix and delete them.
+        Find all existing address books with a name that match the given prefix and delete them. Note that
+        this will delete ALL adress books with a name with the address_book_prefix (including ones created
+        by other methods like JMAP contacts).
         """
         existing_abs = self.get_address_books()
 
@@ -238,7 +240,7 @@ class CardDAV:
             for ab in existing_abs:
                 if address_book_prefix in unquote(ab['displayname']):
                     try:
-                        self.delete_address_book_by_href(ab['href'])
+                        self.delete_address_book_by_href(ab['href'], ab['displayname'])
                         time.sleep(TEST_SLEEP_1_SECOND)
 
                     except Exception as _ex:
