@@ -197,7 +197,7 @@ def carddav():
 
 
 @pytest.fixture(scope='session')
-def test_address_book():
+def test_address_book_carddav():
     """
     This fixture runs only once per entire test session, when included in any test definition.
     Before the tests start login to the CardDAV server and create a test address book to be used
@@ -207,12 +207,12 @@ def test_address_book():
     login_success = carddav.login(TEST_ACCT_1_USERNAME, TEST_ACCT_1_PASSWORD)
     assert login_success, 'expected to be able to connect to carddav server'
 
-    ab_name = f'{ADDRESS_BOOK_PREFIX} created {datetime.now()}'
+    ab_name = f'{ADDRESS_BOOK_PREFIX} CardDAV {datetime.now()}'
     success = carddav.create_address_book(ab_name)
     assert success, 'expected to be able to create the test_address_book'
 
-    test_address_book = carddav.get_address_book_by_name(ab_name)
-    assert test_address_book is not None, 'expected test_address_book to exist'
+    test_address_book_carddav = carddav.get_address_book_by_name(ab_name)
+    assert test_address_book_carddav is not None, 'expected test_address_book to exist'
 
     # now create a contact in our new test address book so it's not empty
     contact_details = {
@@ -223,13 +223,44 @@ def test_address_book():
         'email': 'fake-email-flast@example.org',
     }
 
-    success = carddav.create_contact(test_address_book['href'], contact_details)
+    success = carddav.create_contact(test_address_book_carddav['href'], contact_details)
     assert success, 'expected to be able to create a new contact'
 
     # done with caldav here
     carddav.logout()
 
-    yield test_address_book
+    yield test_address_book_carddav
+
+
+@pytest.fixture(scope='session')
+def test_address_book_jmap():
+    """
+    This fixture runs only once per entire test session, when included in any test definition.
+    Before the tests start login to the JMAP server and create a test address book to be used
+    by all of the tests; the same address book will be used by all of the tests in the session.
+    """
+    jmap_acct = JMAP(TEST_SERVER_HOST, TEST_ACCT_1_USERNAME, TEST_ACCT_1_PASSWORD)
+    assert jmap_acct.client is not None, 'expected jmap client'
+
+    ab_name = f'{ADDRESS_BOOK_PREFIX} JMAP {datetime.now()}'
+    result = jmap_acct.create_addressbook(ab_name)
+    assert result, 'expected addressbook to have been created successfully'
+    assert result['newAddressBook']['id'], 'expected addressbook id to have been returned'
+
+    # now create a contact in our new test address book so it's not empty
+    contact_details = {
+        'first_name': 'First',
+        'last_name': 'Last',
+        'full_name': 'First Last',
+        'cell': '15551112222',
+        'email': 'fake-email-flast@example.org',
+    }
+
+    # todo create contact in our address book via jmap
+    #success = carddav.create_contact(test_address_book_carddav['href'], contact_details)
+    #assert success, 'expected to be able to create a new contact'
+
+    yield test_address_book_jmap
 
 
 @pytest.fixture(scope='session', autouse=True)
@@ -279,7 +310,7 @@ def cleanup_prev_test_data(test_acct_username, test_acct_password):
     carddav = CardDAV(TEST_CARDDAV_URL, CONNECT_TIMEOUT)
     login_success = carddav.login(test_acct_username, test_acct_password)
     assert login_success, 'expected to be able to connect to carddav server'
-    log.debug(f'cleaning up {test_acct_username.split("@")[0]} carddav test address books')
+    log.debug(f'cleaning up {test_acct_username.split("@")[0]} carddav and jmap test address books')
     carddav.cleanup_test_address_books(ADDRESS_BOOK_PREFIX)
 
 

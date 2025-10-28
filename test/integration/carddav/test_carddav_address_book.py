@@ -45,7 +45,7 @@ class TestCarddavAddressBook:
     @pytest.mark.sanity
     def test_create_address_book(self, carddav):
         # create a new address book and verify
-        ab_name = f'{ADDRESS_BOOK_PREFIX} {datetime.now()}'
+        ab_name = f'{ADDRESS_BOOK_PREFIX} CardDAV {datetime.now()}'
         success = carddav.create_address_book(ab_name)
         assert success, 'expected to be able to create a new address book'
 
@@ -55,7 +55,7 @@ class TestCarddavAddressBook:
 
     def test_delete_address_book(self, carddav):
         # create a new address book, delete it, and verify
-        ab_name = f'{ADDRESS_BOOK_PREFIX} {datetime.now()}'
+        ab_name = f'{ADDRESS_BOOK_PREFIX} CardDAV {datetime.now()}'
         success = carddav.create_address_book(ab_name)
         assert success, 'expected to be able to create a new address book'
 
@@ -75,7 +75,7 @@ class TestCarddavAddressBook:
         assert login_success, 'expected to be able to connect to carddav server with second client'
 
         # create a new address book with our first carddav client
-        ab_name = f'{ADDRESS_BOOK_PREFIX} {datetime.now()}'
+        ab_name = f'{ADDRESS_BOOK_PREFIX} CardDAV {datetime.now()}'
         success = carddav.create_address_book(ab_name)
         assert success, 'expected to be able to create a new address book with first carddav client'
 
