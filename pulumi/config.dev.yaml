@@ -5,10 +5,10 @@ resources:
       secret_names:
         - stalwart.postboot.postgresql_backend
         - stalwart.postboot.fallback_admin_password
-        # - stalwart.postboot.keycloak_backend
+        - stalwart.postboot.keycloak_backend
       recovery_window_in_days: 0
 
-  tb:network:MultiCidrVpc:
+  tb:network:MultiTierVpc:
     vpc:
       cidr_block: 10.2.0.0/16
       private_subnets:
@@ -54,15 +54,15 @@ resources:
       # source_sgids: []
       # subnets: []
 
-  tb:ec2:SshableInstance: {}
+  # tb:ec2:SshableInstance: {}
   # Fill out this template to build an SSH bastion
   tb:ec2:SshableInstance:
-    aatchison-bastion:
-      public_key: |
-        ssh-ed25519 your-key
+    bastion:
+      ssh_keypair_name: mailstrom-dev
       source_cidrs:
-        - 157.131.101.27/32
-        - 10.2.0.0/16
+        - 38.15.46.29/32  # Ryan
+        - 157.131.101.27/32  # Arron
+        - 10.2.0.0/16  # Internal access
 
   tb:mailstrom:StalwartCluster:
     thundermail:
@@ -71,6 +71,18 @@ resources:
         - carddav
       stalwart_image: stalwartlabs/stalwart:v0.13.3
       top_level_domain: dev-thundermail.com
+      node_additional_ingress_rules:
+      - source_security_group_id: sg-0f0844e4136a92fb7
+        description: Allow bastion SSH traffic
+        protocol: tcp
+        from_port: 22
+        to_port: 22
+      - source_security_group_id: sg-0c84310afc7232b1f
+        description: Allow bastion SSH traffic
+        protocol: tcp
+        from_port: 22
+        to_port: 22
+          
       nodes:
         "0": # Must be a unique, stringified integer
           disable_api_termination: True
@@ -110,6 +122,65 @@ resources:
             source_cidrs: ['0.0.0.0/0']
           smtps:
             source_cidrs: ['0.0.0.0/0']
+
+      spam_filter:
+        bayes:
+          account:
+            enable: true # Enables per-account spam training
+        score:
+          spam: "8.0" # Minimum score to put email in Junk folder
+
+      jmap:
+        account:
+          purge:
+            frequency: "0 0 *"
+        email:
+          auto-expunge: 30d
+        event-source:
+          throttle: 1s
+        protocol:
+          changes:
+            max-history: 30d
+            max-results: 5000
+          email:
+            max-attachment-size: 50000000
+            max-size: 75000000
+          get:
+            max-objects: 500
+          mailbox:
+            max-depth: 10
+            max-name-length: 255
+          parse:
+            max-items: 10
+          query:
+            max-results: 5000
+          set:
+            max-objects: 500
+          upload:
+            max-concurrent: 4
+            max-size: 50000000
+            quota:
+              files: 1000
+              size: 50000000
+            ttl: 1h
+        push:
+          attempts:
+            interval: 1m
+            max: 3
+          max-total: 100
+          retry:
+            interval: 1s
+          throttle: 1ms
+          timeout:
+            request: 10s
+            verify: 1s
+        rate-limit:
+          account: 1000/1m
+          anonymous: 100/1m
+        websocket:
+          heartbeat: 1m
+          throttle: 1s
+          timeout: 10m
 
   tb:s3:S3PrivateBucket:
     autoconfig:

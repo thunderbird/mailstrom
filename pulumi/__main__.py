@@ -26,8 +26,8 @@ psm = tb_pulumi.secrets.PulumiSecretsManager(
 )
 
 # Build out some private network space
-vpc_opts = resources['tb:network:MultiCidrVpc']['vpc']
-vpc = tb_pulumi.network.MultiCidrVpc(
+vpc_opts = resources['tb:network:MultiTierVpc']['vpc']
+vpc = tb_pulumi.network.MultiTierVpc(
     f'{project.name_prefix}-vpc',
     project,
     **vpc_opts,
@@ -92,6 +92,8 @@ jumphost_rules = pulumi.Output.all(**bastions).apply(lambda jumphosts: __jumphos
 # # Build a Stalwart cluster
 def __stalwart_cluster(jumphost_rules: list[dict]):
     stalwart_opts = resources['tb:mailstrom:StalwartCluster']['thundermail']
+    if 'node_additional_ingress_rules' in stalwart_opts:
+        jumphost_rules.extend(stalwart_opts.pop('node_additional_ingress_rules'))
     return stalwart.StalwartCluster(
         f'{project.name_prefix}-stalwart',
         project=project,
@@ -102,9 +104,9 @@ def __stalwart_cluster(jumphost_rules: list[dict]):
     )
 
 
-# project.resources['stalwart_cluster'] = jumphost_rules.apply(
-#     lambda jumphost_rules: __stalwart_cluster(jumphost_rules=jumphost_rules)
-# )
+project.resources['stalwart_cluster'] = jumphost_rules.apply(
+    lambda jumphost_rules: __stalwart_cluster(jumphost_rules=jumphost_rules)
+)
 
 # service_bucket_name = resources['tb:s3:S3PrivateBucket']['autoconfig']['bucket_name']
 # # # Build a secure S3 website to host our autoconfig files in
