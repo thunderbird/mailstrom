@@ -609,3 +609,42 @@ class JMAP:
                 break
 
         return arrived_msg_id
+
+    def create_addressbook(self, ab_name):
+        """
+        Create a new address book with the given name and subscribe to it. Note: We are not using JMAPC module here
+        because it doesn't support addressbook/contacts; so we build and send our JMAP request directly ourselves.
+        """
+        ab_set_payload = {
+            'using': ['urn:ietf:params:jmap:core', 'urn:ietf:params:jmap:contacts'],
+            'methodCalls': [
+                [
+                    'AddressBook/set',
+                    {
+                        'accountId': self.account_id,
+                        'create': {
+                            'newAddressBook': {
+                                'name': ab_name,
+                                'isSubscribed': True,
+                            }
+                        },
+                    },
+                    'c1',
+                ]
+            ],
+        }
+
+        log.debug(f"creating address book '{ab_name}'")
+        result = self.request(ab_set_payload)
+
+        try:
+            ab_created = result['methodResponses'][0][1]['created']
+            log.debug(f"address book '{ab_name}' was created successfully: {ab_created}")
+            return ab_created
+
+        except Exception:
+            log.debug(f'error creating mailbox: {result}')
+            return result
+
+        # currently returning bad request; support for JMAP Contacts just was added to stalwart 2 weeks
+        # ago, and it looks like it hasn't made it's way into our current version of mailstrom yet
