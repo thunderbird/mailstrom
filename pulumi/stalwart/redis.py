@@ -2,7 +2,6 @@
 Small module to build Redis resources
 """
 
-import json
 import pulumi
 import tb_pulumi.elasticache
 import tb_pulumi.secrets
@@ -47,19 +46,22 @@ def redis(
     )
 
     # Store Redis config details in Secrets Manager
-    def __redis_secret(address: str):
+    def __redis_secret(primary_address: str, reader_address: str):
         return tb_pulumi.secrets.SecretsManagerSecret(
             name=f'{self.name}-secret-redis',
             project=self.project,
             exclude_from_project=True,
             secret_name=f'mailstrom/{self.project.stack}/stalwart.postboot.redis_backend',
-            secret_value=json.dumps({'urls': f'redis://{address}#insecure'}),
+            secret_value=f'["redis://{primary_address}#insecure", "redis://{reader_address}#insecure"]',
             opts=pulumi.ResourceOptions(parent=self),
         )
 
     redis_secret = pulumi.Output.all(**redis_group.resources).apply(
-        lambda redis_resources: redis_resources['replication_group'].primary_endpoint_address.apply(
-            lambda address: __redis_secret(address=address)
+        lambda redis_resources: pulumi.Output.all(
+            primary=redis_resources['replication_group'].primary_endpoint_address,
+            reader=redis_resources['replication_group'].reader_endpoint_address,
+        ).apply(
+            lambda addresses: __redis_secret(primary_address=addresses['primary'], reader_address=addresses['reader'])
         )
     )
 

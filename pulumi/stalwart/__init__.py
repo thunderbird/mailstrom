@@ -612,15 +612,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
                     'cidr_blocks': ['0.0.0.0/0'],
                 }
             ],
-            'ingress': [
-                {
-                    'description': 'Allow the nodes to speak the Stalwart gossip protocol amongst themselves',
-                    'protocol': 'udp',
-                    'from_port': 1179,
-                    'to_port': 1179,
-                    'self': True,
-                }
-            ],
+            'ingress': [],
         }
 
         # Expand "all" services into an explicit list of services
