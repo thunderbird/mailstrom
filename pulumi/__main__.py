@@ -73,6 +73,7 @@ for bastion in resources['tb:ec2:SshableInstance'].keys():
         **bastion_opts,
     )
 
+
 def __jumphost_rules(jumphosts):
     return [
         {
@@ -87,6 +88,7 @@ def __jumphost_rules(jumphosts):
 
 
 jumphost_rules = pulumi.Output.all(**bastions).apply(lambda jumphosts: __jumphost_rules(jumphosts=jumphosts))
+
 
 # Build a Stalwart cluster
 def __stalwart_cluster(jumphost_rules: list[dict]):
@@ -215,12 +217,16 @@ service_bucket_policy = aws.s3.BucketPolicy(
 )
 
 monitoring_opts = resources.get('tb:cloudwatch:CloudWatchMonitoringGroup')
-monitoring = tb_pulumi.cloudwatch.CloudWatchMonitoringGroup(
-    name=f'{project.name_prefix}-monitoring',
-    project=project,
-    notify_emails=monitoring_opts['notify_emails'],
-    config=monitoring_opts,
-) if monitoring_opts is not None else None
+monitoring = (
+    tb_pulumi.cloudwatch.CloudWatchMonitoringGroup(
+        name=f'{project.name_prefix}-monitoring',
+        project=project,
+        notify_emails=monitoring_opts['notify_emails'],
+        config=monitoring_opts,
+    )
+    if monitoring_opts is not None
+    else None
+)
 
 
 def __sap_on_apply(resources):
