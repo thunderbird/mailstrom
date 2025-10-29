@@ -315,8 +315,6 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         self.user_data_archive = user_data_archive
         self.user_data_template = user_data_template
 
-        pulumi.info('DEBUG -- rjung -- Before security groups')
-
         # All subnets must be in the same VPC. For convenience, we grab the ID from the first private subnet.
         self.vpc_id = self.private_subnets[0].vpc_id
 
@@ -334,15 +332,11 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
             for node in nodes
         }
 
-        pulumi.info('DEBUG -- rjung -- Before redis')
-
         # Build a Redis cluster for Stalwart's in-memory store
         redis, redis_secret = stalwart_redis.redis(
             self=self,
             redis_opts=redis_opts,
         )
-
-        pulumi.info('DEBUG -- rjung -- Before S3')
 
         # Build an S3 bucket for Stalwart's blob storage
         s3_bucket, s3_secret, s3_policy = stalwart_s3.s3(self=self)
@@ -352,8 +346,6 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
             self,
             s3_policy=s3_policy,
         )
-
-        pulumi.info('DEBUG -- rjung -- Before secrets')
 
         # Store TOML configuration sections in Secrets Manager for nodes to read back later
         # Maps parameter name to (value, TOML key name)
@@ -375,8 +367,6 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
                 opts=pulumi.ResourceOptions(parent=self),
             )
 
-        pulumi.info('DEBUG -- rjung -- Before instances')
-
         # Pipe the node configs into a series of StalwartClusterNodes
         instances = {}
         for idx, node_id in enumerate(nodes):
@@ -395,8 +385,6 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
                 ],
                 **nodes[node_id],
             )
-
-        pulumi.info('DEBUG -- rjung -- Before private lbs')
 
         # Build the private load balancers
         private_lbs = {
@@ -432,8 +420,6 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         private_lb_dns = stalwart_dns.private_load_balancer_dns(
             self, top_level_domain=top_level_domain, private_lbs=private_lbs
         )
-
-        pulumi.info('DEBUG -- rjung -- Before public lbs')
 
         # Build the public load balancer
         public_lb_sg_id = pulumi.Output.all(**self.public_load_balancer_security_group.resources).apply(
@@ -986,7 +972,7 @@ class StalwartLoadBalancer(tb_pulumi.ThunderbirdComponentResource):
                     'protocol': 'TCP',
                     'unhealthy_threshold': 2,
                 },
-                name=f'{self.project.stack}-{service}',  # Constrained to 32 characters
+                name=f'{self.project.name_prefix}-{service}',  # Constrained to 32 characters
                 port=STALWART_CLUSTER_SERVICES[service],
                 protocol='TCP',
                 target_type='instance',

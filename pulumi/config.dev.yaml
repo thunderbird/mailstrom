@@ -35,6 +35,11 @@ resources:
        - eipalloc-0b09e450502caf17d
        - eipalloc-038db6049c76498cb
        - eipalloc-081748c1059a9affd
+      additional_routes:
+        private:
+          - destination_cidr_block: 10.1.0.0/16  # accounts-stage
+            vpc_peering_connection_id: pcx-0df3d2f9c005ae0cd
+        public: []
       # endpoint_interfaces:
       #   - secretsmanager
 
@@ -70,18 +75,6 @@ resources:
             value: "yes"
         port: 6379
 
-      node_additional_ingress_rules:
-      - source_security_group_id: sg-0f0844e4136a92fb7
-        description: Allow bastion SSH traffic
-        protocol: tcp
-        from_port: 22
-        to_port: 22
-      - source_security_group_id: sg-0c84310afc7232b1f
-        description: Allow bastion SSH traffic
-        protocol: tcp
-        from_port: 22
-        to_port: 22
-          
       nodes:
         "0": # Must be a unique, stringified integer
           disable_api_termination: True
@@ -93,6 +86,13 @@ resources:
             - all
           services:
             - https
+            - imap
+            - imaps
+            - lmtp
+            - managesieve
+            - smtp
+            - smtps
+            - submission
           storage_capacity: 20
         "50":
           disable_api_termination: True
@@ -105,9 +105,10 @@ resources:
           services:
             - management
           storage_capacity: 20
+
       public_load_balancer:
-        # excluded_nodes:
-        #   - '0'
+        excluded_nodes:
+          - '50'
         services:
           imap:
             source_cidrs: ['0.0.0.0/0']
@@ -121,6 +122,13 @@ resources:
             source_cidrs: ['0.0.0.0/0']
           smtps:
             source_cidrs: ['0.0.0.0/0']
+
+      private_load_balancers:
+        management:
+          excluded_nodes: ["0"]
+          source_security_group_ids:
+            - sg-0a711c607f9e0b959  # accounts-stage api container
+            - sg-02700bcc4c090da45  # accounts-stage celery container
 
       spam_filter:
         bayes:

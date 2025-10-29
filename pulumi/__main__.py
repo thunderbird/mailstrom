@@ -45,34 +45,6 @@ for bastion in resources['tb:ec2:SshableInstance'].keys():
         opts=pulumi.ResourceOptions(depends_on=[vpc]),
         **bastion_opts,
     )
-    bastions[bastion] = tb_pulumi.ec2.SshableInstance(
-        f'{project.name_prefix}-private-{bastion}',
-        project=project,
-        subnet_id=vpc.resources['private_subnets'][0].id,
-        vpc_id=vpc.resources['vpc'].id,
-        associate_public_ip_address=False,
-        opts=pulumi.ResourceOptions(depends_on=[vpc]),
-        **bastion_opts,
-    )
-    bastion_opts = resources['tb:ec2:SshableInstance'][bastion]
-    bastions[bastion] = tb_pulumi.ec2.SshableInstance(
-        f'{project.name_prefix}-public-{bastion}-1',
-        project=project,
-        subnet_id=vpc.resources['public_subnets'][1].id,
-        vpc_id=vpc.resources['vpc'].id,
-        opts=pulumi.ResourceOptions(depends_on=[vpc]),
-        **bastion_opts,
-    )
-    bastions[bastion] = tb_pulumi.ec2.SshableInstance(
-        f'{project.name_prefix}-private-{bastion}-1',
-        project=project,
-        subnet_id=vpc.resources['private_subnets'][1].id,
-        vpc_id=vpc.resources['vpc'].id,
-        associate_public_ip_address=False,
-        opts=pulumi.ResourceOptions(depends_on=[vpc]),
-        **bastion_opts,
-    )
-
 
 def __jumphost_rules(jumphosts):
     return [

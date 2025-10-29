@@ -1,4 +1,5 @@
 Jinja2>=3.1,<4.0
 pulumi_cloudflare==6.6.0
-tb_pulumi @ git+https://github.com/thunderbird/pulumi.git@create-multi-tier-vpc-arch-for-private-nat-egress
+-e /home/rjung/workspace/thunderbird/pulumi
+# tb_pulumi @ git+https://github.com/thunderbird/pulumi.git@create-multi-tier-vpc-arch-for-private-nat-egress
 toml>=0.10.2,<0.11
