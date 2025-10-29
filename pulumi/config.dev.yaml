@@ -38,22 +38,6 @@ resources:
       # endpoint_interfaces:
       #   - secretsmanager
 
-  tb:elasticache:ElastiCacheReplicationGroup:
-    stalwart:
-      description: Redis memory cache for Stalwart
-      engine: redis
-      engine_version: 7.1
-      node_type: cache.t3.micro
-      num_cache_nodes: 1
-      automatic_failover_enabled: False # Must be false when num_cache_nodes is 1
-      parameter_group_family: redis7
-      parameter_group_params: {}
-      port: 6379
-      # Dynamic values set in code, or not at all:
-      # source_cidrs: []
-      # source_sgids: []
-      # subnets: []
-
   # tb:ec2:SshableInstance: {}
   # Fill out this template to build an SSH bastion
   tb:ec2:SshableInstance:
@@ -71,6 +55,21 @@ resources:
         - carddav
       stalwart_image: stalwartlabs/stalwart:v0.13.3
       top_level_domain: dev-thundermail.com
+      redis_opts:
+        apply_immediately: True
+        automatic_failover_enabled: True
+        cluster_mode: enabled
+        description: Redis memory cache for Stalwart
+        engine: redis
+        engine_version: 7.1
+        node_type: cache.t3.micro
+        num_cache_nodes: 2
+        parameter_group_family: redis7
+        parameter_group_params:
+          - name: cluster-enabled
+            value: "yes"
+        port: 6379
+
       node_additional_ingress_rules:
       - source_security_group_id: sg-0f0844e4136a92fb7
         description: Allow bastion SSH traffic

@@ -75,6 +75,7 @@ redis-type="cluster"
 urls={{ redis_backend }}
 timeout="{{ redis_backend['timeout'] if 'timeout' in redis_backend else '15s' }}"
 read-from-replicas=true
+protocol-version="resp3"
 
 [tracer."stdout"]
 type="stdout"

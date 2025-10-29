@@ -224,7 +224,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
 
     :param redis_opts: Dictionary of options to pass into the Elasticache cluster constructor.
     :type redis_opts: dict, optional
-    
+
     :param spam_filter: Dictionary of options to configure spam filtering. This should match the options listed in
         `Stalwart's spam filter documentation <https://stalw.art/docs/spamfilter/overview>`_. A brief example:
 
@@ -273,7 +273,8 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         self,
         name: str,
         project: tb_pulumi.ThunderbirdPulumiProject,
-        subnets: list[aws.ec2.Subnet],
+        private_subnets: list[aws.ec2.Subnet],
+        public_subnets: list[aws.ec2.Subnet],
         https_features: list = [],
         jmap: dict = None,
         nodes: dict = {},
@@ -298,8 +299,10 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         )
 
         # Sanity check the subnets list
-        if len(subnets) == 0:
-            raise ValueError('You must provide at least one subnet.')
+        if len(private_subnets) == 0:
+            raise ValueError('You must provide at least one private subnet.')
+        if len(public_subnets) == 0:
+            raise ValueError('You must provide at least one pubic subnet.')
 
         # Internalize some vars we need in the other functions and properties
         self.https_features = https_features
@@ -307,12 +310,15 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         self.private_load_balancers = private_load_balancers
         self.public_load_balancer_config = public_load_balancer
         self.stalwart_image = stalwart_image
-        self.subnets = subnets
+        self.private_subnets = private_subnets
+        self.public_subnets = public_subnets
         self.user_data_archive = user_data_archive
         self.user_data_template = user_data_template
 
-        # All subnets must be in the same VPC. For convenience, we grab the ID from the first subnet.
-        self.vpc_id = self.subnets[0].vpc_id
+        pulumi.info('DEBUG -- rjung -- Before security groups')
+
+        # All subnets must be in the same VPC. For convenience, we grab the ID from the first private subnet.
+        self.vpc_id = self.private_subnets[0].vpc_id
 
         # Build the private load balancer security groups before we build the node security groups
         # so we can create rules in the latter that reference the former.
@@ -328,11 +334,15 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
             for node in nodes
         }
 
+        pulumi.info('DEBUG -- rjung -- Before redis')
+
         # Build a Redis cluster for Stalwart's in-memory store
         redis, redis_secret = stalwart_redis.redis(
             self=self,
             redis_opts=redis_opts,
         )
+
+        pulumi.info('DEBUG -- rjung -- Before S3')
 
         # Build an S3 bucket for Stalwart's blob storage
         s3_bucket, s3_secret, s3_policy = stalwart_s3.s3(self=self)
@@ -342,6 +352,8 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
             self,
             s3_policy=s3_policy,
         )
+
+        pulumi.info('DEBUG -- rjung -- Before secrets')
 
         # Store TOML configuration sections in Secrets Manager for nodes to read back later
         # Maps parameter name to (value, TOML key name)
@@ -363,10 +375,12 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
                 opts=pulumi.ResourceOptions(parent=self),
             )
 
+        pulumi.info('DEBUG -- rjung -- Before instances')
+
         # Pipe the node configs into a series of StalwartClusterNodes
         instances = {}
         for idx, node_id in enumerate(nodes):
-            subnet = self.subnets[idx % len(self.subnets)]  # Distribute across subnets
+            subnet = self.private_subnets[idx % len(self.private_subnets)]  # Distribute across subnets
             instances[node_id] = self.node(
                 node_id=node_id,
                 subnet=subnet,
@@ -381,6 +395,8 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
                 ],
                 **nodes[node_id],
             )
+
+        pulumi.info('DEBUG -- rjung -- Before private lbs')
 
         # Build the private load balancers
         private_lbs = {
@@ -398,10 +414,15 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
                         'source_security_group_ids': config.get('source_security_group_ids', []),
                     }
                 },
-                subnets=self.subnets,
+                subnets=self.private_subnets,
                 excluded_nodes=config.get('excluded_nodes', []),
                 opts=pulumi.ResourceOptions(
-                    parent=self, depends_on=[*self.private_load_balancer_security_groups.values(), *self.subnets]
+                    parent=self,
+                    depends_on=[
+                        *self.private_load_balancer_security_groups.values(),
+                        *self.private_subnets,
+                        *self.public_subnets,
+                    ],
                 ),
                 tags=self.tags,
             )
@@ -411,6 +432,8 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         private_lb_dns = stalwart_dns.private_load_balancer_dns(
             self, top_level_domain=top_level_domain, private_lbs=private_lbs
         )
+
+        pulumi.info('DEBUG -- rjung -- Before public lbs')
 
         # Build the public load balancer
         public_lb_sg_id = pulumi.Output.all(**self.public_load_balancer_security_group.resources).apply(
@@ -433,7 +456,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
             node_config=self.nodes,
             security_group_ids=[public_lb_sg_id],
             service_config=public_lb_services,
-            subnets=self.subnets,
+            subnets=self.public_subnets,
             excluded_nodes=self.public_load_balancer_config['excluded_nodes']
             if 'excluded_nodes' in self.public_load_balancer_config
             else None,
