@@ -37,7 +37,7 @@ resources:
        - eipalloc-081748c1059a9affd
       additional_routes:
         private:
-          - destination_cidr_block: 10.1.0.0/16  # accounts-stage
+          - destination_cidr_block: 10.11.0.0/16  # accounts-stage
             vpc_peering_connection_id: pcx-0df3d2f9c005ae0cd
         public: []
       # endpoint_interfaces:
