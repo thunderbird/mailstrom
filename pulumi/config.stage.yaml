@@ -7,29 +7,34 @@ resources:
         - stalwart.postboot.postgresql_backend
         - stalwart.postboot.keycloak_backend
 
-  tb:network:MultiCidrVpc:
+  tb:network:MultiTierVpc:
     vpc:
       cidr_block: 10.1.0.0/16
-      subnets:
+      private_subnets:
         eu-central-1a:
-          - 10.1.0.0/17
+          - 10.1.0.0/18
         eu-central-1b:
-          - 10.1.128.0/17
+          - 10.1.64.0/18
+      public_subnets:
+        eu-central-1a:
+          - 10.1.128.0/18
+        eu-central-1b:
+          - 10.1.192.0/18
       enable_internet_gateway: True
       egress_via_internet_gateway: True
       enable_dns_hostnames: True
+      enable_nat_gateway: True
+      egress_via_nat_gateway: True
+      nat_gateway_allocation_id: eipalloc-02a6e1a2d8ac6a193  # 63.179.124.53
+      nat_gateway_secondary_allocation_ids:
+       - eipalloc-0f512d7cb3929b176  # 63.179.185.6
       endpoint_interfaces:
         - secretsmanager
       additional_routes:
-        - destination_cidr_block: 10.11.0.0/16  # accounts-stage
-          vpc_peering_connection_id: pcx-01404a628c7756197
-
-  tb:elasticache:ElastiCacheReplicationGroup:
-    stalwart:
-      # Dynamic values set in code, or not at all:
-      # source_cidrs: []
-      # source_sgids: []
-      # subnets: []
+        private:
+          - destination_cidr_block: 10.11.0.0/16  # accounts-stage
+            vpc_peering_connection_id: pcx-063f07eca0677a761
+        public: []
 
   tb:ec2:SshableInstance:
     bastion:
@@ -56,7 +61,7 @@ resources:
       redis_opts:
         apply_immediately: True
         automatic_failover_enabled: True
-        cluster_mode: disabled
+        cluster_mode: enabled
         description: Redis memory cache for Stalwart
         engine: redis
         engine_version: 7.1
@@ -66,8 +71,9 @@ resources:
         parameter_group_family: redis7
         parameter_group_params:
           - name: cluster-enabled
-            value: yes
+            value: "yes"
         port: 6379
+
       nodes:
         "0": # Must be a unique, stringified integer
           disable_api_termination: True

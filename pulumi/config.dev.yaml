@@ -49,8 +49,6 @@ resources:
     bastion:
       ssh_keypair_name: mailstrom-dev
       source_cidrs:
-        - 38.15.46.29/32  # Ryan
-        - 157.131.101.27/32  # Arron
         - 10.2.0.0/16  # Internal access
 
   tb:mailstrom:StalwartCluster:
