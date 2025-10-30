@@ -766,7 +766,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         return aws.ec2.Instance(
             f'{self.name}-{node_id}-instance',
             ami=self.project.get_latest_amazon_linux_ami(),
-            associate_public_ip_address=True,  # These are private, but a public IP assignment is required for egress
+            associate_public_ip_address=False,  # These are private, but a public IP assignment is required for egress
             disable_api_stop=disable_api_stop,
             disable_api_termination=disable_api_termination,
             instance_type=instance_type,
