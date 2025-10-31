@@ -26,15 +26,9 @@ resources:
       enable_dns_hostnames: True
       enable_nat_gateway: True
       egress_via_nat_gateway: True
-      nat_gateway_allocation_id: eipalloc-0fd0c117569440a4f
-      nat_gateway_secondary_allocation_ids:
-       - eipalloc-037682d640024609a
-       - eipalloc-014cf4b0ce1d34629
-       - eipalloc-0055539e4d56176f1
-       - eipalloc-0e4c84a00b7ece6db
-       - eipalloc-0b09e450502caf17d
-       - eipalloc-038db6049c76498cb
-       - eipalloc-081748c1059a9affd
+      # If you want to supply specific EIPs to this, you can do that here:
+      # nat_gateway_allocation_id: 
+      # nat_gateway_secondary_allocation_ids:
       additional_routes:
         private:
           - destination_cidr_block: 10.11.0.0/16  # accounts-stage
