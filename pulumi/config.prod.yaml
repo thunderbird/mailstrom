@@ -7,34 +7,37 @@ resources:
         - stalwart.postboot.postgresql_backend
         - stalwart.postboot.keycloak_backend
 
-  tb:network:MultiCidrVpc:
+  tb:network:MultiTierVpc:
     vpc:
       cidr_block: 10.0.0.0/16
-      subnets:
+      private_subnets:
         eu-central-1a:
-          - 10.0.0.0/17
+          - 10.0.0.0/18
         eu-central-1b:
-          - 10.0.128.0/17
+          - 10.0.64.0/18
+      public_subnets:
+        eu-central-1a:
+          - 10.0.128.0/18
+        eu-central-1b:
+          - 10.0.192.0/18
       enable_internet_gateway: True
       egress_via_internet_gateway: True
       enable_dns_hostnames: True
+      enable_nat_gateway: True
+      egress_via_nat_gateway: True
+      nat_gateway_allocation_id: eipalloc-0fd0c117569440a4f  # 5.60.96.8
+      nat_gateway_secondary_allocation_ids:
+        - eipalloc-037682d640024609a  # 5.60.96.9
+        - eipalloc-014cf4b0ce1d34629  # 5.60.96.10
+        - eipalloc-0055539e4d56176f1  # 5.60.96.11
       endpoint_interfaces:
         - secretsmanager
       additional_routes:
-        - destination_cidr_block: 10.10.0.0/16  # accounts-prod
-          vpc_peering_connection_id: pcx-01a454bbabc04e61b
+        private:
+          - destination_cidr_block: 10.10.0.0/16  # accounts-prod
+            vpc_peering_connection_id: pcx-0fdcc9b776a069d2d
+        public: []
 
-  tb:elasticache:ElastiCacheReplicationGroup:
-    stalwart:
-      description: Redis memory cache for Stalwart
-      engine: redis
-      engine_version: 7.1
-      node_type: cache.t3.micro
-      num_cache_nodes: 1
-      automatic_failover_enabled: False # Must be false when num_cache_nodes is 1
-      parameter_group_family: redis7
-      parameter_group_params: {}
-      port: 6379
       # Dynamic values set in code, or not at all:
       # source_cidrs: []
       # source_sgids: []
@@ -43,7 +46,8 @@ resources:
   tb:ec2:SshableInstance:
     bastion:
       ssh_keypair_name: mailstrom-prod
-      source_cidrs: []
+      source_cidrs:
+        - 38.15.46.29/32
   # Fill out this template to build an SSH bastion
   # tb:ec2:SshableInstance:
   #   bastion:
@@ -59,6 +63,20 @@ resources:
         - jmap
       stalwart_image: stalwartlabs/stalwart:v0.13.3
       top_level_domain: thundermail.com
+      redis_opts:
+        apply_immediately: True
+        automatic_failover_enabled: True
+        cluster_mode: enabled
+        description: Redis memory cache for Stalwart
+        engine: redis
+        engine_version: 7.1
+        node_type: cache.t3.micro
+        num_cache_nodes: 2
+        parameter_group_family: redis7
+        parameter_group_params:
+          - name: cluster-enabled
+            value: "yes"
+        port: 6379
       nodes:
         "0": # Must be a unique, stringified integer
           disable_api_termination: True
