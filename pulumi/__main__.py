@@ -33,7 +33,7 @@ vpc = tb_pulumi.network.MultiTierVpc(
     **vpc_opts,
 )
 
-# # Build out SSH bastions if any are defined
+# Build out SSH bastions if any are defined
 bastions = {}
 for bastion in resources['tb:ec2:SshableInstance'].keys():
     bastion_opts = resources['tb:ec2:SshableInstance'][bastion]
@@ -45,6 +45,7 @@ for bastion in resources['tb:ec2:SshableInstance'].keys():
         opts=pulumi.ResourceOptions(depends_on=[vpc]),
         **bastion_opts,
     )
+
 
 def __jumphost_rules(jumphosts):
     return [
