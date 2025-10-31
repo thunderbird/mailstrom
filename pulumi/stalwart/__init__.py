@@ -122,18 +122,6 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         in which to build cluster nodes.
     :type subnets: list[aws.ec2.Subnet]
 
-    :param cache_node_count: Number of Redis cluster nodes to build. This must be at least 1. When greater than 1, one
-        primary "write" node will be created with (n - 1) read-only replicas. Defaults to 1.
-    :type cache_node_count: int, optional
-
-    :param cache_node_type: The `ElastiCache instance type
-        <https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/CacheNodes.SupportedTypes.html>`_ to use when building
-        Redis cache nodes. Defaults to "cache.t3.micro".
-    :type cache_node_type: str, optional
-
-    :param cache_parameters: Dictionary of parameters in the parameter group to override.
-    :type cache_parameters: dict, optional
-
     :param https_features: List of features which Stalwart presents over the https service to enable across the cluster.
         These must match with keys in the HTTPS_FEATURES dict. Defaults to [].
     :type https_features: dict, optional
@@ -156,21 +144,6 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
 
         Has no effect if ``jmap`` is not specified in ``https_features``.
     :type jmap: dict, optional
-
-    :param spam_filter: Dictionary of options to configure spam filtering. This should match the options listed in
-        `Stalwart's spam filter documentation <https://stalw.art/docs/spamfilter/overview>`_. A brief example:
-
-        .. code-block: yaml
-
-            spam_filter:
-              bayes:
-                account:
-                  enable: true
-              score:
-                spam: "8.0"
-                reject: "15.0"
-
-    :type spam_filter: dict, optional
 
     :param nodes: Dict describing the individual nodes of the cluster. Each key is a node_id, which must be a
         stringified integer (a restriction imposed by Stalwart), and each value is a dict of supported values describing
@@ -249,12 +222,30 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
                         source_cidrs: ['10.0.0.0/8']
     :type public_load_balancer: dict, optional
 
-    :param top_level_domain: The domain name to build this Stalwart cluster for. Defaults to ``stage-thundermail.com``.
-    :type top_level_domain: str
+    :param redis_opts: Dictionary of options to pass into the Elasticache cluster constructor.
+    :type redis_opts: dict, optional
+
+    :param spam_filter: Dictionary of options to configure spam filtering. This should match the options listed in
+        `Stalwart's spam filter documentation <https://stalw.art/docs/spamfilter/overview>`_. A brief example:
+
+        .. code-block: yaml
+
+            spam_filter:
+              bayes:
+                account:
+                  enable: true
+              score:
+                spam: "8.0"
+                reject: "15.0"
+
+    :type spam_filter: dict, optional
 
     :param stalwart_image: The Docker image to use for the Stalwart service. Defaults to
         'stalwartlabs/mail-server:v0.11'
     :type stalwart_image: str
+
+    :param top_level_domain: The domain name to build this Stalwart cluster for. Defaults to ``stage-thundermail.com``.
+    :type top_level_domain: str
 
     :param user_data_archive: File on disk in which to store the bzipped tar file for the user data bootstrapping stage.
         This is a temporary file which can be safely deleted after a Pulumi run. This file is intentionally not deleted,
@@ -282,16 +273,15 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         self,
         name: str,
         project: tb_pulumi.ThunderbirdPulumiProject,
-        subnets: list[aws.ec2.Subnet],
-        cache_node_count: int = 1,
-        cache_node_type: str = 'cache.t3.micro',
-        cache_parameters: list = [],
+        private_subnets: list[aws.ec2.Subnet],
+        public_subnets: list[aws.ec2.Subnet],
         https_features: list = [],
         jmap: dict = None,
         nodes: dict = {},
         node_additional_ingress_rules: list[dict] = [],
         private_load_balancers: dict = {},
         public_load_balancer: dict = {},
+        redis_opts: dict = {},
         spam_filter: dict = None,
         stalwart_image: str = 'stalwartlabs/mail-server:v0.11',
         top_level_domain: str = 'stage-thundermail.com',
@@ -309,8 +299,10 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         )
 
         # Sanity check the subnets list
-        if len(subnets) == 0:
-            raise ValueError('You must provide at least one subnet.')
+        if len(private_subnets) == 0:
+            raise ValueError('You must provide at least one private subnet.')
+        if len(public_subnets) == 0:
+            raise ValueError('You must provide at least one pubic subnet.')
 
         # Internalize some vars we need in the other functions and properties
         self.https_features = https_features
@@ -318,12 +310,13 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         self.private_load_balancers = private_load_balancers
         self.public_load_balancer_config = public_load_balancer
         self.stalwart_image = stalwart_image
-        self.subnets = subnets
+        self.private_subnets = private_subnets
+        self.public_subnets = public_subnets
         self.user_data_archive = user_data_archive
         self.user_data_template = user_data_template
 
-        # All subnets must be in the same VPC. For convenience, we grab the ID from the first subnet.
-        self.vpc_id = self.subnets[0].vpc_id
+        # All subnets must be in the same VPC. For convenience, we grab the ID from the first private subnet.
+        self.vpc_id = self.private_subnets[0].vpc_id
 
         # Build the private load balancer security groups before we build the node security groups
         # so we can create rules in the latter that reference the former.
@@ -342,9 +335,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         # Build a Redis cluster for Stalwart's in-memory store
         redis, redis_secret = stalwart_redis.redis(
             self=self,
-            cache_node_type=cache_node_type,
-            cache_node_count=cache_node_count,
-            cache_parameters=cache_parameters,
+            redis_opts=redis_opts,
         )
 
         # Build an S3 bucket for Stalwart's blob storage
@@ -379,7 +370,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         # Pipe the node configs into a series of StalwartClusterNodes
         instances = {}
         for idx, node_id in enumerate(nodes):
-            subnet = self.subnets[idx % len(self.subnets)]  # Distribute across subnets
+            subnet = self.private_subnets[idx % len(self.private_subnets)]  # Distribute across subnets
             instances[node_id] = self.node(
                 node_id=node_id,
                 subnet=subnet,
@@ -411,10 +402,15 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
                         'source_security_group_ids': config.get('source_security_group_ids', []),
                     }
                 },
-                subnets=self.subnets,
+                subnets=self.private_subnets,
                 excluded_nodes=config.get('excluded_nodes', []),
                 opts=pulumi.ResourceOptions(
-                    parent=self, depends_on=[*self.private_load_balancer_security_groups.values(), *self.subnets]
+                    parent=self,
+                    depends_on=[
+                        *self.private_load_balancer_security_groups.values(),
+                        *self.private_subnets,
+                        *self.public_subnets,
+                    ],
                 ),
                 tags=self.tags,
             )
@@ -446,7 +442,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
             node_config=self.nodes,
             security_group_ids=[public_lb_sg_id],
             service_config=public_lb_services,
-            subnets=self.subnets,
+            subnets=self.public_subnets,
             excluded_nodes=self.public_load_balancer_config['excluded_nodes']
             if 'excluded_nodes' in self.public_load_balancer_config
             else None,
@@ -770,7 +766,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         return aws.ec2.Instance(
             f'{self.name}-{node_id}-instance',
             ami=self.project.get_latest_amazon_linux_ami(),
-            associate_public_ip_address=True,  # These are private, but a public IP assignment is required for egress
+            associate_public_ip_address=False,  # These are private, but a public IP assignment is required for egress
             disable_api_stop=disable_api_stop,
             disable_api_termination=disable_api_termination,
             instance_type=instance_type,
@@ -976,7 +972,7 @@ class StalwartLoadBalancer(tb_pulumi.ThunderbirdComponentResource):
                     'protocol': 'TCP',
                     'unhealthy_threshold': 2,
                 },
-                name=f'{self.project.stack}-{service}',  # Constrained to 32 characters
+                name=f'{self.project.name_prefix}-{service}',  # Constrained to 32 characters
                 port=STALWART_CLUSTER_SERVICES[service],
                 protocol='TCP',
                 target_type='instance',

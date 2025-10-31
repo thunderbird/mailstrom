@@ -26,8 +26,8 @@ psm = tb_pulumi.secrets.PulumiSecretsManager(
 )
 
 # Build out some private network space
-vpc_opts = resources['tb:network:MultiCidrVpc']['vpc']
-vpc = tb_pulumi.network.MultiCidrVpc(
+vpc_opts = resources['tb:network:MultiTierVpc']['vpc']
+vpc = tb_pulumi.network.MultiTierVpc(
     f'{project.name_prefix}-vpc',
     project,
     **vpc_opts,
@@ -38,9 +38,9 @@ bastions = {}
 for bastion in resources['tb:ec2:SshableInstance'].keys():
     bastion_opts = resources['tb:ec2:SshableInstance'][bastion]
     bastions[bastion] = tb_pulumi.ec2.SshableInstance(
-        f'{project.name_prefix}-{bastion}',
+        f'{project.name_prefix}-public-{bastion}',
         project=project,
-        subnet_id=vpc.resources['subnets'][0].id,
+        subnet_id=vpc.resources['public_subnets'][0].id,
         vpc_id=vpc.resources['vpc'].id,
         opts=pulumi.ResourceOptions(depends_on=[vpc]),
         **bastion_opts,
@@ -66,10 +66,13 @@ jumphost_rules = pulumi.Output.all(**bastions).apply(lambda jumphosts: __jumphos
 # Build a Stalwart cluster
 def __stalwart_cluster(jumphost_rules: list[dict]):
     stalwart_opts = resources['tb:mailstrom:StalwartCluster']['thundermail']
+    if 'node_additional_ingress_rules' in stalwart_opts:
+        jumphost_rules.extend(stalwart_opts.pop('node_additional_ingress_rules'))
     return stalwart.StalwartCluster(
         f'{project.name_prefix}-stalwart',
         project=project,
-        subnets=vpc.resources['subnets'],
+        private_subnets=vpc.resources['private_subnets'],
+        public_subnets=vpc.resources['public_subnets'],
         node_additional_ingress_rules=jumphost_rules,
         opts=pulumi.ResourceOptions(depends_on=[vpc]),
         **stalwart_opts,
@@ -186,12 +189,16 @@ service_bucket_policy = aws.s3.BucketPolicy(
     opts=pulumi.ResourceOptions(depends_on=[project.resources['autoconfig_website'], cloudfront_distribution]),
 )
 
-monitoring_opts = resources['tb:cloudwatch:CloudWatchMonitoringGroup']
-monitoring = tb_pulumi.cloudwatch.CloudWatchMonitoringGroup(
-    name=f'{project.name_prefix}-monitoring',
-    project=project,
-    notify_emails=monitoring_opts['notify_emails'],
-    config=monitoring_opts,
+monitoring_opts = resources.get('tb:cloudwatch:CloudWatchMonitoringGroup')
+monitoring = (
+    tb_pulumi.cloudwatch.CloudWatchMonitoringGroup(
+        name=f'{project.name_prefix}-monitoring',
+        project=project,
+        notify_emails=monitoring_opts['notify_emails'],
+        config=monitoring_opts,
+    )
+    if monitoring_opts is not None
+    else None
 )
 
 
