@@ -8,6 +8,7 @@ from common.IMAP import IMAP
 from common.SMTP import SMTP
 from common.JMAP import JMAP
 from common.CalDAV import CalDAV
+from common.CardDAV import CardDAV
 
 from common.logger import log
 
@@ -24,6 +25,7 @@ from common.const import (
     TASK_PRIORITY_MEDIUM,
     TASK_CATEGORY_FAVOURITES,
     TEST_SLEEP_1_SECOND,
+    ADDRESS_BOOK_PREFIX,
 )
 
 from const import (
@@ -42,6 +44,7 @@ from const import (
     MSG_TESTS_DEL_EMAIL_COUNT,
     MSG_TESTS_EMAIL_WITH_ATTACHMENT_COUNT,
     TEST_CALDAV_URL,
+    TEST_CARDDAV_URL,
 )
 
 
@@ -176,6 +179,59 @@ def test_calendar():
     yield test_calendar
 
 
+@pytest.fixture(scope='session')
+def carddav():
+    """
+    This fixture runs only once per entire test session, when included in any test definition.
+    Before the tests start login to the CardDAV server and provide a CardDAV connection client.
+    Creates one client per test session; the same client will be used by all of the tests in the session.
+    """
+    carddav = CardDAV(TEST_CARDDAV_URL, CONNECT_TIMEOUT)
+    login_success = carddav.login(TEST_ACCT_1_USERNAME, TEST_ACCT_1_PASSWORD)
+    assert login_success, 'expected to be able to connect to carddav server'
+    yield carddav
+
+    # this runs after all of the tests in the class are finished; close the CardDAV client session
+    if login_success:
+        carddav.logout()
+
+
+@pytest.fixture(scope='session')
+def test_address_book():
+    """
+    This fixture runs only once per entire test session, when included in any test definition.
+    Before the tests start login to the CardDAV server and create a test address book to be used
+    by all of the tests; the same address book will be used by all of the tests in the session.
+    """
+    carddav = CardDAV(TEST_CARDDAV_URL, CONNECT_TIMEOUT)
+    login_success = carddav.login(TEST_ACCT_1_USERNAME, TEST_ACCT_1_PASSWORD)
+    assert login_success, 'expected to be able to connect to carddav server'
+
+    ab_name = f'{ADDRESS_BOOK_PREFIX} created {datetime.now()}'
+    success = carddav.create_address_book(ab_name)
+    assert success, 'expected to be able to create the test_address_book'
+
+    test_address_book = carddav.get_address_book_by_name(ab_name)
+    assert test_address_book is not None, 'expected test_address_book to exist'
+
+    # now create a contact in our new test address book so it's not empty
+    contact_details = {
+        'first_name': 'First',
+        'last_name': 'Last',
+        'full_name': 'First Last',
+        'cell': '15551112222',
+        'email': 'fake-email-flast@example.org',
+    }
+
+    success = carddav.create_contact(test_address_book['href'], contact_details)
+    assert success, 'expected to be able to create a new contact'
+
+    # done with caldav here
+    carddav.logout()
+
+    yield test_address_book
+
+
 @pytest.fixture(scope='session', autouse=True)
 def setup_env():
     """
@@ -209,20 +265,22 @@ def cleanup_prev_test_data(test_acct_username, test_acct_password):
 
     log.debug(f'cleaning up {test_acct_username.split("@")[0]} draft test emails')
     imap.cleanup_draft_test_messages()
-
-    # done with imap
     signed_out = imap.logout()
     assert signed_out, 'expected imap logout to be successful'
 
+    log.debug(f'cleaning up {test_acct_username.split("@")[0]} caldav calendars')
     caldav = CalDAV(TEST_CALDAV_URL, CONNECT_TIMEOUT)
     login_success = caldav.login(test_acct_username, test_acct_password)
     assert login_success, 'expected to be able to connect to caldav server'
-
-    log.debug(f'cleaning up {test_acct_username.split("@")[0]} caldav test calendars')
     caldav.cleanup_test_calendars(CALENDAR_PREFIX)
-
-    # done with caldav
     caldav.logout()
+
+    log.debug(f'cleaning up {test_acct_username.split("@")[0]} carddav address books')
+    carddav = CardDAV(TEST_CARDDAV_URL, CONNECT_TIMEOUT)
+    login_success = carddav.login(test_acct_username, test_acct_password)
+    assert login_success, 'expected to be able to connect to carddav server'
+    log.debug(f'cleaning up {test_acct_username.split("@")[0]} carddav test address books')
+    carddav.cleanup_test_address_books(ADDRESS_BOOK_PREFIX)
 
 
 @pytest.fixture(scope='class')
