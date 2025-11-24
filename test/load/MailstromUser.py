@@ -56,7 +56,7 @@ class MailstromUser(User):
         # return the next user from our credentials list, remove it from the list so that
         # no other user instance will use the same credentials
         if len(USER_CREDENTIALS) > 0:
-            return USER_CREDENTIALS.pop()
+            return USER_CREDENTIALS.pop(0)
         else:
             # exit this user instance but locust test will continue with other users
             raise RuntimeError('attempting to spin up new user but ran out of credentials in credentials file')

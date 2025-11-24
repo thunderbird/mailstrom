@@ -31,7 +31,7 @@ TEST_IMAP_PORT = 993
 
 ### Stage Test Account to Receive Emails
 
-The load tests send emails to a specified email address; you must provide the stage account credentials and associated email address where the load tests will send test emails to.
+The load tests send emails to a specified email address; you must provide the stage account credentials (username and APP password) and associated email address where the load tests will send test emails to.
 
 **Note:**
 The tests will leave behind lots of data (i.e. mailboxes/folders/emails) so it is highly recommended you use mailstrom test accounts and not your own personal accounts!
@@ -41,7 +41,7 @@ To specify where the load tests will send test emails, open the same `.env.test`
 ```dotenv
 LOAD_TEST_TO_EMAIL = "<email address to receive test messages>" # msgs will be sent to here
 LOAD_TEST_TO_EMAIL_ACCT_USERNAME = "<username>"
-LOAD_TEST_TO_EMAIL_ACCT_PASSWORD = "<password>"
+LOAD_TEST_TO_EMAIL_ACCT_PASSWORD = "<APP_password>"
 ```
 
 ### User Test Account Credentials & Email Addresses
@@ -54,7 +54,7 @@ The tests will leave behind lots of data (i.e. mailboxes/folders/emails) so it i
 The following information is required for each mailstrom load test account:
 
 * stage-server-username: The mailstrom stage test account username
-* user-password: The mailstrom stage test account user password
+* user-password: The mailstrom stage test account APP password
 * user-email-address: The mailstrom email address that is already configured and exists for the given mailstrom user
 
 To provide the test account user information for the load test, create a local `test/load/test_files/.load_test_users` file.<br>

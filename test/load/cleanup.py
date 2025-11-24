@@ -4,10 +4,14 @@ import time
 
 sys.path.append('../')
 from common.IMAP import IMAP
+from common.CalDAV import CalDAV
+from common.CardDAV import CardDAV
 from common.logger import log
 
 from const import (
     TEST_SERVER_HOST,
+    TEST_CALDAV_URL,
+    TEST_CARDDAV_URL,
     IMAP_PORT,
     CONNECT_TIMEOUT,
     LOAD_TEST_USERS_CSV,
@@ -15,9 +19,13 @@ from const import (
     LOAD_TEST_TO_EMAIL_ACCT_USERNAME,
     LOAD_TEST_TO_EMAIL_ACCT_PASSWORD,
     LOAD_TEST_EMAIL_SUBJECT_PREFIX,
+    LOAD_TEST_CALENDAR_NAME_PREFIX,
+    LOAD_TEST_ADDRESS_BOOK_NAME_PREFIX,
 )
 
 imap = IMAP(TEST_SERVER_HOST, IMAP_PORT, CONNECT_TIMEOUT)
+caldav = CalDAV(TEST_CALDAV_URL, CONNECT_TIMEOUT)
+carddav = CardDAV(TEST_CARDDAV_URL, CONNECT_TIMEOUT)
 
 USER_CREDENTIALS = []
 
@@ -43,7 +51,7 @@ except FileNotFoundError:
     raise Exception('local credentials file not found!')
 
 # for each of our mailstrom test user accounts, sign in and delete any folders that were left
-# eft behind by previous runs of the mailbox load tests
+# behind by previous runs of the mailbox load tests
 for test_account in USER_CREDENTIALS:
     log.debug(f'cleaning up previous load test data for test user {test_account["username"].split("@")[0]}')
     success = imap.login(test_account['username'], test_account['password'])
@@ -52,8 +60,29 @@ for test_account in USER_CREDENTIALS:
         # first cleanup the folders, they were created in each load test account
         imap.cleanup_test_mailboxes(LOAD_TEST_FOLDER_NAME_PREFIX)
         imap.logout()
+        time.sleep(2)
+    else:
+        # we aren't going to error out as we're just cleaning up old data
+        log.debug(f'failed to sign into test account {test_account["username"].split("@")[0]}')
 
-        time.sleep(3)
+    # now clean-up any caldav test calendars that were left behind
+    success = caldav.login(test_account['username'], test_account['password'])
+
+    if success:
+        caldav.cleanup_test_calendars(LOAD_TEST_CALENDAR_NAME_PREFIX)
+        caldav.logout()
+        time.sleep(2)
+    else:
+        # we aren't going to error out as we're just cleaning up old data
+        log.debug(f'failed to sign into test account {test_account["username"].split("@")[0]}')
+
+    # now clean-up any caldav test calendars that were left behind
+    success = carddav.login(test_account['username'], test_account['password'])
+
+    if success:
+        carddav.cleanup_test_address_books(LOAD_TEST_ADDRESS_BOOK_NAME_PREFIX)
+        carddav.logout()
+        time.sleep(2)
     else:
         # we aren't going to error out as we're just cleaning up old data
         log.debug(f'failed to sign into test account {test_account["username"].split("@")[0]}')

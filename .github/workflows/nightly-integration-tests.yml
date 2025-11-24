@@ -57,6 +57,7 @@ jobs:
           python -m pytest jmap/ --junit-xml=./jmap-test-results.xml -vs
 
       - name: IMAP integration tests
+        continue-on-error: true # we want these tests to run even if previous tests failed
         run: |
           source .venv/bin/activate
           cd test/integration
@@ -64,6 +65,7 @@ jobs:
           python -m pytest imap/ --junit-xml=./imap-test-results.xml -vs
 
       - name: SMTP integration tests
+        continue-on-error: true # we want these tests to run even if previous tests failed
         run: |
           source .venv/bin/activate
           cd test/integration
@@ -71,14 +73,23 @@ jobs:
           python -m pytest smtp/ --junit-xml=./smtp-test-results.xml -vs
 
       - name: CalDAV integration tests
+        continue-on-error: true # we want these tests to run even if previous tests failed
         run: |
           source .venv/bin/activate
           cd test/integration
           cp .env.test.example .env.test
           python -m pytest caldav/ --junit-xml=./caldav-test-results.xml -vs
 
+      - name: CardDAV integration tests
+        continue-on-error: true # we want these tests to run even if previous tests failed
+        run: |
+          source .venv/bin/activate
+          cd test/integration
+          cp .env.test.example .env.test
+          python -m pytest carddav/ --junit-xml=./carddav-test-results.xml -vs
+
       - name: Create results report
-        continue-on-error: true # don't fail workflow if this step fails
+        continue-on-error: true # we always want this step to run
         if: always()
         uses: pmeier/pytest-results-action@main
         with:
