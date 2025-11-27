@@ -1,4 +1,5 @@
 import caldav
+import gevent
 import requests
 import time
 import vobject
@@ -12,15 +13,18 @@ from common.const import (
 
 from common.logger import log
 
+from locust import events
+
 
 class CardDAV:
-    def __init__(self, carddav_server_url, timeout):
+    def __init__(self, carddav_server_url, timeout, locust=False):
         self.carddav_server_url = carddav_server_url
         self.carddav_server_host = self.carddav_server_url.split('/dav/card')[0]
         self.connection_timeout = timeout
         self.client = None
         self.principal = None
         self.auth = None
+        self.locust = locust
 
     def login(self, username, password):
         """
@@ -363,6 +367,9 @@ class CardDAV:
         full_ab_url = f'{self.carddav_server_host}{address_book_href}'
         contact_name = f'{contact_data.get("first_name", "First")}-{contact_data.get("last_name", "Last")}'.lower()
         new_contact_url = f'{full_ab_url}{contact_name}.vcf'
+        add_contact_success = False
+        add_contact_exception = None
+
         log.debug(f'creating new contact: {new_contact_url}')
 
         # create our contact vCard
@@ -419,6 +426,10 @@ class CardDAV:
         # now actually build the vCard
         vcard_string = vcard.serialize()
 
+        if self.locust:
+            # locust uses gevent greenlets to run concurrent users in single process
+            start_time = gevent.get_hub().loop.now()
+
         # send a PUT request to the server with the vCard data
         try:
             response = requests.put(
@@ -433,13 +444,25 @@ class CardDAV:
             )
 
             response.raise_for_status()  # raise an exception for bad status codes
+            add_contact_success = True
 
-        except requests.exceptions.RequestException as e:
-            log.debug(f'error creating contact: {e}')
-            return None
+        except Exception as e:
+            add_contact_exception = e
+            log.debug(f'error creating contact: {self.add_contact_exception}')
 
-        log.debug('contact created successfully')
-        return True
+        # if running a locust load test we need to let locust know the create contact is done
+        if self.locust:
+            events.request.fire(
+                request_type='carddav',
+                name='create_contact',
+                response_time=(gevent.get_hub().loop.now() - start_time) * 1000,  # convert to ms
+                response_length=len(response.content),
+                context=None,
+                exception=add_contact_exception,
+            )
+
+        log.debug(f'contact "{contact_name}" created successfully')
+        return add_contact_success
 
     def update_contact(self, address_book_href, contact_href, contact_vcard):
         """
