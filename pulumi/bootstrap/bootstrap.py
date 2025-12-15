@@ -117,10 +117,19 @@ def main():
     INSTANCE_TAGS = get_instance_tags()
     template_values = {template_key: INSTANCE_TAGS[tag_key] for template_key, tag_key in TEMPLATE_VALUE_TAG_MAP.items()}
 
-    for template_key, secret_value in get_secrets(
+    secrets = get_secrets(
         env=INSTANCE_TAGS['postboot.stalwart.env'], aws_region=INSTANCE_TAGS['postboot.stalwart.aws_region']
-    ).items():
+    )
+    for template_key, secret_value in secrets.items():
+        # Always treat spam_filter_toml as a string
+        if template_key == "spam_filter_toml" and isinstance(secret_value, dict):
+            # If it's a dict, convert to TOML string (simple join, or use toml.dumps if available)
+            import toml
+            secret_value = toml.dumps(secret_value)
         template_values[template_key] = secret_value
+
+    # Detect if spam_filter_toml is present and set spam_filter accordingly
+    template_values['spam_filter'] = bool(template_values.get('spam_filter_toml'))
 
     render_templates(template_values=template_values)
 
