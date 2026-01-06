@@ -1,8 +1,11 @@
+import gevent
 import json
 import requests
 import time
 
 from common.logger import log
+
+from locust import events
 from jmapc import Client, EmailQueryFilterCondition, MailboxQueryFilterCondition, Ref
 
 from jmapc.methods import (
@@ -22,12 +25,13 @@ from jmapc.methods import (
 
 
 class JMAP:
-    def __init__(self, host, username, password):
+    def __init__(self, host, username, password, locust=False):
         self.client = self._get_client(host, username, password)
         self.account_id = self.client.account_id
         self.host = host
         self.username = username
         self.password = password
+        self.locust = locust
 
         # grab our JMAP server's api_url and identity id for when we send JMAP api requests directly
         session = self.get_session()
@@ -517,8 +521,8 @@ class JMAP:
         try:
             created_email_id = create_result['methodResponses'][0][1]['created']['newEmail']['id']
             log.debug(f'draft email was created successfully and has id: {created_email_id}')
-        except Exception:
-            log.debug(f'error creating email: {create_result}')
+        except Exception as e:
+            log.debug(f'error creating email: {e}')
             return False
 
         email_submit_payload = {
@@ -542,15 +546,36 @@ class JMAP:
         }
 
         log.debug(f'sending the draft email {log_msg}')
+
+        if self.locust:
+            # locust uses gevent greenlets to run concurrent users in single process
+            start_time = gevent.get_hub().loop.now()
+
+        send_exception = None
+        send_success = False
         send_result = self.request(email_submit_payload)
 
         try:
             sent = send_result['methodResponses'][0][1]['created']
             log.debug(f'email sent successfully: {sent}')
-            return True
-        except Exception:
+            send_success = True
+
+        except Exception as e:
             log.debug(f"error sending the draft email with id '{created_email_id}': {send_result}")
-            return False
+            send_exception = str(e)
+
+        # if running a locust load test we need to let locust know the jmap send is done
+        if self.locust:
+            events.request.fire(
+                request_type='jmap',
+                name='send_message',
+                response_time=(gevent.get_hub().loop.now() - start_time) * 1000,  # convert to ms
+                response_length=len(plain_text_body) if not send_exception else 0,
+                context=None,
+                exception=send_exception,
+            )
+
+        return send_success
 
     def wait_for_message_to_arrive(self, subject):
         """

@@ -1,4 +1,5 @@
 import caldav
+import gevent
 
 from common.logger import log
 
@@ -6,13 +7,16 @@ from common.const import (
     TASK_STATUS_COMPLETED,
 )
 
+from locust import events
+
 
 class CalDAV:
-    def __init__(self, caldav_server_url, timeout):
+    def __init__(self, caldav_server_url, timeout, locust=False):
         self.caldav_server_url = caldav_server_url
         self.connection_timeout = timeout
         self.client = None
         self.principal = None
+        self.locust = locust
 
     def login(self, username, password):
         """
@@ -159,7 +163,13 @@ class CalDAV:
         """
         Add the given event to the given calendar.
         """
+        new_event = None
+        add_event_exception = None
         log.debug(f'adding event to calendar "{test_cal.name}": {event_props}')
+
+        if self.locust:
+            # locust uses gevent greenlets to run concurrent users in single process
+            start_time = gevent.get_hub().loop.now()
 
         try:
             new_event = test_cal.save_event(
@@ -168,10 +178,23 @@ class CalDAV:
                 summary=event_props.get('summary', 'new test event'),
             )
         except Exception as e:
+            add_event_exception = str(e)
             log.debug(f'caught exception: {str(e)}')
 
-        assert new_event, 'expected to be able to create a new event'
-        assert new_event.id, 'expected new event to have an id'
+        # if running a locust load test we need to let locust know the create event is done
+        if self.locust:
+            events.request.fire(
+                request_type='caldav',
+                name='create_event',
+                response_time=(gevent.get_hub().loop.now() - start_time) * 1000,  # convert to ms
+                response_length=len(new_event.id),
+                context=None,
+                exception=add_event_exception,
+            )
+        else:
+            assert new_event, 'expected to be able to create a new event'
+            assert new_event.id, 'expected new event to have an id'
+
         log.debug(f'calendar event successfully created with id: {new_event.id}')
 
         return new_event
