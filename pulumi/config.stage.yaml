@@ -56,7 +56,7 @@ resources:
         - caldav
         - carddav
         - jmap
-      stalwart_image: stalwartlabs/stalwart:v0.13.3
+      stalwart_image: stalwartlabs/stalwart:v0.14.1
       top_level_domain: stage-thundermail.com
       redis_opts:
         apply_immediately: True
