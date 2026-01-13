@@ -39,11 +39,11 @@ TEST_ACCT_2_EMAIL = str(os.getenv('TEST_ACCT_2_EMAIL')).strip()
 
 # Default mailboxes expected to exist (IMAP format)
 DEFAULT_IMAP_MAILBOX_LIST = [
-    {'flags': '()', 'separator': '"/"', 'name': 'Deleted Items'},
-    {'flags': '()', 'separator': '"/"', 'name': 'Drafts'},
+    {'flags': '(\\Trash)', 'separator': '"/"', 'name': 'Deleted Items'},
+    {'flags': '(\\Drafts)', 'separator': '"/"', 'name': 'Drafts'},
     {'flags': '()', 'separator': '"/"', 'name': 'INBOX'},
-    {'flags': '()', 'separator': '"/"', 'name': 'Junk Mail'},
-    {'flags': '()', 'separator': '"/"', 'name': 'Sent Items'},
+    {'flags': '(\\Junk)', 'separator': '"/"', 'name': 'Junk Mail'},
+    {'flags': '(\\Sent)', 'separator': '"/"', 'name': 'Sent Items'},
 ]
 
 # Number of test emails required for the IMAP/JMAP tests (our conftest.py 'populate_inbox' test fixture will

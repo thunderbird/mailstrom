@@ -165,7 +165,7 @@ class CardDAV:
             'Depth': '0',  # Depth 0 for creating the collection itself
         }
 
-        mkcol_body = """<?xml version="1.0" encoding="utf-8" ?>
+        mkcol_body = f"""<?xml version="1.0" encoding="utf-8" ?>
         <D:mkcol xmlns:D="DAV:" xmlns:card="urn:ietf:params:xml:ns:carddav">
         <D:set>
             <D:prop>
@@ -173,6 +173,7 @@ class CardDAV:
                 <D:collection/>
                 <card:addressbook/>
             </D:resourcetype>
+            <D:displayname>{address_book_name}</D:displayname>
             </D:prop>
         </D:set>
         </D:mkcol>

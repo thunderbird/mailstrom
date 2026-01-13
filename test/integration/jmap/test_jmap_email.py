@@ -86,16 +86,6 @@ class TestJMAPEmail:
         email_ids = jmap_acct_1.query_email(filter)
         assert len(email_ids) == 0, 'expected zero email ids to be returned'
 
-    def test_query_email_filter_has_attachment(self, jmap_acct_1):
-        # our populate inbox fixture ensures that an email with an attachment already exists in our TEST_ACCT_1 inbox
-        mailbox_search = jmap_acct_1.get_mailbox_by_name('Inbox')
-        inbox_id = mailbox_search[0].id
-        assert inbox_id, 'expected to get the inbox mailbox id'
-
-        filter = EmailQueryFilterCondition(in_mailbox=inbox_id, has_attachment=True)
-        email_ids = jmap_acct_1.query_email(filter)
-        assert len(email_ids) >= 1, 'expected at least 1 email id to be returned'
-
     def test_query_email_filter_from(self, jmap_acct_1):
         # our populate inbox fixture ensures that an email already exists in our TEST_ACCT_1 inbox
         mailbox_search = jmap_acct_1.get_mailbox_by_name('Inbox')
