@@ -50,6 +50,7 @@ jobs:
           pip install ."[dev]"
 
       - name: JMAP integration tests
+        continue-on-error: true # we want all tests to run even if these or others fail
         run: |
           source .venv/bin/activate
           cd test/integration
@@ -57,7 +58,7 @@ jobs:
           python -m pytest jmap/ --junit-xml=./jmap-test-results.xml -vs
 
       - name: IMAP integration tests
-        continue-on-error: true # we want these tests to run even if previous tests failed
+        continue-on-error: true # we want all tests to run even if these or others fail
         run: |
           source .venv/bin/activate
           cd test/integration
@@ -65,7 +66,7 @@ jobs:
           python -m pytest imap/ --junit-xml=./imap-test-results.xml -vs
 
       - name: SMTP integration tests
-        continue-on-error: true # we want these tests to run even if previous tests failed
+        continue-on-error: true # we want all tests to run even if these or others fail
         run: |
           source .venv/bin/activate
           cd test/integration
@@ -73,7 +74,7 @@ jobs:
           python -m pytest smtp/ --junit-xml=./smtp-test-results.xml -vs
 
       - name: CalDAV integration tests
-        continue-on-error: true # we want these tests to run even if previous tests failed
+        continue-on-error: true # we want all tests to run even if these or others fail
         run: |
           source .venv/bin/activate
           cd test/integration
@@ -81,7 +82,7 @@ jobs:
           python -m pytest caldav/ --junit-xml=./caldav-test-results.xml -vs
 
       - name: CardDAV integration tests
-        continue-on-error: true # we want these tests to run even if previous tests failed
+        continue-on-error: true # we want all tests to run even if these or others fail
         run: |
           source .venv/bin/activate
           cd test/integration

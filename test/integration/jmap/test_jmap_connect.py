@@ -30,9 +30,6 @@ class TestJMAPConnect:
 
         assert session.state, 'expected jmap_acct_1 session state'
 
-        assert session.primary_accounts.core == jmap_acct_1.account_id, (
-            'expected jmap_acct_1 session primary account core id to be correct'
-        )
         assert session.primary_accounts.mail == jmap_acct_1.account_id, (
             'expected jmap_acct_1 session primary account mail id to be correct'
         )

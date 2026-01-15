@@ -75,9 +75,9 @@ class JMAP:
         result = self.client.request(method)
 
         assert isinstance(result, CoreEchoResponse), f'expected a CoreEchoResponse but got {type(result)}'
-        assert result.data['payload'], 'expected echo response data'
-        log.debug(f'received echo back: {result.data["payload"]}')
-        return result.data['payload']
+        assert result.data, 'expected echo response data'
+        log.debug(f'received echo back: {result.data}')
+        return result.data
 
     def get_identity(self):
         """
