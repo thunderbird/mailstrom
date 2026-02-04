@@ -32,10 +32,23 @@ resources:
         - eipalloc-0055539e4d56176f1  # 5.60.96.11
       endpoint_interfaces:
         - secretsmanager
+      peering_connections:
+        fluentbit-prod:
+          peered_cidrs:
+            - 10.200.0.0/22
+          peer_vpc_id: vpc-028ee60c9e7f6b28e
+          auto_accept: True  # Requires both VPCs to be in same account and region
+          # Allow resolution of DNS records to private IPs (so we can use a private LB)
+          accepter:
+            allow_remote_vpc_dns_resolution: True
+          requester:
+            allow_remote_vpc_dns_resolution: True
       additional_routes:
         private:
           - destination_cidr_block: 10.10.0.0/16  # accounts-prod
             vpc_peering_connection_id: pcx-0fdcc9b776a069d2d
+          - destination_cidr_block: 10.200.0.0/22  # fluentbit-prod
+            vpc_peering_connection_id: pcx-0d581e66566a6e00b
         public: []
 
       # Dynamic values set in code, or not at all:
