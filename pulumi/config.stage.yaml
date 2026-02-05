@@ -33,8 +33,8 @@ resources:
       peering_connections:
         fluentbit-stage:
           peered_cidrs:
-            - 10.200.0.0/22
-          peer_vpc_id: vpc-0ca7a251bb806ebcd
+            - 10.201.0.0/22
+          peer_vpc_id: vpc-0c83219ee10024f16
           auto_accept: True  # Requires both VPCs to be in same account and region
           # Allow resolution of DNS records to private IPs (so we can use a private LB)
           accepter:
@@ -45,8 +45,8 @@ resources:
         private:
           - destination_cidr_block: 10.11.0.0/16  # accounts-stage
             vpc_peering_connection_id: pcx-063f07eca0677a761
-          - destination_cidr_block: 10.200.0.0/22  # fluentbit-stage
-            vpc_peering_connection_id: pcx-0eaad64bcba492657
+          - destination_cidr_block: 10.201.0.0/22  # fluentbit-stage
+            vpc_peering_connection_id: pcx-03dd1daa0b700ab37
         public: []
 
   tb:ec2:SshableInstance:
