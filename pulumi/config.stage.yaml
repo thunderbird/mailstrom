@@ -56,20 +56,13 @@ resources:
         - 10.2.0.0/16
       ami: ami-082478ca34e882109
 
-  # Fill out this template to build an SSH bastion
-  # tb:ec2:SshableInstance:
-  #   bastion:
-  #     ssh_keypair_name: your-ec2-keypair
-  #     source_cidrs:
-  #       - your.ip.addr.ess/32
-
   tb:mailstrom:StalwartCluster:
     thundermail:
       https_features:
         - caldav
         - carddav
         - jmap
-      stalwart_image: stalwartlabs/stalwart:v0.15.3
+      stalwart_image: stalwartlabs/stalwart:v0.15.4
       top_level_domain: stage-thundermail.com
       redis_opts:
         apply_immediately: True
