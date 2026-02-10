@@ -138,7 +138,7 @@ resources:
           subnet: subnet-07712b990eb0d17c0  # eu-central-1b
 
       public_load_balancer:
-        excluded_nodes: ["0", "50"]
+        excluded_nodes: ["50"]
         services:
           https:
             source_cidrs: ['0.0.0.0/0']
@@ -157,7 +157,7 @@ resources:
 
       private_load_balancers:
         management:
-          excluded_nodes: ["0", "1"]
+          excluded_nodes: ["1"]
           source_security_group_ids:
             - sg-0a711c607f9e0b959  # accounts-stage api container
             - sg-02700bcc4c090da45  # accounts-stage celery container
