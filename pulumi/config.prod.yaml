@@ -74,7 +74,7 @@ resources:
         - caldav
         - carddav
         - jmap
-      stalwart_image: stalwartlabs/stalwart:v0.15.3
+      stalwart_image: stalwartlabs/stalwart:v0.15.4
       top_level_domain: thundermail.com
       redis_opts:
         apply_immediately: True
@@ -95,13 +95,29 @@ resources:
           disable_api_termination: True
           ignore_ami_changes: True
           ignore_user_data_changes: True
-          instance_type: t3.micro
+          instance_type: t3a.large
           key_name: mailstrom-prod
           node_roles:
             - all
           services:
             - https
-            - imap
+            - imaps
+            - lmtp
+            - managesieve
+            - smtp
+            - smtps
+            - submission
+          storage_capacity: 20
+        "1": # Must be a unique, stringified integer
+          disable_api_termination: True
+          ignore_ami_changes: True
+          ignore_user_data_changes: True
+          instance_type: t3a.large
+          key_name: mailstrom-prod
+          node_roles:
+            - all
+          services:
+            - https
             - imaps
             - lmtp
             - managesieve
@@ -120,13 +136,12 @@ resources:
           services:
             - management
           storage_capacity: 20
+          subnet: subnet-0b7564960babec972
 
       public_load_balancer:
         excluded_nodes: [ "50" ]
         services:
           https:
-            source_cidrs: ['0.0.0.0/0']
-          imap:
             source_cidrs: ['0.0.0.0/0']
           imaps:
             source_cidrs: ['0.0.0.0/0']
@@ -143,7 +158,7 @@ resources:
 
       private_load_balancers:
         management:
-          excluded_nodes: ["0"]
+          excluded_nodes: ["0", "1"]
           source_security_group_ids:
             - sg-034b36952ac31b87b  # accounts-prod api container
             - sg-0e2628172e0d95cc3  # accounts-prod celery container

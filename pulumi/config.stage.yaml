@@ -69,7 +69,7 @@ resources:
         - caldav
         - carddav
         - jmap
-      stalwart_image: stalwartlabs/stalwart:v0.15.3
+      stalwart_image: stalwartlabs/stalwart:v0.15.4
       top_level_domain: stage-thundermail.com
       redis_opts:
         apply_immediately: True
@@ -88,17 +88,34 @@ resources:
         port: 6379
 
       nodes:
-        "0": # Must be a unique, stringified integer
+        # "0": # Must be a unique, stringified integer
+        #   disable_api_termination: True
+        #   ignore_ami_changes: True
+        #   ignore_user_data_changes: True
+        #   instance_type: t3a.large
+        #   key_name: mailstrom-stage
+        #   node_roles:
+        #     - all
+        #   services:
+        #     - https
+        #     - imaps
+        #     - lmtp
+        #     - managesieve
+        #     - smtp
+        #     - smtps
+        #     - submission
+        #   storage_capacity: 20
+        #   subnet: subnet-07ade1ed35462907d  # eu-central-1a
+        "1":
           disable_api_termination: True
           ignore_ami_changes: True
           ignore_user_data_changes: True
-          instance_type: t3.micro
+          instance_type: t3a.large
           key_name: mailstrom-stage
           node_roles:
             - all
           services:
             - https
-            - imap
             - imaps
             - lmtp
             - managesieve
@@ -106,6 +123,7 @@ resources:
             - smtps
             - submission
           storage_capacity: 20
+          subnet: subnet-07712b990eb0d17c0  # eu-central-1b
         "50":
           disable_api_termination: True
           ignore_ami_changes: True
@@ -117,13 +135,12 @@ resources:
           services:
             - management
           storage_capacity: 20
+          subnet: subnet-07712b990eb0d17c0  # eu-central-1b
 
       public_load_balancer:
         excluded_nodes: ["50"]
         services:
           https:
-            source_cidrs: ['0.0.0.0/0']
-          imap:
             source_cidrs: ['0.0.0.0/0']
           imaps:
             source_cidrs: ['0.0.0.0/0']
@@ -140,7 +157,7 @@ resources:
 
       private_load_balancers:
         management:
-          excluded_nodes: ["0"]
+          excluded_nodes: ["1"]
           source_security_group_ids:
             - sg-0a711c607f9e0b959  # accounts-stage api container
             - sg-02700bcc4c090da45  # accounts-stage celery container
