@@ -1,3 +1,4 @@
+# If a subnet has been supplied, use that. Otherwise, distribute across private subnets.
 """A tb_pulumi extension that builds a `Stalwart cluster <https://stalw.art/docs/get-started/>`_."""
 
 import base64
@@ -370,20 +371,25 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         # Pipe the node configs into a series of StalwartClusterNodes
         instances = {}
         for idx, node_id in enumerate(nodes):
-            subnet = self.private_subnets[idx % len(self.private_subnets)]  # Distribute across subnets
+            # If a subnet has been supplied, use that. Otherwise, distribute across private subnets.
+            subnet = nodes[node_id].pop('subnet', None) or self.private_subnets[idx % len(self.private_subnets)]
+            depends_on=[
+                *config_secrets.values(),
+                profile,
+                redis_secret,
+                s3_secret,
+                *self.private_load_balancer_security_groups.values(),
+            ]
+            # `subnet` can be a str or a real Subnet when we pass it in. If it's a subnet, it's a dependency.
+            if type(subnet) == aws.ec2.Subnet:
+                depends_on.append(subnet)
+
             instances[node_id] = self.node(
                 node_id=node_id,
                 subnet=subnet,
                 iam_instance_profile=profile.name,
-                depends_on=[
-                    *config_secrets.values(),
-                    profile,
-                    redis_secret,
-                    s3_secret,
-                    subnet,
-                    *self.private_load_balancer_security_groups.values(),
-                ],
                 **nodes[node_id],
+                depends_on=depends_on,
             )
 
         # Build the private load balancers
@@ -661,7 +667,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
     def node(
         self,
         node_id: str,
-        subnet: aws.ec2.Subnet,
+        subnet: str | aws.ec2.Subnet,
         depends_on: list = [],
         disable_api_stop: bool = False,
         disable_api_termination: bool = False,
@@ -678,8 +684,8 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         :param node_id: The unique node_id to identify the node in the cluster. This must be a stringified integer.
         :type node_id: str
 
-        :param subnet: The subnet to build the node in.
-        :type subnet: aws.ec2.Subnet
+        :param subnet: The ID of the subnet (or the aws.ec2.Subnet resource) to build the node in.
+        :type subnet: str | aws.ec2.Subnet
 
         :param disable_api_stop: When True, prevents AWS API calls from stopping the instance. Defaults to False.
         :type disable_api_stop: bool, optional
@@ -762,6 +768,8 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
             instance_ignores.append('ami')
         if ignore_user_data_changes:
             instance_ignores.append('user_data')
+        
+        subnet_id = subnet.id if type(subnet) is aws.ec2.Subnet else subnet
 
         return aws.ec2.Instance(
             f'{self.name}-{node_id}-instance',
@@ -780,7 +788,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
                 'volume_size': storage_capacity,
                 'volume_type': 'gp2',
             },
-            subnet_id=subnet.id,
+            subnet_id=subnet_id,
             tags=instance_tags,
             user_data=self.user_data,
             vpc_security_group_ids=[self.node_sgs[node_id].resources['sg'].id],
