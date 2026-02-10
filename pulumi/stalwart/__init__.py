@@ -373,7 +373,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         for idx, node_id in enumerate(nodes):
             # If a subnet has been supplied, use that. Otherwise, distribute across private subnets.
             subnet = nodes[node_id].pop('subnet', None) or self.private_subnets[idx % len(self.private_subnets)]
-            depends_on=[
+            depends_on = [
                 *config_secrets.values(),
                 profile,
                 redis_secret,
@@ -381,7 +381,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
                 *self.private_load_balancer_security_groups.values(),
             ]
             # `subnet` can be a str or a real Subnet when we pass it in. If it's a subnet, it's a dependency.
-            if type(subnet) == aws.ec2.Subnet:
+            if type(subnet) is aws.ec2.Subnet:
                 depends_on.append(subnet)
 
             instances[node_id] = self.node(
@@ -768,7 +768,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
             instance_ignores.append('ami')
         if ignore_user_data_changes:
             instance_ignores.append('user_data')
-        
+
         subnet_id = subnet.id if type(subnet) is aws.ec2.Subnet else subnet
 
         return aws.ec2.Instance(
