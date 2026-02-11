@@ -7,3 +7,5 @@ config:
     value: somevalue
   mailstrom:stalwart.postboot.keycloak_backend:
     secure: AAABABJFFNWd4GJ+x1zpO2xi5WMLOwDDDqZFfFFovTeGUOHhlbNdPlUtWJLPsBWYZ5sDKJ8HK+T/pfc+bmpSQoAHp8FexG6+/znLv3BMFHoz8a0KR6wPzwoN+bn/Y1suloTYrREWKb2YeAxBMVOrw6fS5VCEDIRGAi4KpKaIrgzwZk2shLMsMCrlIiwEh6H1BRWn4EEnSKmaCMCY/BsNjkTnp08k4WlVS39KNZJ+sroEkR/pazS5pP6ZPYAwYyE5Kko+2xgS7lkMsSNOebTKrO/zX/yehV+9VuoK28O2XVyrZuHlB9JOp6nyJwo/C3tvWJ+sPcV2seqTONk2Bnz3Mhr0I9g0C5FpQcnb8/JkJWJB9I1EAC/FSz7AoaIor2cC1NAhITW+nMXbXuj3ReHjbbI4tPe1k0HA5Wi0Ai6nzvlG8Kj6/C5zid3/1EOxSxvT95sBDH8kdEWrvrLg/8Yh3CRXYzj938xr
+  mailstrom:stalwart.postboot.fluentbit_shared_secret:
+    secure: AAABAEfrvNyI+wphwyi2gJwv7U9wU1iUsLzzDT9DtHTB9fVVuxcxBR4KYQA=

@@ -12,8 +12,15 @@ BOOTSTRAP_DIR=/opt/stalwart-bootstrap
 BOOTSTRAP_TBZ=/root/bootstrap.tbz
 STALWART_DIR=/opt/stalwart
 
+echo '[fluent-bit]
+name = Fluent Bit
+baseurl = https://packages.fluentbit.io/amazonlinux/2023/
+gpgcheck=1
+gpgkey=https://packages.fluentbit.io/fluentbit.key
+enabled=1' > /etc/yum.repos.d/fluent-bit.repo
+
 dnf update -y
-dnf install -y bzip2 docker python3.12
+dnf install -y bzip2 docker fluent-bit python3.12
 
 mkdir -p $STALWART_DIR/etc
 
@@ -31,7 +38,12 @@ source $BOOTSTRAP_DIR/bin/activate
 pip install -r $BOOTSTRAP_DIR/requirements.txt
 python $BOOTSTRAP_DIR/bootstrap.py
 
+# Prevent default fluent-bit from running
+systemctl stop fluent-bit
+systemctl mask fluent-bit
+rm -f /etc/fluent-bit/fluent-bit.conf
+
 systemctl daemon-reload
-systemctl enable thundermail
-systemctl start thundermail
+systemctl enable fluent-bit-collector thundermail
+systemctl start fluent-bit-collector thundermail
 

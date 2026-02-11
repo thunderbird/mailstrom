@@ -1,0 +1,28 @@
+---
+
+service:
+  flush: 1
+  grace: 5
+  daemon: no
+  dns.mode: UDP
+  hot_reload: on
+  log_level: info
+  storage.path: /opt/fluent-bit/storage
+  storage.backlog.flush_on_shutdown: on
+  storage.keep.rejected: on
+  storage.rejected.path: /opt/fluent-bit/dlq
+
+pipeline:
+  inputs:
+    - name: systemd
+      read_from_tail: yes # Don't try to process all logs prior to now
+      strip_underscores: yes # Clean up key names
+      systemd_filter: _SYSTEMD_UNIT=thundermail.service
+      tag: systemd.thundermail
+
+  outputs:
+    - name: file
+      match: systemd.*
+      path: /opt/fluent-bit/storage
+      # shared-secret: {{ fluentbit_shared_secret }}
+

@@ -12,6 +12,8 @@ BOOTSTRAP_LOG = '/var/log/stalwart-bootstrap.log'
 INSTANCE_TAGS = {}
 # Map of template files to target files
 TEMPLATE_MAP = {
+    'fluent-bit-collector.service.j2': '/usr/lib/systemd/system/fluent-bit-collector.service',
+    'fluent-bit.yaml.j2': '/etc/fluent-bit/fluent-bit.yaml',
     'stalwart.toml.j2': '/opt/stalwart/etc/config.toml',
     'thundermail.service.j2': '/usr/lib/systemd/system/thundermail.service',
 }
@@ -73,6 +75,7 @@ def get_secrets(env: str, aws_region: str) -> dict:
     # Map of template vars to SM secrets
     secret_names = [
         'fallback_admin_password',
+        'fluentbit_shared_secret',
         'jmap_toml',
         'spam_filter_toml',
         'postgresql_backend',

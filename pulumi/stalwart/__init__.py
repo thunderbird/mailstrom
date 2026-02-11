@@ -802,6 +802,8 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         archive_file_base = './bootstrap'
         archive_files = [
             'bootstrap.py',
+            'templates/fluent-bit-collector.service.j2',
+            'templates/fluent-bit.yaml.j2',
             'templates/ports.j2',
             'templates/stalwart.toml.j2',
             'templates/thundermail.service.j2',

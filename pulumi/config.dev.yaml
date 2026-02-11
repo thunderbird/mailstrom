@@ -6,6 +6,7 @@ resources:
         - stalwart.postboot.postgresql_backend
         - stalwart.postboot.fallback_admin_password
         - stalwart.postboot.keycloak_backend
+        - stalwart.postboot.fluentbit_shared_secret
       recovery_window_in_days: 0
 
   tb:network:MultiTierVpc:
