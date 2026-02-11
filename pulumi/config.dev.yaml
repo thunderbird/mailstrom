@@ -26,13 +26,24 @@ resources:
       enable_dns_hostnames: True
       enable_nat_gateway: True
       egress_via_nat_gateway: True
+      peering_connections:
+        fluentbit-dev:
+          peered_cidrs:
+            - 10.202.0.0/22
+          peer_vpc_id: vpc-09d12278743f0da97  # observability-dev
+          auto_accept: True  # Requires both VPCs to be in same account and region
+          # Allow resolution of DNS records to private IPs (so we can use a private LB)
+          accepter:
+            allow_remote_vpc_dns_resolution: True
+          requester:
+            allow_remote_vpc_dns_resolution: True
       # If you want to supply specific EIPs to this, you can do that here:
       # nat_gateway_allocation_id: 
       # nat_gateway_secondary_allocation_ids:
-      # additional_routes:
-      #   private:
-      #     - destination_cidr_block: 10.11.0.0/16  # accounts-stage
-      #       vpc_peering_connection_id: pcx-0df3d2f9c005ae0cd
+      additional_routes:
+        private:
+          - destination_cidr_block: 10.202.0.0/22  # fluentbit-dev
+            vpc_peering_connection_id: pcx-018f09af30c2dce6c
       #   public: []
       # endpoint_interfaces:
       #   - secretsmanager
