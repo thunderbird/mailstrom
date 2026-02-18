@@ -500,7 +500,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
                     'protocol': 'tcp',
                     'from_port': STALWART_CLUSTER_SERVICES[service],
                     'to_port': STALWART_CLUSTER_SERVICES[service],
-                    'source_cidrs': config['source_cidrs'],
+                    'cidr_blocks': config['source_cidrs'],
                 }
             )
 
