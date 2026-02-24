@@ -84,7 +84,8 @@ project.resources['stalwart_cluster'] = jumphost_rules.apply(
 )
 
 service_bucket_name = resources['tb:s3:S3PrivateBucket']['autoconfig']['bucket_name']
-# # Build a secure S3 website to host our autoconfig files in
+
+# Build a secure S3 website to host our autoconfig files in
 project.resources['autoconfig_website'] = tb_pulumi.s3.S3Bucket(
     service_bucket_name,
     project=project,
