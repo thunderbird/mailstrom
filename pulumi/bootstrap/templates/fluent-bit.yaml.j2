@@ -1,5 +1,8 @@
 ---
 
+{% set remove_keys = ['UID', 'CAP_EFFECTIVE', 'BOOT_ID', 'MACHINE_ID', 'RUNTIME_SCOPE', 'PRIORITY',
+                      ''] %}
+
 service:
   flush: 1
   grace: 5
@@ -19,10 +22,14 @@ pipeline:
       strip_underscores: yes # Clean up key names
       systemd_filter: _SYSTEMD_UNIT=thundermail.service
       tag: systemd.thundermail
+      processors:
+        - name: content_modifier
+          action: delete
+          key: UID
 
   outputs:
-    - name: file
+    - name: forward
       match: systemd.*
-      path: /opt/fluent-bit/storage
-      # shared-secret: {{ fluentbit_shared_secret }}
-
+      host: fluentbit{{ '' if env == 'prod' else f'-{env}' }}
+      port: 24224
+      shared-secret: {{ fluentbit_shared_secret }}
