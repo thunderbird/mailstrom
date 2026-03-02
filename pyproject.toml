@@ -19,7 +19,7 @@ dev = [
     "pytest==8.3.4",
     "locust==2.36.2",
     "jmapc==0.2.23",
-    "caldav==2.0.1",
+    "caldav==2.2.6",
     "pytz==2025.2",
     "vobject==0.9.9",
     "faker==38.2.0",
