@@ -36,7 +36,6 @@ class TestCarddavAddressBook:
 
         assert default_ab is not None, 'expected to be able to find the default address book'
         assert quote(carddav.username) in default_ab['href'], 'expected default address book url to be correct'
-        # note: this currently fails, pending issue #63 being resolved
         assert default_ab['displayname'] == CARDDAV_EXP_DEFAULT_ADDRESS_BOOK_NAME, (
             'expected default address book name to be correct'
         )

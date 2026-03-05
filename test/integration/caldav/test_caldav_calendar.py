@@ -34,7 +34,6 @@ class TestCaldavCalendar:
         assert default_cal.url == exp_url, 'expected default calendar url to be correct'
 
         display_name = default_cal.get_display_name()
-        # note: this currently fails, pending issue #63 being resolved
         assert display_name == CALDAV_EXP_DEFAULT_CALENDAR_NAME, 'expected the default calendar name to be correct'
 
     def test_create_calendar(self, caldav):

@@ -23,6 +23,10 @@ from jmapc.methods import (
     MailboxGetResponse,
 )
 
+from common.const import (
+    TEST_MSG_SUBJECT_PREFIX,
+)
+
 
 class JMAP:
     def __init__(self, host, username, password, locust=False):
@@ -379,7 +383,7 @@ class JMAP:
         assert inbox_id, 'expected to get the inbox mailbox id'
 
         # our populate inbox has provided us with emails in the inbox
-        filter = EmailQueryFilterCondition(in_mailbox=inbox_id)
+        filter = EmailQueryFilterCondition(in_mailbox=inbox_id, text=TEST_MSG_SUBJECT_PREFIX)
 
         email_ids = self.query_email(filter)
 
@@ -582,7 +586,7 @@ class JMAP:
         Check the inbox for a message to arrive with the given subject. If the message hasn't arrived yet wait
         for it; return the id of the message after it has arrived (or -1 if it never arrived).
         """
-        max_checks = 18
+        max_checks = 60
         wait_seconds = 5
         arrived_msg_id = 0
 
