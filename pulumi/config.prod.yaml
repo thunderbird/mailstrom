@@ -162,6 +162,7 @@ resources:
           source_security_group_ids:
             - sg-034b36952ac31b87b  # accounts-prod api container
             - sg-0e2628172e0d95cc3  # accounts-prod celery container
+            - sg-0ede6c1f9f8a4b676  # accounts-prod new celery container
 
       spam_filter:
         bayes:
