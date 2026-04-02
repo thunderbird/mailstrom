@@ -1,0 +1,65 @@
+name: sanity-test-stage
+
+concurrency:
+  group: sanity-test-stage
+  cancel-in-progress: true
+
+on:
+  # run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+permissions:
+  contents: read # required for actions checkout
+
+jobs:
+  stage-sanity-test:
+    name: stage-sanity-test
+    # github actions ubuntu runners have known intermittent network timeout / connection issues
+    # (i.e. https://github.com/actions/runner-images/issues/11886) that cause the integration tests
+    # to fail with intermittent connection reset issues; so we use macos runners instead
+    runs-on: macos-latest
+    environment: staging
+    env:
+      IS_CI_AUTOMATION: "yes"
+      TEST_SERVER_HOST: ${{ secrets.TEST_SERVER_HOST }}
+      TEST_ACCT_1_USERNAME: ${{ secrets.TEST_ACCT_1_USERNAME }}
+      TEST_ACCT_1_PASSWORD: ${{ secrets.TEST_ACCT_1_PASSWORD }}
+      TEST_ACCT_1_EMAIL: ${{ secrets.TEST_ACCT_1_EMAIL }}
+      TEST_ACCT_2_USERNAME: ${{ secrets.TEST_ACCT_2_USERNAME }}
+      TEST_ACCT_2_PASSWORD: ${{ secrets.TEST_ACCT_2_PASSWORD }}
+      TEST_ACCT_2_EMAIL: ${{ secrets.TEST_ACCT_2_EMAIL }}
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13.0'
+
+      - name: Install test dependencies
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          python -m pip install --upgrade pip
+          pip install pytest
+          pip install pytz
+          pip install ."[dev]"
+
+      - name: Run sanity test
+        continue-on-error: true # we want all tests to run even if these or others fail
+        run: |
+          source .venv/bin/activate
+          cd test/integration
+          cp .env.test.example .env.test
+          python -m pytest -m sanity --junit-xml=./sanity-test-results.xml -vs
+
+      - name: Create results report
+        continue-on-error: true # we always want this step to run
+        if: always()
+        uses: pmeier/pytest-results-action@main
+        with:
+          path: test/integration/*test-results.xml
+          summary: true
+          fail-on-empty: false
+          title: Mailstrom Integration Test Results

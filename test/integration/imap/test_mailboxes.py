@@ -1,4 +1,5 @@
 import datetime
+import pytest
 
 from common.logger import log
 from common.utils import convert_raw_mailbox_list
@@ -37,6 +38,7 @@ class TestIMAPMailboxes:
         for expected_mailbox in DEFAULT_IMAP_MAILBOX_LIST:
             assert expected_mailbox in mailbox_list, 'expected default mailboxes to exist'
 
+    @pytest.mark.sanity
     def test_create_mailbox(self, imap):
         # create and subscribe to unique mailbox
         name = f'{MAILBOX_PREFIX} {datetime.datetime.now()}'
@@ -45,6 +47,7 @@ class TestIMAPMailboxes:
         # verify new mailbox was created
         assert imap.do_mailboxes_exist([name]), f'expected mailbox {name} to exist'
 
+    @pytest.mark.sanity
     def test_create_one_sub_mailbox(self, imap):
         # create and subscribe to root-level mailbox
         name = f'{MAILBOX_PREFIX} {datetime.datetime.now()}'
@@ -100,6 +103,7 @@ class TestIMAPMailboxes:
         assert result == RESULT_NO, 'expected status of NO when attempt to create mailbox that already exists'
         assert MISSING_ARGS in data[0], 'expected missing arguments message'
 
+    @pytest.mark.sanity
     def test_subscribe_mailbox(self, imap):
         new_mailbox = f'{MAILBOX_PREFIX} {datetime.datetime.now()}'
         imap.create_mailbox(new_mailbox)
@@ -140,6 +144,7 @@ class TestIMAPMailboxes:
         assert result == RESULT_NO, 'expected status of NO when attempt to subscribe to mailbox with no name'
         assert MAILBOX_NAME_MISSING in data[0], 'expected missing mailbox name message'
 
+    @pytest.mark.sanity
     def test_unsubscribe_mailbox(self, imap):
         new_mailbox = f'{MAILBOX_PREFIX} {datetime.datetime.now()}'
         imap.create_mailbox(new_mailbox)
@@ -180,6 +185,7 @@ class TestIMAPMailboxes:
         assert result == RESULT_NO, 'expected status of NO when attempt to unsubscribe a mailbox with no name'
         assert MAILBOX_NAME_MISSING in data[0], 'expected missing mailbox name message'
 
+    @pytest.mark.sanity
     def test_rename_mailbox(self, imap):
         # create and then rename a mailbox
         old_name = f'{MAILBOX_PREFIX} {datetime.datetime.now()}'
@@ -258,6 +264,7 @@ class TestIMAPMailboxes:
         assert INVALID_FOLDER_NAME in data[0], 'expected not found message'
         assert imap.do_mailboxes_exist([new_name]) is False, 'expected new mailbox name not to exist'
 
+    @pytest.mark.sanity
     def test_delete_mailbox(self, imap):
         # create then delete a mailbox
         test_mailbox = f'{MAILBOX_PREFIX} {datetime.datetime.now()}'
@@ -437,6 +444,7 @@ class TestIMAPMailboxes:
                 first_mailbox_found = True
         assert first_mailbox_found, 'expected first mailbox name to be in the list returned'
 
+    @pytest.mark.sanity
     def test_close_mailbox(self, imap):
         # if a mailbox isn't currently selected, select the INBOX
         if imap.connection.state != STATE_SELECTED:
