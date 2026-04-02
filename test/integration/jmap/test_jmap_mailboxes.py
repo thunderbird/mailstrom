@@ -1,4 +1,5 @@
 import datetime
+import pytest
 
 from common.logger import log
 from jmapc import MailboxQueryFilterCondition
@@ -74,6 +75,7 @@ class TestJMAPMailboxes:
         assert inbox_details.total_threads >= 0, 'expected mailbox total threads to be >= 0'
         assert inbox_details.unread_threads >= 0, 'expected mailbox unread threads to be >= 0'
 
+    @pytest.mark.sanity
     def test_get_all_mailboxes(self, jmap_acct_1):
         # get mailbox details for all mailboxes
         results = jmap_acct_1.get_mailboxes_by_id()
@@ -99,6 +101,7 @@ class TestJMAPMailboxes:
             assert exp_mailbox in found_mailboxes, f'expected mailbox to exist with details: {exp_mailbox}'
             log.debug(f"found mailbox '{exp_mailbox['name']}'")
 
+    @pytest.mark.sanity
     def test_create_mailbox(self, jmap_acct_1):
         # create a new mailbox at root level and verify it exists
         name = f'{MAILBOX_PREFIX} {datetime.datetime.now()}'
@@ -171,6 +174,7 @@ class TestJMAPMailboxes:
             assert found, 'expected new sub-mailbox to exist'
             assert found[0].parent_id == sub_mailbox['parent_id'], 'expected the sub-mailbox parent id to be correct'
 
+    @pytest.mark.sanity
     def test_subscribe_mailbox(self, jmap_acct_1):
         # create a new (unsubscribed) mailbox then subscribe to it after it was created
         name = f'{MAILBOX_PREFIX} {datetime.datetime.now()}'

@@ -128,7 +128,8 @@ class TestCaldavEvents:
         )
         assert found_event.component.get('dtend').dt == event_props['dtend'], 'expected event end time to be correct'
 
-    def test_edit_event(self, caldav, test_calendar):
+    @pytest.mark.sanity
+    def test_create_and_edit_event(self, caldav, test_calendar):
         # create an event in the test calendar then modify the event, verify
         # let's create an event that starts at 9am two days from now, and has a duration of 1 hour
         two_days_from_now = datetime.now(tz=self.tz_utc) + timedelta(days=2)
@@ -193,6 +194,7 @@ class TestCaldavEvents:
         found_event = caldav.get_event_by_uid(test_calendar, test_event.id)
         assert not found_event, 'expected event to not have been found after it was deleted'
 
+    @pytest.mark.sanity
     def test_get_all_events(self, caldav, test_calendar):
         # get all events from the test calendar (we know there is at least one event in the test calendar because
         # an event is added when the test calendar is created (via the test_calendar fixture in conftest.py)

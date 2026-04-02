@@ -1,4 +1,5 @@
 import datetime
+import pytest
 
 from common.logger import log
 from common.utils import convert_raw_mailbox_list
@@ -37,6 +38,7 @@ class TestIMAPMailboxes:
         for expected_mailbox in DEFAULT_IMAP_MAILBOX_LIST:
             assert expected_mailbox in mailbox_list, 'expected default mailboxes to exist'
 
+    @pytest.mark.sanity
     def test_create_mailbox(self, imap):
         # create and subscribe to unique mailbox
         name = f'{MAILBOX_PREFIX} {datetime.datetime.now()}'
@@ -100,6 +102,7 @@ class TestIMAPMailboxes:
         assert result == RESULT_NO, 'expected status of NO when attempt to create mailbox that already exists'
         assert MISSING_ARGS in data[0], 'expected missing arguments message'
 
+    @pytest.mark.sanity
     def test_subscribe_mailbox(self, imap):
         new_mailbox = f'{MAILBOX_PREFIX} {datetime.datetime.now()}'
         imap.create_mailbox(new_mailbox)

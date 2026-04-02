@@ -1,22 +1,19 @@
-name: nightly-integration-tests
+name: sanity-test-stage
 
 concurrency:
-  group: nightly-integration-tests
+  group: sanity-test-stage
   cancel-in-progress: true
 
 on:
-  schedule:
-    # run every day at 2am UTC (9PM EST)
-    - cron:  '0 2 * * *'
-  # allows you to run this workflow manually from the Actions tab
+  # run this workflow manually from the Actions tab
   workflow_dispatch:
 
 permissions:
   contents: read # required for actions checkout
 
 jobs:
-  nightly-integration-tests:
-    name: nightly-integration-tests
+  stage-sanity-test:
+    name: stage-sanity-test
     # github actions ubuntu runners have known intermittent network timeout / connection issues
     # (i.e. https://github.com/actions/runner-images/issues/11886) that cause the integration tests
     # to fail with intermittent connection reset issues; so we use macos runners instead
@@ -51,45 +48,13 @@ jobs:
           pip install pytz
           pip install ."[dev]"
 
-      - name: JMAP integration tests
+      - name: Run sanity test on stage
         continue-on-error: true # we want all tests to run even if these or others fail
         run: |
           source .venv/bin/activate
           cd test/integration
           cp .env.test.example .env.test
-          python -m pytest jmap/ --junit-xml=./jmap-test-results.xml -vs
-
-      - name: IMAP integration tests
-        continue-on-error: true # we want all tests to run even if these or others fail
-        run: |
-          source .venv/bin/activate
-          cd test/integration
-          cp .env.test.example .env.test
-          python -m pytest imap/ --junit-xml=./imap-test-results.xml -vs
-
-      - name: SMTP integration tests
-        continue-on-error: true # we want all tests to run even if these or others fail
-        run: |
-          source .venv/bin/activate
-          cd test/integration
-          cp .env.test.example .env.test
-          python -m pytest smtp/ --junit-xml=./smtp-test-results.xml -vs
-
-      - name: CalDAV integration tests
-        continue-on-error: true # we want all tests to run even if these or others fail
-        run: |
-          source .venv/bin/activate
-          cd test/integration
-          cp .env.test.example .env.test
-          python -m pytest caldav/ --junit-xml=./caldav-test-results.xml -vs
-
-      - name: CardDAV integration tests
-        continue-on-error: true # we want all tests to run even if these or others fail
-        run: |
-          source .venv/bin/activate
-          cd test/integration
-          cp .env.test.example .env.test
-          python -m pytest carddav/ --junit-xml=./carddav-test-results.xml -vs
+          python -m pytest -m sanity --junit-xml=./sanity-test-results.xml -vs
 
       - name: Create results report
         continue-on-error: true # we always want this step to run
@@ -99,4 +64,4 @@ jobs:
           path: test/integration/*test-results.xml
           summary: true
           fail-on-empty: false
-          title: Mailstrom Integration Test Results
+          title: Stage Sanity Test Results

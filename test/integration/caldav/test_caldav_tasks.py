@@ -1,3 +1,4 @@
+import pytest
 import pytz
 import time
 
@@ -30,6 +31,7 @@ class TestCaldavTasks:
     tz_utc = pytz.timezone('UTC')  # use UTC so there's no daylight savings time interference
     now = datetime.now(tz=tz_utc).replace(second=0, microsecond=0)
 
+    @pytest.mark.sanity
     def test_create_task(self, caldav, test_calendar):
         # create a task in the test calendar and verify (the test calendar is automatically
         # created before the tests run (via the test_calendar fixture in conftest.py)
@@ -109,6 +111,7 @@ class TestCaldavTasks:
         assert updated_task.component.get('due').dt == new_due, 'expected task due datetime to have been modified'
         assert updated_task.component.get('description') == new_desc, 'expected new task desc'
 
+    @pytest.mark.sanity
     def test_mark_task_completed(self, caldav, test_calendar):
         # create a task and mark it completed, verify
         one_day_from_now = self.now + timedelta(days=1)
@@ -223,6 +226,7 @@ class TestCaldavTasks:
         assert first_task.id in completed_tasks_ids, 'expected the first task to be found in completed tasks list'
         assert second_task.id not in completed_tasks_ids, 'expected the second task not to be found in completed tasks'
 
+    @pytest.mark.sanity
     def test_get_all_tasks(self, caldav, test_calendar):
         # retrieve all existing tasks; we know that at least one task already exists because one is created
         # in our test calendar automatically at the test suite start (see test_calendar in conftest.py)

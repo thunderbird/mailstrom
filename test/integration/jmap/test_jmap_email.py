@@ -23,6 +23,7 @@ class TestJMAPEmail:
         email_ids = jmap_acct_1.query_email()
         assert len(email_ids) >= 1, 'expected at least 1 email id to be returned'
 
+    @pytest.mark.sanity
     def test_query_email_inbox(self, jmap_acct_1):
         # our populate inbox fixture ensures that email already exists in our TEST_ACCT_1 inbox, so query
         # for all email in the inbox
@@ -175,6 +176,7 @@ class TestJMAPEmail:
         email_ids = jmap_acct_1.query_email(filter)
         assert len(email_ids) == 0, 'expected zero email ids to be returned'
 
+    @pytest.mark.sanity
     def test_get_email_single(self, jmap_acct_1):
         # our populate inbox fixture ensures that an email already exists in our TEST_ACCT_1 inbox
         # query to get email ids from the inbox and then retrieve one of the actual emails
@@ -269,6 +271,7 @@ class TestJMAPEmail:
         msg_arrived = jmap_acct_1.wait_for_message_to_arrive(subject)
         assert msg_arrived, f'expected the sent message to have arrived at {TEST_ACCT_1_EMAIL.split("@")[0]}'
 
+    @pytest.mark.sanity
     def test_send_email_html(self, jmap_acct_1, jmap_acct_2):
         # send an email with html body content
         subject = f'{TEST_MSG_SUBJECT_PREFIX} JMAP send HTML test {datetime.now()}'

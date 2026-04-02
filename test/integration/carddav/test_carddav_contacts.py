@@ -119,12 +119,14 @@ class TestCarddavContacts:
         if contact_details.get('note'):
             assert found_vcard.note.value == contact_details['note'], 'expected note to be correct'
 
+    @pytest.mark.sanity
     def test_get_contacts_list(self, carddav, test_address_book):
         # retrieve a list of all of the contacts that exist in our test address book; we know there
         # is at least one because when our test address book was created one contact was added
         all_contacts = carddav.get_all_contacts(test_address_book['href'])
         assert all_contacts is not None, 'expected at least one contact to be found'
 
+    @pytest.mark.sanity
     def test_update_contact(self, carddav, test_address_book):
         # edit an existing contact and verify changes were saved; we know at least one contact already
         # exists in our test address book that was created at the test start by our conftest.py fixture
