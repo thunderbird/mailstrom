@@ -25,6 +25,17 @@ psm = tb_pulumi.secrets.PulumiSecretsManager(
     **psm_opts,
 )
 
+logdest_opts = resources.get('tb:cloudwatch:LogDestination', {})
+logdests = {
+    logdest_name: tb_pulumi.cloudwatch.LogDestination(
+        f'{project.name_prefix}-logdest-{logdest_name}',
+        app_name=logdest_name,
+        project=project,
+        **logdest_config,
+    )
+    for logdest_name, logdest_config in logdest_opts.items()
+}
+
 # Build out some private network space
 vpc_opts = resources['tb:network:MultiTierVpc']['vpc']
 vpc = tb_pulumi.network.MultiTierVpc(
