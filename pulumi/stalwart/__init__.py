@@ -671,6 +671,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         depends_on: list = [],
         disable_api_stop: bool = False,
         disable_api_termination: bool = False,
+        function: str = 'unknown',
         ignore_ami_changes: bool = True,
         ignore_user_data_changes: bool = True,
         instance_type: str = 't3.micro',
@@ -693,6 +694,9 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         :param disable_api_termination: When True, prevents AWS API calls from terminating the instance. Defaults to
             False.
         :type disable_api_termination: bool, optional
+
+        :param function: This becomes the ``postboot.stalwart.function`` tag on the instance and the ``function``
+            variable inside of postboot templates.
 
         :param ignore_ami_changes: When True, changes to the instance's AMI will not be applied. This prevents unwanted
             rebuilding of cluster nodes, potentially causing downtime. Set to False if the AMI has changed and you
@@ -749,6 +753,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         postboot_tags = {
             'postboot.stalwart.aws_region': self.project.aws_region,
             'postboot.stalwart.env': self.project.stack,
+            'postboot.stalwart.function': function,
             'postboot.stalwart.https_paths': ','.join(https_paths),
             'postboot.stalwart.image': self.stalwart_image,
             'postboot.stalwart.node_services': node_services_tag,
@@ -810,6 +815,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         archive_file_base = './bootstrap'
         archive_files = [
             'bootstrap.py',
+            'templates/fluent-bit.yaml.j2',
             'templates/ports.j2',
             'templates/stalwart.toml.j2',
             'templates/thundermail.service.j2',

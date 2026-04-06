@@ -8,30 +8,51 @@
 set -x
 set -e
 
+# Places data get stored
 BOOTSTRAP_DIR=/opt/stalwart-bootstrap
 BOOTSTRAP_TBZ=/root/bootstrap.tbz
 STALWART_DIR=/opt/stalwart
 
+# Install the fluent-bit repo for Amazon Linux
+echo '[fluent-bit]
+name = Fluent Bit
+baseurl = https://packages.fluentbit.io/amazonlinux/2023/
+gpgcheck=1
+gpgkey=https://packages.fluentbit.io/fluentbit.key
+enabled=1' > /etc/yum.repos.d/fluent-bit.repo
+
+# Update system, install dependencies
 dnf update -y
-dnf install -y bzip2 docker python3.12
+dnf install -y bzip2 docker fluent-bit python3.12
 
+# Delete the default fluent-bit config; we'll template a new one in Phase 2
+rm -f /etc/fluent-bit/fluent-bit.conf
+
+# Make sure fluent-bit uses the right config file
+sed -i 's/fluent-bit.conf/fluent-bit.yaml/' /usr/lib/systemd/system/fluent-bit.service
+
+# Set up Stalwart config directory and virtual environment
 mkdir -p $STALWART_DIR/etc
-
 python3.12 -m ensurepip
 pip3.12 install virtualenv
 /usr/local/bin/virtualenv -p python3.12 $BOOTSTRAP_DIR
 
+# Make sure Docker always runs
 systemctl start docker
 systemctl enable docker
 
+# Install Bootstrap Phase 2
 echo '{{ bootstrap_tbz_base64 }}' | base64 -d > $BOOTSTRAP_TBZ
 tar -xvf $BOOTSTRAP_TBZ -C $BOOTSTRAP_DIR
 
+# Run Bootstrap Phase 2
 source $BOOTSTRAP_DIR/bin/activate
 pip install -r $BOOTSTRAP_DIR/requirements.txt
 python $BOOTSTRAP_DIR/bootstrap.py
 
+# Ensure all our services are online with current configs
 systemctl daemon-reload
+systemctl enable fluent-bit
+systemctl restart fluent-bit
 systemctl enable thundermail
-systemctl start thundermail
-
+systemctl restart thundermail

@@ -1,0 +1,25 @@
+---
+
+service:
+  flush: 1
+  grace: 5
+  daemon: no
+  dns.mode: UDP
+  hot_reload: on
+  log_level: info
+  storage.path: /fluent-bit/buffers
+  storage.backlog.flush_on_shutdown: on
+  storage.keep.rejected: on
+  storage.rejected.path: /fluent-bit/dlq
+
+pipeline:
+  inputs:
+    - name: systemd
+      tag: cloudwatch.stalwart.{{ function }}
+      systemd_filter: _SYSTEMD_UNIT=thundermail.service
+    
+  filters: []
+    
+  outputs:
+    - name: forward
+      match: '*'

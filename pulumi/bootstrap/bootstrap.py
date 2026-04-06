@@ -10,13 +10,16 @@ from traceback import print_exc
 BOOTSTRAP_DIR = '/opt/stalwart-bootstrap'
 BOOTSTRAP_LOG = '/var/log/stalwart-bootstrap.log'
 INSTANCE_TAGS = {}
+
 # Map of template files to target files
 TEMPLATE_MAP = {
+    'fluent-bit.yaml.j2': '/etc/fluent-bit/fluent-bit.yaml',
     'stalwart.toml.j2': '/opt/stalwart/etc/config.toml',
     'thundermail.service.j2': '/usr/lib/systemd/system/thundermail.service',
 }
 # Map of template variable to EC2 tags
 TEMPLATE_VALUE_TAG_MAP = {
+    'function': 'postboot.stalwart.function',
     'https_paths': 'postboot.stalwart.https_paths',
     'node_services': 'postboot.stalwart.node_services',
     'node_id': 'postboot.stalwart.node_id',
