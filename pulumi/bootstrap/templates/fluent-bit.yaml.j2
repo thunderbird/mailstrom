@@ -23,3 +23,9 @@ pipeline:
   outputs:
     - name: forward
       match: '*'
+{%- if env == 'prod' %}
+      host: fluentbit.tb.pro
+{%- else %}
+      host: {{ 'fluentbit-' + env + '.tb.pro' }}
+{%- endif %}
+      port: 24224

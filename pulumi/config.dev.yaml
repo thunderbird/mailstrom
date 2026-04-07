@@ -52,7 +52,7 @@ resources:
       additional_routes:
         private:
           - destination_cidr_block: 10.202.0.0/22  # observability-dev
-            vpc_peering_connection_id: pcx-0d2027442f0e54ca4
+            vpc_peering_connection_id: pcx-04d7e54008cd9326c
         public: []
       endpoint_interfaces:
         - secretsmanager
