@@ -7,6 +7,16 @@ resources:
         - stalwart.postboot.keycloak_backend
         - stalwart.postboot.postgresql_backend
 
+  tb:cloudwatch:LogDestination:
+    stalwart:
+      log_group:
+        retention_in_days: 7
+      log_streams:
+        api: api
+        mail: mail
+        untagged: untagged
+      org_name: tb
+
   tb:network:MultiTierVpc:
     vpc:
       cidr_block: 10.0.0.0/16
@@ -93,6 +103,7 @@ resources:
       nodes:
         "0": # Must be a unique, stringified integer
           disable_api_termination: True
+          function: 'mail'
           ignore_ami_changes: True
           ignore_user_data_changes: True
           instance_type: t3a.large
@@ -110,6 +121,7 @@ resources:
           storage_capacity: 20
         "1": # Must be a unique, stringified integer
           disable_api_termination: True
+          function: 'mail'
           ignore_ami_changes: True
           ignore_user_data_changes: True
           instance_type: t3a.large
@@ -127,6 +139,7 @@ resources:
           storage_capacity: 20
         "50":
           disable_api_termination: True
+          function: 'api'
           ignore_ami_changes: True
           ignore_user_data_changes: True
           instance_type: t3.micro
