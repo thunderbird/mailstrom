@@ -15,6 +15,7 @@ resources:
       log_streams:
         api: api
         mail: mail
+        untagged: untagged
       org_name: tb
 
   tb:network:MultiTierVpc:

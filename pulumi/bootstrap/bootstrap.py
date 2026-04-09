@@ -13,6 +13,7 @@ INSTANCE_TAGS = {}
 
 # Map of template files to target files
 TEMPLATE_MAP = {
+    'fluent-bit.service.j2': '/usr/lib/systemd/system/fluent-bit.service',
     'fluent-bit.yaml.j2': '/etc/fluent-bit/fluent-bit.yaml',
     'stalwart.toml.j2': '/opt/stalwart/etc/config.toml',
     'thundermail.service.j2': '/usr/lib/systemd/system/thundermail.service',

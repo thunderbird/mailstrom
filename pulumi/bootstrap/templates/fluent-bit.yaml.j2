@@ -21,11 +21,25 @@ pipeline:
   filters: []
     
   outputs:
-    - name: forward
-      match: '*'
-{%- if env == 'prod' %}
-      host: fluentbit.tb.pro
-{%- else %}
-      host: {{ 'fluentbit-' + env + '.tb.pro' }}
-{%- endif %}
-      port: 24224
+    # Send logs onward to CloudWatch. Log groups by the derived name must pre-exist, and this
+    # service must have sufficient IAM permissions to create log streams and post events to them.
+    - name: cloudwatch_logs
+      match: cloudwatch.stalwart.mail
+      log_group_name: /tb/${ENV}/stalwart
+      log_stream_name: mail
+      region: eu-central-1
+      log_key: MESSAGE
+
+    - name: cloudwatch_logs
+      match: cloudwatch.stalwart.api
+      log_group_name: /tb/${ENV}/stalwart
+      log_stream_name: api
+      region: eu-central-1
+      log_key: MESSAGE
+    
+    - name: cloudwatch_logs
+      match: cloudwatch.untagged
+      log_group_name: /tb/${ENV}/stalwart
+      log_stream_name: untagged
+      region: eu-central-1
+      log_key: MESSAGE

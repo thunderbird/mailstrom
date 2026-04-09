@@ -28,9 +28,6 @@ dnf install -y bzip2 docker fluent-bit python3.12
 # Delete the default fluent-bit config; we'll template a new one in Phase 2
 rm -f /etc/fluent-bit/fluent-bit.conf
 
-# Make sure fluent-bit uses the right config file
-sed -i 's/fluent-bit.conf/fluent-bit.yaml/' /usr/lib/systemd/system/fluent-bit.service
-
 # Set up Stalwart config directory and virtual environment
 mkdir -p $STALWART_DIR/etc
 python3.12 -m ensurepip
