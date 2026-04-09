@@ -8,15 +8,6 @@ resources:
         - stalwart.postboot.keycloak_backend
       recovery_window_in_days: 0
 
-  tb:cloudwatch:LogDestination:
-    stalwart:
-      log_group:
-        retention_in_days: 7
-      log_streams:
-        stalwart-api-logs: api
-        stalwart-mail-logs: mail
-      org_name: tb
-
   tb:network:MultiTierVpc:
     vpc:
       cidr_block: 10.2.0.0/16
