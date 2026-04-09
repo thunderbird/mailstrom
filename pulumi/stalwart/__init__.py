@@ -274,6 +274,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         self,
         name: str,
         project: tb_pulumi.ThunderbirdPulumiProject,
+        log_group_arn: str,
         private_subnets: list[aws.ec2.Subnet],
         public_subnets: list[aws.ec2.Subnet],
         https_features: list = [],
@@ -343,8 +344,16 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         s3_bucket, s3_secret, s3_policy = stalwart_s3.s3(self=self)
 
         # Build an IAM role with a policy to enable node bootstrapping
-        profile_policy, role, profile_postboot_attachment, profile_s3_attachment, profile = stalwart_iam.iam(
+        (
+            profile_policy,
+            role,
+            profile_postboot_attachment,
+            profile_s3_attachment,
+            profile_logwrite_attachment,
+            profile,
+        ) = stalwart_iam.iam(
             self,
+            log_group_arn=log_group_arn,
             s3_policy=s3_policy,
         )
 
@@ -463,6 +472,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
                 'spam_filter_secret': config_secrets['spam_filter'],
                 'node_profile': profile,
                 'node_profile_policy': profile_policy,
+                'node_profile_logwrite_attachment': profile_logwrite_attachment,
                 'node_profile_postboot_policy_attachment': profile_postboot_attachment,
                 'node_profile_s3_policy_attachment': profile_s3_attachment,
                 'node_sgs': self.node_sgs,

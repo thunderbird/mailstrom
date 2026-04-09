@@ -82,6 +82,7 @@ def __stalwart_cluster(jumphost_rules: list[dict]):
     return stalwart.StalwartCluster(
         f'{project.name_prefix}-stalwart',
         project=project,
+        log_group_arn=logdests['stalwart'].resources['iam_policies']['write'].arn,
         private_subnets=vpc.resources['private_subnets'],
         public_subnets=vpc.resources['public_subnets'],
         node_additional_ingress_rules=jumphost_rules,
