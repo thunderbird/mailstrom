@@ -10,7 +10,7 @@ resources:
   tb:cloudwatch:LogDestination:
     stalwart:
       log_group:
-        retention_in_days: 7
+        retention_in_days: 3
       log_streams:
         api: api
         mail: mail
