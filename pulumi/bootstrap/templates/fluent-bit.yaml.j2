@@ -21,8 +21,9 @@ pipeline:
   filters: []
     
   outputs:
-    # Send logs onward to CloudWatch. Log groups by the derived name must pre-exist, and this
-    # service must have sufficient IAM permissions to create log streams and post events to them.
+    # Send logs onward to CloudWatch. Log groups by the given name must pre-exist, and this service
+    # must have sufficient IAM permissions to post events to these log streams. If these log streams
+    # do not exist, this service must have permission to create them.
     - name: cloudwatch_logs
       match: cloudwatch.stalwart.mail
       log_group_name: /tb/${ENV}/stalwart

@@ -5,7 +5,7 @@ Small module to build Stalwart IAM resources.
 import json
 import pulumi_aws as aws
 
-from tb_pulumi.constants import ASSUME_ROLE_POLICY, IAM_POLICY_DOCUMENT
+from tb_pulumi.constants import ASSUME_ROLE_POLICY
 
 
 def iam(
