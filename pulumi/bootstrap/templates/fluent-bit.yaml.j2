@@ -37,9 +37,3 @@ pipeline:
       region: eu-central-1
       log_key: MESSAGE
     
-    - name: cloudwatch_logs
-      match: cloudwatch.untagged
-      log_group_name: /tb/${ENV}/stalwart
-      log_stream_name: untagged
-      region: eu-central-1
-      log_key: MESSAGE
