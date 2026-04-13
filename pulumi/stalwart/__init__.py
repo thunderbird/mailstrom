@@ -827,6 +827,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
             'bootstrap.py',
             'templates/fluent-bit.service.j2',
             'templates/fluent-bit.yaml.j2',
+            'templates/journald.conf.j2',
             'templates/ports.j2',
             'templates/stalwart.toml.j2',
             'templates/thundermail.service.j2',

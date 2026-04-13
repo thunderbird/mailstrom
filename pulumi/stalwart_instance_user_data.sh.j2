@@ -49,6 +49,7 @@ python $BOOTSTRAP_DIR/bootstrap.py
 
 # Ensure all our services are online with current configs
 systemctl daemon-reload
+systemctl restart systemd-journald
 systemctl enable fluent-bit
 systemctl restart fluent-bit
 systemctl enable thundermail
