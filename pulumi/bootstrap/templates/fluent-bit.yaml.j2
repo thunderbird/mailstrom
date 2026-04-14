@@ -1,0 +1,41 @@
+---
+
+service:
+  flush: 1
+  grace: 5
+  daemon: no
+  dns.mode: UDP
+  hot_reload: on
+  log_level: info
+  storage.path: /fluent-bit/buffers
+  storage.backlog.flush_on_shutdown: on
+  storage.keep.rejected: on
+  storage.rejected.path: /fluent-bit/dlq
+
+pipeline:
+  inputs:
+    - name: systemd
+      tag: cloudwatch.stalwart.{{ function }}
+      db: /opt/fluent-bit/thundermail.cursor
+      systemd_filter: _SYSTEMD_UNIT=thundermail.service
+    
+  filters: []
+    
+  outputs:
+    # Send logs onward to CloudWatch. Log groups by the given name must pre-exist, and this service
+    # must have sufficient IAM permissions to post events to these log streams. If these log streams
+    # do not exist, this service must have permission to create them.
+    - name: cloudwatch_logs
+      match: cloudwatch.stalwart.mail
+      log_group_name: /tb/${ENV}/stalwart
+      log_stream_name: mail
+      region: eu-central-1
+      log_key: MESSAGE
+
+    - name: cloudwatch_logs
+      match: cloudwatch.stalwart.api
+      log_group_name: /tb/${ENV}/stalwart
+      log_stream_name: api
+      region: eu-central-1
+      log_key: MESSAGE
+    

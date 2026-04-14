@@ -274,6 +274,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         self,
         name: str,
         project: tb_pulumi.ThunderbirdPulumiProject,
+        log_group_arn: str,
         private_subnets: list[aws.ec2.Subnet],
         public_subnets: list[aws.ec2.Subnet],
         https_features: list = [],
@@ -343,8 +344,16 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         s3_bucket, s3_secret, s3_policy = stalwart_s3.s3(self=self)
 
         # Build an IAM role with a policy to enable node bootstrapping
-        profile_policy, role, profile_postboot_attachment, profile_s3_attachment, profile = stalwart_iam.iam(
+        (
+            profile_policy,
+            role,
+            profile_postboot_attachment,
+            profile_s3_attachment,
+            profile_logwrite_attachment,
+            profile,
+        ) = stalwart_iam.iam(
             self,
+            log_group_arn=log_group_arn,
             s3_policy=s3_policy,
         )
 
@@ -463,6 +472,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
                 'spam_filter_secret': config_secrets['spam_filter'],
                 'node_profile': profile,
                 'node_profile_policy': profile_policy,
+                'node_profile_logwrite_attachment': profile_logwrite_attachment,
                 'node_profile_postboot_policy_attachment': profile_postboot_attachment,
                 'node_profile_s3_policy_attachment': profile_s3_attachment,
                 'node_sgs': self.node_sgs,
@@ -671,6 +681,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         depends_on: list = [],
         disable_api_stop: bool = False,
         disable_api_termination: bool = False,
+        function: str = 'unknown',
         ignore_ami_changes: bool = True,
         ignore_user_data_changes: bool = True,
         instance_type: str = 't3.micro',
@@ -693,6 +704,9 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         :param disable_api_termination: When True, prevents AWS API calls from terminating the instance. Defaults to
             False.
         :type disable_api_termination: bool, optional
+
+        :param function: This becomes the ``postboot.stalwart.function`` tag on the instance and the ``function``
+            variable inside of postboot templates.
 
         :param ignore_ami_changes: When True, changes to the instance's AMI will not be applied. This prevents unwanted
             rebuilding of cluster nodes, potentially causing downtime. Set to False if the AMI has changed and you
@@ -749,6 +763,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         postboot_tags = {
             'postboot.stalwart.aws_region': self.project.aws_region,
             'postboot.stalwart.env': self.project.stack,
+            'postboot.stalwart.function': function,
             'postboot.stalwart.https_paths': ','.join(https_paths),
             'postboot.stalwart.image': self.stalwart_image,
             'postboot.stalwart.node_services': node_services_tag,
@@ -810,6 +825,9 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         archive_file_base = './bootstrap'
         archive_files = [
             'bootstrap.py',
+            'templates/fluent-bit.service.j2',
+            'templates/fluent-bit.yaml.j2',
+            'templates/journald.conf.j2',
             'templates/ports.j2',
             'templates/stalwart.toml.j2',
             'templates/thundermail.service.j2',

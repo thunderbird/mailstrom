@@ -1,0 +1,6 @@
+[Journal]
+{% if env == 'prod' %}
+MaxRetentionSec=3day
+{% else %}
+MaxRetentionSec=7day
+{% endif %}

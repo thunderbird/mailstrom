@@ -5,11 +5,12 @@ Small module to build Stalwart IAM resources.
 import json
 import pulumi_aws as aws
 
-from tb_pulumi.constants import ASSUME_ROLE_POLICY, IAM_POLICY_DOCUMENT
+from tb_pulumi.constants import ASSUME_ROLE_POLICY
 
 
 def iam(
     self,
+    log_group_arn: str,
     s3_policy: aws.iam.Policy,
 ) -> tuple[
     aws.iam.Policy, aws.iam.Role, aws.iam.RolePolicyAttachment, aws.iam.RolePolicyAttachment, aws.iam.InstanceProfile
@@ -32,14 +33,18 @@ def iam(
             + f':secret:mailstrom/{self.project.stack}/stalwart.postboot.*'
         ),
     ]
-    profile_postboot_policy_doc = IAM_POLICY_DOCUMENT.copy()
-    profile_postboot_policy_doc['Statement'][0].update(
-        {
-            'Sid': 'AllowPostbootSecretAccess',
-            'Action': ['secretsmanager:GetSecretValue'],
-            'Resource': bootstrap_secret_arns,
-        }
-    )
+    profile_postboot_policy_doc = {
+        'Version': '2012-10-17',
+        'Statement': [
+            {
+                'Sid': 'AllowPostbootSecretAccess',
+                'Effect': 'Allow',
+                'Action': ['secretsmanager:GetSecretValue'],
+                'Resource': bootstrap_secret_arns,
+            }
+        ],
+    }
+
     profile_policy = aws.iam.Policy(
         f'{self.name}-policy-nodeprofile',
         path='/',
@@ -64,7 +69,19 @@ def iam(
         role=role.name,
         policy_arn=s3_policy.arn,
     )
+    profile_logwrite_attachment = aws.iam.RolePolicyAttachment(
+        f'{self.name}-rpa-nodeprofile-logs',
+        role=role.name,
+        policy_arn=log_group_arn,
+    )
 
     profile = aws.iam.InstanceProfile(f'{self.name}-ip-nodeprofile', name=f'{self.name}-nodeprofile', role=role.name)
 
-    return profile_policy, role, profile_postboot_attachment, profile_s3_attachment, profile
+    return (
+        profile_policy,
+        role,
+        profile_postboot_attachment,
+        profile_s3_attachment,
+        profile_logwrite_attachment,
+        profile,
+    )

@@ -25,6 +25,17 @@ psm = tb_pulumi.secrets.PulumiSecretsManager(
     **psm_opts,
 )
 
+logdest_opts = resources.get('tb:cloudwatch:LogDestination', {})
+logdests = {
+    logdest_name: tb_pulumi.cloudwatch.LogDestination(
+        f'{project.name_prefix}-logdest-{logdest_name}',
+        app_name=logdest_name,
+        project=project,
+        **logdest_config,
+    )
+    for logdest_name, logdest_config in logdest_opts.items()
+}
+
 # Build out some private network space
 vpc_opts = resources['tb:network:MultiTierVpc']['vpc']
 vpc = tb_pulumi.network.MultiTierVpc(
@@ -71,6 +82,7 @@ def __stalwart_cluster(jumphost_rules: list[dict]):
     return stalwart.StalwartCluster(
         f'{project.name_prefix}-stalwart',
         project=project,
+        log_group_arn=logdests['stalwart'].resources['iam_policies']['write'].arn,
         private_subnets=vpc.resources['private_subnets'],
         public_subnets=vpc.resources['public_subnets'],
         node_additional_ingress_rules=jumphost_rules,
