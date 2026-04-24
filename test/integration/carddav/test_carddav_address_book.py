@@ -1,4 +1,5 @@
 import time
+import pytest
 
 from datetime import datetime
 from urllib.parse import quote
@@ -25,6 +26,7 @@ class TestCarddavAddressBook:
         abs_returned = carddav.get_address_books()
         assert len(abs_returned) > 0, 'expected at least 1 address book to exist'
 
+    @pytest.mark.sanity
     def test_get_default_address_book(self, carddav):
         # retrieve the default address book and verify
         default_ab = None
@@ -41,6 +43,7 @@ class TestCarddavAddressBook:
         )
         return
 
+    @pytest.mark.sanity
     def test_create_address_book(self, carddav):
         # create a new address book and verify
         ab_name = f'{ADDRESS_BOOK_PREFIX} {datetime.now()}'

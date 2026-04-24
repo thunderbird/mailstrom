@@ -1,6 +1,6 @@
 # Mailstrom Integration Tests
 
-The purpose of the integration tests is to verify basic IMAP/SMTP/JMAP support on a running mailstrom instance.
+The purpose of the integration tests is to verify IMAP/SMTP/JMAP/CalDAV/CardDAV support on a running mailstrom instance.
 
 
 ## Installation
@@ -82,6 +82,13 @@ To run a single integration test (i.e. IMAP login):
 ```bash
 cd test/integration
 python -m pytest -vs imap/test_login.py
+```
+
+To run the 'sanity' test suite (a basic subset of the integration tests):
+
+```bash
+cd test/integration
+python -m pytest -m sanity -vs
 ```
 
 ### Enable debug logging

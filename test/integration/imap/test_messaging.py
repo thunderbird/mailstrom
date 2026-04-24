@@ -168,6 +168,7 @@ class TestIMAPMessaging:
         found_msgs = imap.search_messages('ON 01-Jan-2025')
         assert len(found_msgs) == 0, 'expected to find 0 messages'
 
+    @pytest.mark.sanity
     def test_mark_message_read(self, imap):
         # we need an unread message to start; select one of our existing inbox test messages
         imap.select_mailbox()
@@ -310,6 +311,7 @@ class TestIMAPMessaging:
         found_msg = imap.search_messages('SUBJECT', msg_subject)
         assert len(found_msg) == 0, 'expected NOT to find the deleted message after calling expunge'
 
+    @pytest.mark.sanity
     def test_fetch_message_details(self, imap):
         # fetch message details from a test message in the test_acct_1 inbox
         imap.select_mailbox()

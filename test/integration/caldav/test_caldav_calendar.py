@@ -1,3 +1,4 @@
+import pytest
 import time
 
 from datetime import datetime
@@ -25,6 +26,7 @@ class TestCaldavCalendar:
         cals_returned = caldav.get_calendars()
         assert len(cals_returned) > 0, 'expected at least 1 calendar to have been returned'
 
+    @pytest.mark.sanity
     def test_get_default_calendar(self, caldav):
         # retrieve the default calendar and verify
         default_cal = caldav.get_default_calendar()
@@ -36,6 +38,7 @@ class TestCaldavCalendar:
         display_name = default_cal.get_display_name()
         assert display_name == CALDAV_EXP_DEFAULT_CALENDAR_NAME, 'expected the default calendar name to be correct'
 
+    @pytest.mark.sanity
     def test_create_calendar(self, caldav):
         # create a new calendar and verify
         cal_name = f'{CALENDAR_PREFIX} {datetime.now()}'

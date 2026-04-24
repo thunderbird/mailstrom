@@ -16,11 +16,19 @@ dependencies = { file = ["pulumi/requirements.txt"] }
 dev = [
     "ruff",
     "python-dotenv==1.0.1",
-    "pytest==8.3.4",
+    "pytest==9.0.3",
     "locust==2.36.2",
     "jmapc==0.2.23",
     "caldav==2.2.6",
-    "pytz==2025.2",
+    "pytz==2026.1",
     "vobject==0.9.9",
     "faker==38.2.0",
+]
+
+[tool.pytest.ini_options]
+markers = [
+    "sanity: marks tests as sanity tests",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
 ]

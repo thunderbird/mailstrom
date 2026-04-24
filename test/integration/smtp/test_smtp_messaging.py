@@ -1,5 +1,6 @@
 import datetime
 import os
+import pytest
 
 from common.logger import log
 
@@ -135,6 +136,7 @@ class TestSMTPMessaging:
         assert send_exception, 'expected send message to fail'
         assert 'SMTPRecipientsRefused' in send_exception, 'expected correct exception type'
 
+    @pytest.mark.sanity
     def test_send_email_html(self, smtp, imap):
         subject = f'{TEST_MSG_SUBJECT_PREFIX} SMTP send test html {datetime.datetime.now()}'
         send_exception = smtp.send_test_email_multipart(
