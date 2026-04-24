@@ -39,30 +39,18 @@ resources:
        - eipalloc-0f512d7cb3929b176  # 63.179.185.6
       endpoint_interfaces:
         - secretsmanager
-      peering_connections:
-        fluentbit-stage:
-          peered_cidrs:
-            - 10.201.0.0/22
-          peer_vpc_id: vpc-0c83219ee10024f16
-          auto_accept: True  # Requires both VPCs to be in same account and region
-          # Allow resolution of DNS records to private IPs (so we can use a private LB)
-          accepter:
-            allow_remote_vpc_dns_resolution: True
-          requester:
-            allow_remote_vpc_dns_resolution: True
+      peering_connections: {}
       additional_routes:
         private:
           - destination_cidr_block: 10.11.0.0/16  # accounts-stage
             vpc_peering_connection_id: pcx-063f07eca0677a761
-          - destination_cidr_block: 10.201.0.0/22  # fluentbit-stage
-            vpc_peering_connection_id: pcx-03dd1daa0b700ab37
         public: []
 
   tb:ec2:SshableInstance:
     bastion:
       ssh_keypair_name: mailstrom-stage
       source_cidrs:
-        - 10.2.0.0/16
+        - 10.1.0.0/16
       ami: ami-082478ca34e882109
 
   # Fill out this template to build an SSH bastion
