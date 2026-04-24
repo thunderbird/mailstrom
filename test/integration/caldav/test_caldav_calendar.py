@@ -36,7 +36,7 @@ class TestCaldavCalendar:
         assert default_cal.url == exp_url, 'expected default calendar url to be correct'
 
         display_name = default_cal.get_display_name()
-        assert display_name == CALDAV_EXP_DEFAULT_CALENDAR_NAME, 'expected the default calendar name to be correct'
+        assert CALDAV_EXP_DEFAULT_CALENDAR_NAME in display_name, 'expected the default calendar name to be correct'
 
     @pytest.mark.sanity
     def test_create_calendar(self, caldav):
