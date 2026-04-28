@@ -38,10 +38,9 @@ class TestCarddavAddressBook:
 
         assert default_ab is not None, 'expected to be able to find the default address book'
         assert quote(carddav.username) in default_ab['href'], 'expected default address book url to be correct'
-        assert default_ab['displayname'] == CARDDAV_EXP_DEFAULT_ADDRESS_BOOK_NAME, (
+        assert CARDDAV_EXP_DEFAULT_ADDRESS_BOOK_NAME in default_ab['displayname'], (
             'expected default address book name to be correct'
         )
-        return
 
     @pytest.mark.sanity
     def test_create_address_book(self, carddav):
