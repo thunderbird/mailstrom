@@ -24,6 +24,9 @@ JMAP_CAPABILITY_CORE_MAX_CALLS_IN_REQUEST = 16
 TEST_CALDAV_URL = f'https://{TEST_SERVER_HOST}/dav/cal'
 CALDAV_EXP_DEFAULT_CALENDAR_NAME = 'Thundermail Calendar'
 
+# CalDAV scheduling RSVP web endpoint (anonymous; served by Stalwart for iMIP "Yes/No/Maybe" links)
+TEST_CALDAV_RSVP_URL = f'https://{TEST_SERVER_HOST}/calendar/rsvp'
+
 # CardDAV
 TEST_CARDDAV_URL = f'https://{TEST_SERVER_HOST}/dav/card'
 CARDDAV_EXP_DEFAULT_ADDRESS_BOOK_NAME = 'Thundermail Address Book'
