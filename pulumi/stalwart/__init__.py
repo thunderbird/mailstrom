@@ -26,7 +26,7 @@ from stalwart import (
 
 #: Mapping of features of the https service and the API paths to enable for them
 HTTPS_FEATURES = {
-    'caldav': '/dav/cal,/dav/pal,/.well-known/caldav',
+    'caldav': '/dav/cal,/dav/pal,/.well-known/caldav,/calendar/rsvp',
     'carddav': '/dav/card,/dav/pal,/.well-known/carddav',
     'jmap': '/jmap,/.well-known/jmap',
     'webdav': '/dav/files,/dav/pal',
