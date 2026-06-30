@@ -351,17 +351,17 @@ class JMAP:
             log.debug(f"error deleting mailbox with id '{mailbox_id}': {result}")
             return result
 
-    def query_email(self, filter=None, limit=None):
+    def query_email(self, filter=None, limit=None, collapse_threads=True):
         """
         Perform an email query using the provided filter, and return the found email ids.
         """
         method = EmailQuery(
-            collapse_threads=True,
+            collapse_threads=collapse_threads,
             filter=filter,
             limit=limit,
         )
 
-        log.debug(f'querying email with filter: {filter} and limit: {limit}')
+        log.debug(f'querying email with filter: {filter}, limit: {limit}, collapse_threads: {collapse_threads}')
 
         try:
             result = self.client.request(method)
@@ -586,25 +586,33 @@ class JMAP:
         Check the inbox for a message to arrive with the given subject. If the message hasn't arrived yet wait
         for it; return the id of the message after it has arrived (or -1 if it never arrived).
         """
-        max_checks = 60
+        max_wait_seconds = 7 * 60
         wait_seconds = 5
+        max_checks = (max_wait_seconds // wait_seconds) + 1
         arrived_msg_id = 0
 
+        mailbox_search = self.get_mailbox_by_name('Inbox')
+        assert mailbox_search, 'expected to get the inbox mailbox'
+        inbox_id = mailbox_search[0].id
+        assert inbox_id, 'expected to get the inbox mailbox id'
+
         for checks in range(1, max_checks + 1):
+            if checks > 1:
+                time.sleep(wait_seconds)
+
             log.debug(
-                f'waiting {wait_seconds} seconds for message to arrive in test_acct_1 inbox '
-                f'(check {checks} of {max_checks})'
+                f'checking for message to arrive in {self.username.split("@")[0]} inbox {inbox_id} '
+                f'(check {checks} of {max_checks}, timeout {max_wait_seconds} seconds)'
             )
-            time.sleep(wait_seconds)
 
             search_filter = {
-                'inMailbox': 'a',
+                'inMailbox': inbox_id,
                 'subject': subject,
             }
 
-            found_email_ids = self.query_email(filter=search_filter)
+            found_email_ids = self.query_email(filter=search_filter, collapse_threads=False)
 
-            if len(found_email_ids) == 1:
+            if found_email_ids:
                 arrived_msg_id = found_email_ids[0]
                 break
 
