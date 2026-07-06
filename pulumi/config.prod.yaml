@@ -171,7 +171,7 @@ resources:
 
       private_load_balancers:
         management:
-          excluded_nodes: ["0", "1", "51"]
+          excluded_nodes: ["0", "1" ]
           source_security_group_ids:
             - sg-034b36952ac31b87b  # accounts-prod api container
             - sg-0ede6c1f9f8a4b676  # accounts-prod celery container
