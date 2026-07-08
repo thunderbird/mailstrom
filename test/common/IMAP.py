@@ -379,12 +379,15 @@ class IMAP:
         """
         Mark the given message(s) as deleted (in the currently selected mailbox).
         """
+        if isinstance(msg_ids, str):
+            msg_ids = [msg_ids]
         for msg in msg_ids:
             log.debug(f'marking message {msg} as deleted')
             result, data = self.connection.store(msg, '+FLAGS', '\\Deleted')
             log.debug(f'{result}, {data}')
             assert result == RESULT_OK, 'expected to be able to mark message as deleted'
-            assert MSG_DELETED_FLAG in data[0], 'expected deleted flag to have been added'
+            msg_flags = self.fetch_message_flags(msg)
+            assert MSG_DELETED_FLAG in msg_flags[0], 'expected deleted flag to have been added'
 
     def permanently_delete_msgs(self):
         """

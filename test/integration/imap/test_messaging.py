@@ -284,7 +284,7 @@ class TestIMAPMessaging:
         msg_subject = imap.fetch_message_details(test_msg)['Subject']
         log.debug(f'message to be deleted has this subject: {msg_subject}')
 
-        imap.delete_messages(test_msg)
+        imap.delete_messages([test_msg])
 
         # search for deleted message and verify still there; flag was already checked in delete_messages above
         found_msg = imap.search_messages('SUBJECT', msg_subject)
@@ -300,7 +300,7 @@ class TestIMAPMessaging:
         msg_subject = imap.fetch_message_details(test_msg)['Subject']
         log.debug(f'message to be deleted has this subject: {msg_subject}')
 
-        imap.delete_messages(test_msg)
+        imap.delete_messages([test_msg])
 
         # search for deleted message and verify still there; flag was already checked in delete_messages above
         found_msg = imap.search_messages('SUBJECT', msg_subject)
