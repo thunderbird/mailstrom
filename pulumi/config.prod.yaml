@@ -44,7 +44,7 @@ resources:
       peering_connections: {}
       additional_routes:
         private:
-          - destination_cidr_block: 10.10.0.0/16  # accounts-prod
+          - cidr_block: 10.10.0.0/16  # accounts-prod
             vpc_peering_connection_id: pcx-0fdcc9b776a069d2d
         public: []
 
