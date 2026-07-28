@@ -10,7 +10,6 @@ import tb_pulumi.iam
 import tb_pulumi.network
 import tb_pulumi.s3
 import tb_pulumi.secrets
-import toml
 
 from copy import deepcopy
 from enum import Enum
@@ -82,7 +81,6 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
     Produces the following ``resources``:
 
         - *instances* - Dict of :py:class:`StalwartClusterNode`s, identified by their node_id.
-        - *jmap_secret* - :py:class:`tb_pulumi.secrets.SecretsManagerSecret` containing the TOML-formatted JMAP config.
         - *node_profile* - The instance profile used for each cluster node.
         - *node_profile_policy* - The `aws.iam.Policy
           <https://www.pulumi.com/registry/packages/aws/api-docs/iam/policy/>`_ attached to the instance profile.
@@ -126,25 +124,6 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
     :param https_features: List of features which Stalwart presents over the https service to enable across the cluster.
         These must match with keys in the HTTPS_FEATURES dict. Defaults to [].
     :type https_features: dict, optional
-
-    :param jmap: Dictionary of options to configure the JMAP configuration on servers running JMAP. This should match
-        the options listed in `Stalwart's JMAP documention <https://stalw.art/docs/jmap/overview>`_. A very brief
-        and incomplete example:
-
-        .. code-block: yaml
-
-            jmap:
-              protocol:
-                request:
-                    max-concurrent: 4
-                    max-size: 10000000
-                    max-calls: 16
-                upload:
-                    ttl: 1h
-                    # ... etc
-
-        Has no effect if ``jmap`` is not specified in ``https_features``.
-    :type jmap: dict, optional
 
     :param nodes: Dict describing the individual nodes of the cluster. Each key is a node_id, which must be a
         stringified integer (a restriction imposed by Stalwart), and each value is a dict of supported values describing
@@ -226,21 +205,6 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
     :param redis_opts: Dictionary of options to pass into the Elasticache cluster constructor.
     :type redis_opts: dict, optional
 
-    :param spam_filter: Dictionary of options to configure spam filtering. This should match the options listed in
-        `Stalwart's spam filter documentation <https://stalw.art/docs/spamfilter/overview>`_. A brief example:
-
-        .. code-block: yaml
-
-            spam_filter:
-              bayes:
-                account:
-                  enable: true
-              score:
-                spam: "8.0"
-                reject: "15.0"
-
-    :type spam_filter: dict, optional
-
     :param stalwart_image: The Docker image to use for the Stalwart service. Defaults to
         'stalwartlabs/mail-server:v0.11'
     :type stalwart_image: str
@@ -278,13 +242,11 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         private_subnets: list[aws.ec2.Subnet],
         public_subnets: list[aws.ec2.Subnet],
         https_features: list = [],
-        jmap: dict = None,
         nodes: dict = {},
         node_additional_ingress_rules: list[dict] = [],
         private_load_balancers: dict = {},
         public_load_balancer: dict = {},
         redis_opts: dict = {},
-        spam_filter: dict = None,
         stalwart_image: str = 'stalwartlabs/mail-server:v0.11',
         top_level_domain: str = 'stage-thundermail.com',
         user_data_archive: str = 'bootstrap.tbz',
@@ -357,33 +319,12 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
             s3_policy=s3_policy,
         )
 
-        # Store TOML configuration sections in Secrets Manager for nodes to read back later
-        # Maps parameter name to (value, TOML key name)
-        config_params = {
-            'jmap': (jmap, 'jmap'),
-            'spam_filter': (spam_filter, 'spam-filter'),
-        }
-
-        config_secrets = {}
-        for config_name, (config_value, toml_key) in config_params.items():
-            config_dict = {toml_key: config_value} if config_value else {}
-            toml_str = toml.dumps(config_dict) if config_value else ''
-            config_secrets[config_name] = tb_pulumi.secrets.SecretsManagerSecret(
-                name=f'{self.name}-secret-{config_name.replace("_", "-")}',
-                project=self.project,
-                exclude_from_project=True,
-                secret_name=f'{self.project.project}/{self.project.stack}/stalwart.postboot.{config_name}_toml',
-                secret_value=toml_str,
-                opts=pulumi.ResourceOptions(parent=self),
-            )
-
         # Pipe the node configs into a series of StalwartClusterNodes
         instances = {}
         for idx, node_id in enumerate(nodes):
             # If a subnet has been supplied, use that. Otherwise, distribute across private subnets.
             subnet = nodes[node_id].pop('subnet', None) or self.private_subnets[idx % len(self.private_subnets)]
             depends_on = [
-                *config_secrets.values(),
                 profile,
                 redis_secret,
                 s3_secret,
@@ -468,8 +409,6 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         self.finish(
             resources={
                 'instances': instances,
-                'jmap_secret': config_secrets['jmap'],
-                'spam_filter_secret': config_secrets['spam_filter'],
                 'node_profile': profile,
                 'node_profile_policy': profile_policy,
                 'node_profile_logwrite_attachment': profile_logwrite_attachment,
