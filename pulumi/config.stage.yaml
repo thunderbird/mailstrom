@@ -42,7 +42,7 @@ resources:
       peering_connections: {}
       additional_routes:
         private:
-          - destination_cidr_block: 10.11.0.0/16  # accounts-stage
+          - cidr_block: 10.11.0.0/16  # accounts-stage
             vpc_peering_connection_id: pcx-063f07eca0677a761
         public: []
 
