@@ -40,10 +40,12 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      # 3.13 to match the nightly workflow: tb_pulumi requires >=3.13, so
+      # installing the project on 3.12 fails to resolve.
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: "3.12"
+          python-version: "3.13.0"
 
       - name: Install dependencies
         run: |
