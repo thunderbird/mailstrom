@@ -169,8 +169,8 @@ resources:
             max-concurrent: 4
             max-size: 50000000
             quota:
-              files: 1000
-              size: 50000000
+              files: 100000
+              size: 10000000000
             ttl: 1h
         push:
           attempts:
