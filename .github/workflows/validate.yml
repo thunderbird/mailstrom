@@ -32,3 +32,23 @@ jobs:
         uses: chartboost/ruff-action@v1
         with:
           src: "."
+
+  unit-tests:
+    runs-on: ubuntu-latest
+    env:
+      IS_CI_AUTOMATION: "yes"
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ."[dev]"
+
+      - name: Run unit tests
+        run: python -m pytest test/unit -v
