@@ -79,7 +79,6 @@ resources:
       top_level_domain: stage-thundermail.com
       redis_opts:
         apply_immediately: True
-        automatic_failover_enabled: True
         cluster_mode: enabled
         description: Redis memory cache for Stalwart
         engine: redis
@@ -126,32 +125,46 @@ resources:
             - management
           storage_capacity: 20
           subnet: subnet-07712b990eb0d17c0  # eu-central-1b
+      
+      # TODO: Define mail hosts for the proxy to use that enable all services
 
       public_load_balancer:
         excluded_nodes: ["50"]
+        source_cidrs: ['0.0.0.0/0']
         services:
-          https:
-            source_cidrs: ['0.0.0.0/0']
-          imaps:
-            source_cidrs: ['0.0.0.0/0']
-          lmtp:
-            source_cidrs: ['0.0.0.0/0']
-          managesieve:
-            source_cidrs: ['0.0.0.0/0']
-          smtp:
-            source_cidrs: ['0.0.0.0/0']
-          smtps:
-            source_cidrs: ['0.0.0.0/0']
-          submission:
-            source_cidrs: ['0.0.0.0/0']
+          - https
+          - imaps
+          - lmtp
+          - managesieve
+          - smtp
+          - smtps
+          - submission
 
       private_load_balancers:
         management:
           excluded_nodes: ["1"]
+          source_cidrs: []
           source_security_group_ids:
-            - sg-0a711c607f9e0b959  # accounts-stage api container
-            - sg-02700bcc4c090da45  # accounts-stage celery container
-            - sg-0f916f83b8c76d500  # accounts-stage new celery container
+            accounts-stage-api: sg-0a711c607f9e0b959
+            accounts-stage-celery: sg-02700bcc4c090da45
+            accounts-stage-celery-new: sg-0f916f83b8c76d500
+          services:
+            - management
+
+        mail-private:
+          name: mailstrom-stage-prv
+          excluded_nodes: ["50"]
+          source_security_group_ids:
+            stalwart-migration-proxy-tb-dev: sg-0948f31a90e34eba6
+          services:
+            - https
+            - imaps
+            - lmtp
+            - managesieve
+            - smtp
+            - smtps
+            - submission
+
 
   tb:s3:S3PrivateBucket:
     autoconfig:
