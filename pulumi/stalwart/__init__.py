@@ -597,7 +597,11 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
                 }
             )
 
+        # Add all rules specified for all nodes via the cluster's node_additional_ingress_rules option
         sg_rules['ingress'].extend(additional_rules)
+
+        # Add all rules specified for just this node via the node's additional_ingress_rules option
+        sg_rules['ingress'].extend(self.nodes[node_id].pop('additional_ingress_rules', []))
 
         # Feed the rules config into a SecurityGroupWithRules pattern
         return tb_pulumi.network.SecurityGroupWithRules(
