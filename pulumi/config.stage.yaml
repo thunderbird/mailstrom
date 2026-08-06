@@ -162,8 +162,6 @@ resources:
           storage_capacity: 20
           subnet: subnet-07712b990eb0d17c0  # eu-central-1b
       
-      # TODO: Define mail hosts for the proxy to use that enable all services
-
       public_load_balancer:
         excluded_nodes: ["50"]
         source_cidrs: ['0.0.0.0/0']
