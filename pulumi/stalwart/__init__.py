@@ -139,6 +139,9 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         - services: list[str] (['all'])
         - storage_capacity: int (20)
 
+        Though it is not handled through the node constructor, you can also add `additional_ingress_rules` to a node's
+        configuration. These rules will be applied only to that node, not all nodes in the cluster.
+
         Any additional arguments will be passed as inputs into the `aws.ec2.Instance
         <https://www.pulumi.com/registry/packages/aws/api-docs/ec2/instance/#inputs>`_ resource.
     :type nodes: dict, optional
@@ -148,10 +151,20 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
     :type node_additional_ingress_rules: dict, optional
 
     :param private_load_balancers: Dict describing configurations for service-specific private load balancers. The keys
-        must be valid :py:data:`STALWART_CLUSTER_SERVICES`. The values must be dicts containing any of the following
-        options:
+        will become part of the resource name and the LB name if no other one is supplied. The values must be dicts
+        containing any of the following options:
 
-        - ``excluded_nodes``: List of node IDs to remove from rotation.
+        - ``excluded_nodes``: List of node IDs to remove from rotation. Use this to build different clusters where
+            services are split across different sets of backend hosts.
+
+        - ``name``: Name of the load balancer. AWS requires that this be no longer than 32 characters, and it cannot end
+            in certain characters, including the hyphen we use for all our programmatic names. Automatically generated
+            names, due to their construction and the 32-character clipping, can sometimes lead to duplicate load
+            balancer names, which AWS will also not allow. Use this option to override the name to something specific
+            when you run into these problems.
+
+        - ``services``: List of service names, which must be valid :py:data:`STALWART_CLUSTER_SERVICES`. The LB will
+            expose these ports to their audience.
 
         - ``source_cidrs``: List of CIDRs to allow access to the private service.
 
