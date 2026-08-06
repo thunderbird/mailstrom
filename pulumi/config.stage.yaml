@@ -79,14 +79,13 @@ resources:
       top_level_domain: stage-thundermail.com
       redis_opts:
         apply_immediately: True
-        automatic_failover_enabled: True
+        automatic_failover_enabled: True # Must be false when num_cache_nodes is 1
         cluster_mode: enabled
         description: Redis memory cache for Stalwart
         engine: redis
         engine_version: 7.1
         node_type: cache.t3.micro
         num_cache_clusters: 2
-        automatic_failover_enabled: True # Must be false when num_cache_nodes is 1
         parameter_group_family: redis7
         parameter_group_params:
           - name: cluster-enabled
@@ -101,6 +100,42 @@ resources:
           ignore_user_data_changes: True
           instance_type: t3a.large
           key_name: mailstrom-stage
+          additional_ingress_rules:
+            - from_port: 443
+              to_port: 443
+              protocol: tcp
+              description: Allow https traffic from the mailstrom-stage-prv load balancer
+              source_security_group_id: sg-0653000423fc1ce8a
+            - from_port: 993
+              to_port: 993
+              protocol: tcp
+              description: Allow imaps traffic from the mailstrom-stage-prv load balancer
+              source_security_group_id: sg-0653000423fc1ce8a
+            - from_port: 24
+              to_port: 24
+              protocol: tcp
+              description: Allow lmtp traffic from the mailstrom-stage-prv load balancer
+              source_security_group_id: sg-0653000423fc1ce8a
+            - from_port: 4190
+              to_port: 4190
+              protocol: tcp
+              description: Allow managesieve traffic from the mailstrom-stage-prv load balancer
+              source_security_group_id: sg-0653000423fc1ce8a
+            - from_port: 25
+              to_port: 25
+              protocol: tcp
+              description: Allow smtp traffic from the mailstrom-stage-prv load balancer
+              source_security_group_id: sg-0653000423fc1ce8a
+            - from_port: 465
+              to_port: 465
+              protocol: tcp
+              description: Allow smtps traffic from the mailstrom-stage-prv load balancer
+              source_security_group_id: sg-0653000423fc1ce8a
+            - from_port: 587
+              to_port: 587
+              protocol: tcp
+              description: Allow submission traffic from the mailstrom-stage-prv load balancer
+              source_security_group_id: sg-0653000423fc1ce8a
           node_roles:
             - all
           services:
@@ -126,32 +161,44 @@ resources:
             - management
           storage_capacity: 20
           subnet: subnet-07712b990eb0d17c0  # eu-central-1b
-
+      
       public_load_balancer:
         excluded_nodes: ["50"]
+        source_cidrs: ['0.0.0.0/0']
         services:
-          https:
-            source_cidrs: ['0.0.0.0/0']
-          imaps:
-            source_cidrs: ['0.0.0.0/0']
-          lmtp:
-            source_cidrs: ['0.0.0.0/0']
-          managesieve:
-            source_cidrs: ['0.0.0.0/0']
-          smtp:
-            source_cidrs: ['0.0.0.0/0']
-          smtps:
-            source_cidrs: ['0.0.0.0/0']
-          submission:
-            source_cidrs: ['0.0.0.0/0']
+          - https
+          - imaps
+          - lmtp
+          - managesieve
+          - smtp
+          - smtps
+          - submission
 
       private_load_balancers:
         management:
           excluded_nodes: ["1"]
+          source_cidrs: []
           source_security_group_ids:
-            - sg-0a711c607f9e0b959  # accounts-stage api container
-            - sg-02700bcc4c090da45  # accounts-stage celery container
-            - sg-0f916f83b8c76d500  # accounts-stage new celery container
+            accounts-stage-api: sg-0a711c607f9e0b959
+            accounts-stage-celery: sg-02700bcc4c090da45
+            accounts-stage-celery-new: sg-0f916f83b8c76d500
+          services:
+            - management
+
+        mail-private:
+          name: mailstrom-stage-prv
+          excluded_nodes: ["50"]
+          source_security_group_ids:
+            stalwart-migration-proxy-tb-dev: sg-0948f31a90e34eba6
+          services:
+            - https
+            - imaps
+            - lmtp
+            - managesieve
+            - smtp
+            - smtps
+            - submission
+
 
   tb:s3:S3PrivateBucket:
     autoconfig:

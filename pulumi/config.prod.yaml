@@ -55,6 +55,7 @@ resources:
 
   tb:ec2:SshableInstance:
     bastion:
+      ami: ami-00a2a27988a1b5ae3
       ssh_keypair_name: mailstrom-prod
       source_cidrs:
         - 10.0.0.0/16
@@ -192,28 +193,25 @@ resources:
 
       public_load_balancer:
         excluded_nodes: [ "60", "61" ]
+        source_cidrs: ['0.0.0.0/0']
         services:
-          https:
-            source_cidrs: ['0.0.0.0/0']
-          imaps:
-            source_cidrs: ['0.0.0.0/0']
-          lmtp:
-            source_cidrs: ['0.0.0.0/0']
-          managesieve:
-            source_cidrs: ['0.0.0.0/0']
-          smtp:
-            source_cidrs: ['0.0.0.0/0']
-          smtps:
-            source_cidrs: ['0.0.0.0/0']
-          submission:
-            source_cidrs: ['0.0.0.0/0']
+          - https
+          - imaps
+          - lmtp
+          - managesieve
+          - smtp
+          - smtps
+          - submission
 
       private_load_balancers:
         management:
           excluded_nodes: [ "10", "11", "12", "13" ]
+          source_cidrs: []
           source_security_group_ids:
-            - sg-034b36952ac31b87b  # accounts-prod api container
-            - sg-0ede6c1f9f8a4b676  # accounts-prod celery container
+            accounts-prod-api: sg-034b36952ac31b87b
+            accounts-prod-celery: sg-0ede6c1f9f8a4b676
+          services:
+            - management
 
   tb:s3:S3PrivateBucket:
     autoconfig:
