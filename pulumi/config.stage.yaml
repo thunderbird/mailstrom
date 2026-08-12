@@ -182,6 +182,7 @@ resources:
             accounts-stage-api: sg-0a711c607f9e0b959
             accounts-stage-celery: sg-02700bcc4c090da45
             accounts-stage-celery-new: sg-0f916f83b8c76d500
+            stalwart-migration-proxy-tb-dev: sg-0948f31a90e34eba6
           services:
             - management
 
