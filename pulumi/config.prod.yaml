@@ -67,6 +67,7 @@ resources:
   #       - your.ip.addr.ess/32
 
   tb:mailstrom:StalwartCluster:
+    behind_proxy: false
     thundermail:
       https_features:
         - caldav
