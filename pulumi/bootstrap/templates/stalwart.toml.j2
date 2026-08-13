@@ -27,9 +27,9 @@ protocol="{{ service_ports[service]['protocol'] }}"
 {%-   if service in ['https', 'imaps', 'jmap', 'management', 'managesieve', 'pop3s', 'smtps'] %}
 tls.implicit=true
 {%-   endif %}
-{%-   if behind_proxy == 'true' and service in ['imaptls', 'submission', 'submissions', 'sieve', 'https'] %}
+{%-   if behind_proxy == 'true' and service_ports[service]['listener'] in ['imaptls', 'submission', 'submissions', 'sieve', 'https'] %}
 proxy.override=true
-proxy.trusted-networks=['10.120.192.0/23', '10.120.194.0/23']
+proxy.trusted-networks={{ "['10.120.192.0/23', '10.120.194.0/23']" if env == 'stage' else "['10.130.192.0/23', '10.130.194.0/23']" }}
 {%-   endif %}
 {% endfor %}
 [storage]
@@ -109,7 +109,7 @@ spf.verify.mail-from = "disable"
 
 [queue.route.smarthost]
 type = "relay"
-address = "smtp-relay.stage-thundermail.com"
+address = {{ "smtp-relay.stage-thundermail.com" if env == 'stage' else "smtp-relay.thundermail.com" }}
 port = 25,
 protocol = "smtp"
 tls.implicit = false
