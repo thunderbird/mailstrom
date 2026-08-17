@@ -110,15 +110,15 @@ spf.verify.mail-from = "disable"
 [queue.route.smarthost]
 type = "relay"
 address = {{ "smtp-relay.stage-thundermail.com" if env == 'stage' else "smtp-relay.thundermail.com" }}
-port = 25,
+port = 25
 protocol = "smtp"
 tls.implicit = false
 tls.allow-invalid-certs = true
 
-[queue.strategy.route] = [
-    {"if": "is_local_domain('*', rcpt_domain)"},
-    {"then": "'local'"},
-    {"else": "'smarthost'"}
+[queue.strategy]
+route = [
+    {if="is_local_domain('*', rcpt_domain)",then="'local'"},
+    {else="'smarthost'"}
 ]
 {% endif %}
 
