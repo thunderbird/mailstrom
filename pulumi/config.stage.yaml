@@ -71,6 +71,7 @@ resources:
 
   tb:mailstrom:StalwartCluster:
     thundermail:
+      behind_proxy: false
       https_features:
         - caldav
         - carddav

@@ -21,6 +21,7 @@ TEMPLATE_MAP = {
 }
 # Map of template variable to EC2 tags
 TEMPLATE_VALUE_TAG_MAP = {
+    'behind_proxy': 'postboot.stalwart.behind_proxy',
     'env': 'environment',
     'function': 'postboot.stalwart.function',
     'https_paths': 'postboot.stalwart.https_paths',

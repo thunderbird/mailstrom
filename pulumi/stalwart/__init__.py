@@ -121,6 +121,10 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         in which to build cluster nodes.
     :type subnets: list[aws.ec2.Subnet]
 
+    :param behind_proxy: Whether the servers should operate as though they are running behind a Stalwart Migration
+        Proxy. This changes a tag on certain instances which then affects bootstrapping behavior. Defaults to False.
+    :type behind_proxy: bool
+
     :param https_features: List of features which Stalwart presents over the https service to enable across the cluster.
         These must match with keys in the HTTPS_FEATURES dict. Defaults to [].
     :type https_features: dict, optional
@@ -254,6 +258,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         log_group_arn: str,
         private_subnets: list[aws.ec2.Subnet],
         public_subnets: list[aws.ec2.Subnet],
+        behind_proxy: bool = False,
         https_features: list = [],
         nodes: dict = {},
         node_additional_ingress_rules: list[dict] = [],
@@ -282,6 +287,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
             raise ValueError('You must provide at least one pubic subnet.')
 
         # Internalize some vars we need in the other functions and properties
+        self.behind_proxy = behind_proxy
         self.https_features = https_features
         self.nodes = nodes
         self.private_load_balancers = private_load_balancers
@@ -712,6 +718,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         # These tags will later get read back when the instance comes online by the postboot process
         postboot_tags = {
             'postboot.stalwart.aws_region': self.project.aws_region,
+            'postboot.stalwart.behind_proxy': 'true' if self.behind_proxy else 'false',
             'postboot.stalwart.env': self.project.stack,
             'postboot.stalwart.function': function,
             'postboot.stalwart.https_paths': ','.join(https_paths),

@@ -6,7 +6,11 @@ local-keys = [ "store.*", "directory.*", "tracer.*", "server.listener.*",
                "authentication.fallback-admin.*", "!cluster.key", "cluster.*",
                "config.local-keys.*", "storage.data", "storage.blob",
                "storage.lookup", "storage.fts", "storage.directory",
-               "http.allowed-endpoint", "http.allowed-endpoint.*" ]
+               "http.allowed-endpoint", "http.allowed-endpoint.*",
+{%- if behind_proxy == 'true' %}
+               "auth.*", "queue.route.smarthost*", "queue.strategy.*",
+{%- endif %}
+]
 
 [cluster]
 node-id={{ node_id }}
@@ -22,6 +26,10 @@ bind=["[::]:{{ service_ports[service]['port'] }}"]
 protocol="{{ service_ports[service]['protocol'] }}"
 {%-   if service in ['https', 'imaps', 'jmap', 'management', 'managesieve', 'pop3s', 'smtps'] %}
 tls.implicit=true
+{%-   endif %}
+{%-   if behind_proxy == 'true' and service_ports[service]['listener'] in ['imaptls', 'submission', 'submissions', 'sieve', 'https'] %}
+proxy.override=true
+proxy.trusted-networks={{ "['10.120.192.0/23', '10.120.194.0/23']" if env == 'stage' else "['10.130.192.0/23', '10.130.194.0/23']" }}
 {%-   endif %}
 {% endfor %}
 [storage]
@@ -87,6 +95,32 @@ enable=true
 [authentication.fallback-admin]
 user="admin"
 secret="{{ fallback_admin_password }}"
+
+{# We need these settings when behind a proxy. When not, they appear to simply not be set, rather
+   than being set to some specific value. #}
+{%- if behind_proxy == 'true' %}
+[auth]
+arc.verify = "disable"
+dkim.verify = "disable"
+dmarc.verify = "disable"
+iprev.verify = "disable"
+spf.verify.ehlo = "disable"
+spf.verify.mail-from = "disable"
+
+[queue.route.smarthost]
+type = "relay"
+address = {{ "smtp-relay.stage-thundermail.com" if env == 'stage' else "smtp-relay.thundermail.com" }}
+port = 25
+protocol = "smtp"
+tls.implicit = false
+tls.allow-invalid-certs = true
+
+[queue.strategy]
+route = [
+    {if="is_local_domain('*', rcpt_domain)",then="'local'"},
+    {else="'smarthost'"}
+]
+{% endif %}
 
 {% if 'management' in node_services or 'https' in node_services -%}
 [http]
