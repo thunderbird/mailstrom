@@ -226,6 +226,7 @@ On your local machine, edit your `~/.ssh/config` file to include these sections:
 Host mailstrom-my-bastion
     Hostname $bastion_public_ip
     User ec2-user
+    IdentityFile ~/.ssh/stalwart_node_id_rsa
 
 # Adjust this IP range to match the actual network
 Host 10.1.*
@@ -265,7 +266,7 @@ nodes:
 Instead of exposing this service through the load balancer, establish an SSH tunnel to the service:
 
 ```bash
-ssh -L 8080:$node_ip:8080 $node_ip
+ssh -N -L 8080:$node_ip:8080 $node_ip
 ```
 
 Now you have access to the admin panel by pointing a browser on your local machine to https://localhost:8080/
