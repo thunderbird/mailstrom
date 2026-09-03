@@ -307,27 +307,9 @@ plain `AWS-StartPortForwardingSession`, not the bastion.
   into the Stalwart node role by this project; see `pulumi/stalwart/iam.py`).
 - The instance needs outbound access to the SSM/EC2Messages/SSMMessages endpoints, either via the Internet or VPC
   endpoints. Stalwart nodes already have this via their NAT/egress path.
-- The `session-manager-plugin` must be installed locally.
-
-  **Normal install (root/dnf/yum access):**
-
-  ```bash
-  sudo yum install -y https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_64bit/session-manager-plugin.rpm
-  ```
-
-  **No-root / immutable-OS fallback** (for bootc-style systems where `dnf`/`rpm` can't install packages directly):
-
-  ```bash
-  cd /tmp
-  curl -sO https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_64bit/session-manager-plugin.rpm
-  mkdir -p /tmp/smp-extract && cd /tmp/smp-extract
-  rpm2cpio ../session-manager-plugin.rpm | cpio -idmv
-  mkdir -p ~/.local/bin
-  cp /tmp/smp-extract/usr/local/sessionmanagerplugin/bin/session-manager-plugin ~/.local/bin/
-  chmod +x ~/.local/bin/session-manager-plugin
-  ```
-
-  Make sure `~/.local/bin` is on your `PATH`, then verify the install:
+- The `session-manager-plugin` must be installed locally. Follow AWS's
+  [Session Manager plugin installation instructions](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html)
+  for your OS, then verify the install:
 
   ```bash
   session-manager-plugin

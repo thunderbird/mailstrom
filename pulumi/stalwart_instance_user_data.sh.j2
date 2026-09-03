@@ -25,10 +25,6 @@ enabled=1' > /etc/yum.repos.d/fluent-bit.repo
 dnf update -y
 dnf install -y amazon-ssm-agent bzip2 docker fluent-bit python3.12
 
-# Amazon Linux 2023 ships the SSM agent preinstalled, but we install/enable it explicitly rather than assume, since
-# that isn't guaranteed across every AMI variant. This lets operators reach a node's management dashboard via
-# `aws ssm start-session ... --document-name AWS-StartPortForwardingSession` with no bastion and no inbound security
-# group rule (see the README for details). Requires the node's IAM role to carry AmazonSSMManagedInstanceCore.
 systemctl enable amazon-ssm-agent --now
 
 # Delete the default fluent-bit config; we'll template a new one in Phase 2
