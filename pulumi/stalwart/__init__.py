@@ -90,6 +90,10 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
         - *node_profile_s3_policy_attachment* - The `aws.iam.PolicyAttachment
           <https://www.pulumi.com/registry/packages/aws/api-docs/iam/policyattachment/>`_ resource between the
           policy granting access to the S3 bucket Stalwart uses for blob storage and the instance profile.
+        - *node_profile_ssm_policy_attachment* - The `aws.iam.RolePolicyAttachment
+          <https://www.pulumi.com/registry/packages/aws/api-docs/iam/rolepolicyattachment/>`_ resource attaching the
+          AWS-managed ``AmazonSSMManagedInstanceCore`` policy to the node role, so the SSM agent can register nodes
+          with Systems Manager and support ``AWS-StartPortForwardingSession`` port forwarding.
         - *node_sgs* - Dict of :py:class:`tb_pulumi.network.SecurityGroupWithRules` created for each node to support its
           enabled services, identified by their node_id.
         - *private_lbs* - Dict mapping service names to the :py:class:`StalwartLoadBalancer` s which expose those
@@ -333,6 +337,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
             profile_postboot_attachment,
             profile_s3_attachment,
             profile_logwrite_attachment,
+            profile_ssm_attachment,
             profile,
         ) = stalwart_iam.iam(
             self,
@@ -347,6 +352,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
             subnet = nodes[node_id].pop('subnet', None) or self.private_subnets[idx % len(self.private_subnets)]
             depends_on = [
                 profile,
+                profile_ssm_attachment,
                 redis_secret,
                 s3_secret,
                 *self.private_load_balancer_security_groups.values(),
@@ -428,6 +434,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
                 'node_profile_logwrite_attachment': profile_logwrite_attachment,
                 'node_profile_postboot_policy_attachment': profile_postboot_attachment,
                 'node_profile_s3_policy_attachment': profile_s3_attachment,
+                'node_profile_ssm_policy_attachment': profile_ssm_attachment,
                 'node_sgs': self.node_sgs,
                 'private_lbs': private_lbs,
                 'private_lb_dns': private_lb_dns,

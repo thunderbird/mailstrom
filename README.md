@@ -275,6 +275,96 @@ Now you have access to the admin panel by pointing a browser on your local machi
 with which to run TLS. As a result, the admin panel will not load over HTTPS. You will have to disable TLS on this by
 manually editing the service configuration on the node. There are more details on how to manage nodes below.
 
+This works because the tunnel forwards the *node's own* loopback `8080` back to your machine over a connection you
+already own (the SSH session), rather than routing new network traffic in from outside. The SSM-based method below
+uses the same trick over a different transport, which is why neither of them needs the bastion's or the private load
+balancer's security group opened up for your IP.
+
+
+### Accessing the Management Dashboard via AWS SSO / SSM (No Bastion, No SSH Keys)
+
+As an alternative to the SSH tunnel above, you can reach the management dashboard through
+[AWS Systems Manager Session Manager](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager.html),
+authenticating with your AWS SSO login instead of an SSH key or a bastion host.
+
+**Why this works without opening any security group:** the AWS-managed `AWS-StartPortForwardingSession` document
+runs entirely on the target instance. It forwards a port on the instance's own loopback interface back to your
+machine over the SSM agent's outbound WebSocket connection to the Systems Manager service. That traffic never enters
+the VPC as routed network traffic, so the instance's inbound security group rules are never evaluated. No SG changes,
+no inbound rule for any IP, ever — same principle as the SSH tunnel above, just over a different transport.
+
+This is **not** the same as `AWS-StartPortForwardingSessionToRemoteHost`, which proxies real, routed network traffic
+through a jump host to a *different* target. That document *is* still subject to the target's security group. If you
+try to relay through the bastion with `ToRemoteHost` pointed at a management node's private IP on port 8080, it will
+fail with `Connection to destination port failed`, because the management port's security group only allows the
+private "management" load balancer as a source, not the bastion. Always target the management node itself with
+plain `AWS-StartPortForwardingSession`, not the bastion.
+
+#### Prerequisites
+
+- Your IAM role/user must have `ssm:StartSession` permission (granted via your AWS SSO permission set), and the
+  target instance's IAM role must have the `AmazonSSMManagedInstanceCore` managed policy attached (this is built
+  into the Stalwart node role by this project; see `pulumi/stalwart/iam.py`).
+- The instance needs outbound access to the SSM/EC2Messages/SSMMessages endpoints, either via the Internet or VPC
+  endpoints. Stalwart nodes already have this via their NAT/egress path.
+- The `session-manager-plugin` must be installed locally.
+
+  **Normal install (root/dnf/yum access):**
+
+  ```bash
+  sudo yum install -y https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_64bit/session-manager-plugin.rpm
+  ```
+
+  **No-root / immutable-OS fallback** (for bootc-style systems where `dnf`/`rpm` can't install packages directly):
+
+  ```bash
+  cd /tmp
+  curl -sO https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_64bit/session-manager-plugin.rpm
+  mkdir -p /tmp/smp-extract && cd /tmp/smp-extract
+  rpm2cpio ../session-manager-plugin.rpm | cpio -idmv
+  mkdir -p ~/.local/bin
+  cp /tmp/smp-extract/usr/local/sessionmanagerplugin/bin/session-manager-plugin ~/.local/bin/
+  chmod +x ~/.local/bin/session-manager-plugin
+  ```
+
+  Make sure `~/.local/bin` is on your `PATH`, then verify the install:
+
+  ```bash
+  session-manager-plugin
+  # The Session Manager plugin was installed successfully.
+  ```
+
+#### Steps
+
+1. Confirm you're logged into the right AWS SSO identity:
+
+   ```bash
+   aws sts get-caller-identity --profile <profile>
+   ```
+
+2. Confirm the target node is registered and online in SSM:
+
+   ```bash
+   aws ssm describe-instance-information \
+     --profile <profile> --region <region> \
+     --filters "Key=InstanceIds,Values=<instance-id>" \
+     --query 'InstanceInformationList[].{Id:InstanceId,Ping:PingStatus}' \
+     --output table
+   ```
+
+3. Start the port-forwarding session directly to the management node (no bastion involved):
+
+   ```bash
+   aws ssm start-session \
+     --profile <profile> --region <region> \
+     --target <management-node-instance-id> \
+     --document-name AWS-StartPortForwardingSession \
+     --parameters '{"portNumber":["8080"],"localPortNumber":["8080"]}'
+   ```
+
+4. Browse to https://localhost:8080/. As with the SSH tunnel above, expect a self-signed certificate warning on a
+   freshly-bootstrapped cluster that hasn't yet been issued a real TLS certificate.
+
 
 ### Bootstrapping a Stalwart Node
 
