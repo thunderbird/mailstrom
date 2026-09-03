@@ -8,12 +8,21 @@ import pulumi_aws as aws
 from tb_pulumi.constants import ASSUME_ROLE_POLICY
 
 
+AMAZON_SSM_MANAGED_INSTANCE_CORE_ARN = 'arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore'
+
+
 def iam(
     self,
     log_group_arn: str,
     s3_policy: aws.iam.Policy,
 ) -> tuple[
-    aws.iam.Policy, aws.iam.Role, aws.iam.RolePolicyAttachment, aws.iam.RolePolicyAttachment, aws.iam.InstanceProfile
+    aws.iam.Policy,
+    aws.iam.Role,
+    aws.iam.RolePolicyAttachment,
+    aws.iam.RolePolicyAttachment,
+    aws.iam.RolePolicyAttachment,
+    aws.iam.RolePolicyAttachment,
+    aws.iam.InstanceProfile,
 ]:
     """Build IAM resources needed by Stalwart.
 
@@ -22,7 +31,7 @@ def iam(
 
     :return: Series of IAM resources for Stalwart.
     :rtype: tuple[ tb_pulumi.iam.UserWithAccessKey, aws.iam.Policy, aws.iam.Role, aws.iam.RolePolicyAttachment,
-        aws.iam.InstanceProfile ]
+        aws.iam.RolePolicyAttachment, aws.iam.RolePolicyAttachment, aws.iam.InstanceProfile ]
     """
 
     # Build a policy which will grant the nodes access to their own configuration data
@@ -75,6 +84,12 @@ def iam(
         policy_arn=log_group_arn,
     )
 
+    profile_ssm_attachment = aws.iam.RolePolicyAttachment(
+        f'{self.name}-rpa-nodeprofile-ssm',
+        role=role.name,
+        policy_arn=AMAZON_SSM_MANAGED_INSTANCE_CORE_ARN,
+    )
+
     profile = aws.iam.InstanceProfile(f'{self.name}-ip-nodeprofile', name=f'{self.name}-nodeprofile', role=role.name)
 
     return (
@@ -83,5 +98,6 @@ def iam(
         profile_postboot_attachment,
         profile_s3_attachment,
         profile_logwrite_attachment,
+        profile_ssm_attachment,
         profile,
     )
