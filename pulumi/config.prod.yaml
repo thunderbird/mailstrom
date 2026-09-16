@@ -42,10 +42,18 @@ resources:
       endpoint_interfaces:
         - secretsmanager
       peering_connections: {}
+      peering_accepters:
+        mzla-tb-prod:
+          vpc_peering_connection_id: pcx-0740e00f5e9759cd1
+          accepter:
+            allow_remote_vpc_dns_resolution: True
+          auto_accept: True
       additional_routes:
         private:
           - cidr_block: 10.10.0.0/16  # accounts-prod
             vpc_peering_connection_id: pcx-0fdcc9b776a069d2d
+          - cidr_block: 10.130.0.0/16  # mzla-tb-prod
+            vpc_peering_connection_id: pcx-0740e00f5e9759cd1
         public: []
 
       # Dynamic values set in code, or not at all:
