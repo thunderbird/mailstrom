@@ -174,6 +174,9 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
 
         - ``source_security_group_ids``: List of security group IDs to allow access to the private service.
 
+        - ``tcp_idle_timeout_seconds``: Dict mapping service names to the TCP idle timeout of their listener, in
+            seconds (60-6000). Services not listed use the AWS default of 350.
+
         For example:
 
         .. code-block:: yaml
@@ -204,6 +207,9 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
 
             - ``source_security_group_ids``: List of security group IDs to allow access to all public services
                 (we do not recommend setting this, as this strongly counteracts the concept of a public service).
+
+        - ``tcp_idle_timeout_seconds``: Dict mapping service names to the TCP idle timeout of their listener, in
+            seconds (60-6000). Services not listed use the AWS default of 350.
 
         For example:
 
@@ -377,6 +383,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
                 services=lb_config.get('services', []),
                 subnets=self.private_subnets,
                 excluded_nodes=lb_config.get('excluded_nodes', []),
+                tcp_idle_timeout_seconds=lb_config.get('tcp_idle_timeout_seconds', {}),
                 opts=pulumi.ResourceOptions(
                     parent=self,
                     depends_on=[
@@ -416,6 +423,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
             excluded_nodes=self.public_load_balancer_config['excluded_nodes']
             if 'excluded_nodes' in self.public_load_balancer_config
             else None,
+            tcp_idle_timeout_seconds=self.public_load_balancer_config.get('tcp_idle_timeout_seconds', {}),
             opts=pulumi.ResourceOptions(parent=self, depends_on=[self.public_load_balancer_security_group]),
             tags=self.tags,
         )
@@ -900,6 +908,10 @@ class StalwartLoadBalancer(tb_pulumi.ThunderbirdComponentResource):
         downtime operations on the cluster. Defaults to [].
         :type excluded_nodes: list[str], optional
 
+        :param tcp_idle_timeout_seconds: Dict mapping service names to the TCP idle timeout of their listener, in
+            seconds (60-6000). Services not listed use the AWS default of 350. Defaults to {}.
+        :type tcp_idle_timeout_seconds: dict, optional
+
         :param opts: Additional pulumi.ResourceOptions to apply to these resources. Defaults to None.
         :type opts: pulumi.ResourceOptions, optional
 
@@ -921,6 +933,7 @@ class StalwartLoadBalancer(tb_pulumi.ThunderbirdComponentResource):
         services: list[str],
         subnets: list[aws.ec2.Subnet],
         excluded_nodes: list[str] = [],
+        tcp_idle_timeout_seconds: dict = {},
         opts: pulumi.ResourceOptions = None,
         tags: dict = {},
     ):
@@ -1008,6 +1021,7 @@ class StalwartLoadBalancer(tb_pulumi.ThunderbirdComponentResource):
                 load_balancer_arn=load_balancer.arn,
                 port=STALWART_CLUSTER_SERVICES[service],
                 protocol='TCP',
+                tcp_idle_timeout_seconds=tcp_idle_timeout_seconds.get(service),
                 tags=self.tags,
                 opts=pulumi.ResourceOptions(parent=self, depends_on=[*target_groups.values(), load_balancer]),
             )
