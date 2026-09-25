@@ -6,7 +6,7 @@ local-keys = [ "store.*", "directory.*", "tracer.*", "server.listener.*",
                "authentication.fallback-admin.*", "!cluster.key", "cluster.*",
                "config.local-keys.*", "storage.data", "storage.blob",
                "storage.lookup", "storage.fts", "storage.directory",
-               "http.allowed-endpoint", "http.allowed-endpoint.*",
+               "http.allowed-endpoint", "http.allowed-endpoint.*", "http.permissive-cors",
 {%- if behind_proxy == 'true' %}
                "auth.*", "queue.route.smarthost*", "queue.strategy.*",
 {%- endif %}
@@ -124,6 +124,12 @@ route = [
 
 {% if 'management' in node_services or 'https' in node_services -%}
 [http]
+{#- Third-party webmail clients (e.g. Bulwark) talk JMAP from the browser, so the HTTPS nodes have to
+   answer CORS preflights. Stalwart only emits Access-Control-Allow-* headers with this enabled. The
+   management node is reached over an SSH tunnel and doesn't need it. #}
+{%-   if 'https' in node_services %}
+permissive-cors=true
+{%-   endif %}
 allowed-endpoint=
 {%-   if 'management' in node_services -%}
   "200"
