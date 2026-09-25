@@ -211,6 +211,8 @@ resources:
           - smtp
           - smtps
           - submission
+        tcp_idle_timeout_seconds:
+          https: 1800
 
       private_load_balancers:
         management:
