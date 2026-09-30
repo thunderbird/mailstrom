@@ -339,6 +339,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
             profile_postboot_attachment,
             profile_s3_attachment,
             profile_logwrite_attachment,
+            profile_ssm_attachment,
             profile,
         ) = stalwart_iam.iam(
             self,
@@ -353,6 +354,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
             subnet = nodes[node_id].pop('subnet', None) or self.private_subnets[idx % len(self.private_subnets)]
             depends_on = [
                 profile,
+                profile_ssm_attachment,
                 redis_secret,
                 s3_secret,
                 *self.private_load_balancer_security_groups.values(),
@@ -436,6 +438,7 @@ class StalwartCluster(tb_pulumi.ThunderbirdComponentResource):
                 'node_profile_logwrite_attachment': profile_logwrite_attachment,
                 'node_profile_postboot_policy_attachment': profile_postboot_attachment,
                 'node_profile_s3_policy_attachment': profile_s3_attachment,
+                'node_profile_ssm_policy_attachment': profile_ssm_attachment,
                 'node_sgs': self.node_sgs,
                 'private_lbs': private_lbs,
                 'private_lb_dns': private_lb_dns,

@@ -23,7 +23,9 @@ enabled=1' > /etc/yum.repos.d/fluent-bit.repo
 
 # Update system, install dependencies
 dnf update -y
-dnf install -y bzip2 docker fluent-bit python3.12
+dnf install -y amazon-ssm-agent bzip2 docker fluent-bit python3.12
+
+systemctl enable amazon-ssm-agent --now
 
 # Delete the default fluent-bit config; we'll template a new one in Phase 2
 rm -f /etc/fluent-bit/fluent-bit.conf
