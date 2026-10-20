@@ -1,8 +1,8 @@
 name: sanity-test-tb-dev
 
 concurrency:
-  group: sanity-test-tb-dev
-  cancel-in-progress: true
+  group: mailstrom-tests-tb-dev
+  cancel-in-progress: false
 
 on:
   # run this workflow manually from the Actions tab
