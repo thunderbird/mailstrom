@@ -1,0 +1,100 @@
+name: nightly-integration-tests-tb-dev
+
+concurrency:
+  group: mailstrom-tests-tb-dev
+  cancel-in-progress: false
+
+on:
+  # schedule:
+    # run every day at 3am UTC (10PM EST)
+  #  - cron:  '0 3 * * *'
+  # allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+permissions:
+  contents: read # required for actions checkout
+
+jobs:
+  nightly-integration-tests-tb-dev:
+    name: nightly-integration-tests-tb-dev
+    # github actions ubuntu runners have known intermittent network timeout / connection issues
+    # (i.e. https://github.com/actions/runner-images/issues/11886) that cause the integration tests
+    # to fail with intermittent connection reset issues; so we use macos runners instead
+    runs-on: macos-latest
+    environment:
+      name: staging
+      deployment: false
+    env:
+      IS_CI_AUTOMATION: "yes"
+      TEST_SERVER_HOST: ${{ secrets.TEST_SERVER_HOST_TB_DEV }}
+      TEST_ACCT_1_USERNAME: ${{ secrets.TEST_ACCT_1_USERNAME_TB_DEV }}
+      TEST_ACCT_1_PASSWORD: ${{ secrets.TEST_ACCT_1_PASSWORD_TB_DEV }}
+      TEST_ACCT_1_EMAIL: ${{ secrets.TEST_ACCT_1_EMAIL_TB_DEV }}
+      TEST_ACCT_2_USERNAME: ${{ secrets.TEST_ACCT_2_USERNAME_TB_DEV }}
+      TEST_ACCT_2_PASSWORD: ${{ secrets.TEST_ACCT_2_PASSWORD_TB_DEV }}
+      TEST_ACCT_2_EMAIL: ${{ secrets.TEST_ACCT_2_EMAIL_TB_DEV }}
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13.0'
+
+      - name: Install test dependencies
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          python -m pip install --upgrade pip
+          pip install ."[dev]"
+
+      - name: JMAP integration tests
+        continue-on-error: true # we want all tests to run even if these or others fail
+        run: |
+          source .venv/bin/activate
+          cd test/integration
+          cp .env.test.example .env.test
+          python -m pytest jmap/ --junit-xml=./jmap-test-results.xml -vs
+
+      - name: IMAP integration tests
+        continue-on-error: true # we want all tests to run even if these or others fail
+        run: |
+          source .venv/bin/activate
+          cd test/integration
+          cp .env.test.example .env.test
+          python -m pytest imap/ --junit-xml=./imap-test-results.xml -vs
+
+      - name: SMTP integration tests
+        continue-on-error: true # we want all tests to run even if these or others fail
+        run: |
+          source .venv/bin/activate
+          cd test/integration
+          cp .env.test.example .env.test
+          python -m pytest smtp/ --junit-xml=./smtp-test-results.xml -vs
+
+      - name: CalDAV integration tests
+        continue-on-error: true # we want all tests to run even if these or others fail
+        run: |
+          source .venv/bin/activate
+          cd test/integration
+          cp .env.test.example .env.test
+          python -m pytest caldav/ --junit-xml=./caldav-test-results.xml -vs
+
+      - name: CardDAV integration tests
+        continue-on-error: true # we want all tests to run even if these or others fail
+        run: |
+          source .venv/bin/activate
+          cd test/integration
+          cp .env.test.example .env.test
+          python -m pytest carddav/ --junit-xml=./carddav-test-results.xml -vs
+
+      - name: Create results report
+        continue-on-error: true # we always want this step to run
+        if: always()
+        uses: pmeier/pytest-results-action@main
+        with:
+          path: test/integration/*test-results.xml
+          summary: true
+          fail-on-empty: false
+          title: Mailstrom Integration Test Results (tb-dev)
