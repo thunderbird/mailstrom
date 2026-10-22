@@ -1,5 +1,6 @@
 import gevent
 import os
+import socket
 import sys
 
 from email.message import EmailMessage
@@ -32,7 +33,11 @@ class SMTP:
         log.debug(f'connecting to smtp host: {self.host}')
 
         try:
-            self.connection = SMTP_SSL(self.host, self.port, timeout=self.connection_timeout)
+            # pass local_hostname so smtplib doesn't call socket.getfqdn() between the server banner and
+            # EHLO; that lookup can take many seconds on CI runners and idle proxies drop the connection
+            self.connection = SMTP_SSL(
+                self.host, self.port, local_hostname=socket.gethostname(), timeout=self.connection_timeout
+            )
             self.connection.set_debuglevel(0)  # set to 1 if want to debug locally
             log.debug('connected, now signing in to smtp')
             result, data = self.connection.login(username, password)
@@ -42,7 +47,7 @@ class SMTP:
                 success = True
 
         except Exception as e:
-            log.debug(f'{str(e)}')
+            log.warning(f'smtp login to {self.host} failed: {type(e).__name__}: {str(e)}')
 
         return success
 
