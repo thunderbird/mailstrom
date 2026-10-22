@@ -33,8 +33,7 @@ class SMTP:
         log.debug(f'connecting to smtp host: {self.host}')
 
         try:
-            # pass local_hostname so smtplib doesn't call socket.getfqdn() between the server banner and
-            # EHLO; that lookup can take many seconds on CI runners and idle proxies drop the connection
+            # skip smtplib's getfqdn() before EHLO; it's slow on CI runners and idle proxies drop the connection
             self.connection = SMTP_SSL(
                 self.host, self.port, local_hostname=socket.gethostname(), timeout=self.connection_timeout
             )

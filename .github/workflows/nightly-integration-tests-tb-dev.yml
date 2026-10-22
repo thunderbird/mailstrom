@@ -100,8 +100,7 @@ jobs:
           title: Mailstrom Integration Test Results (tb-dev)
 
       - name: Fail job if any tests failed
-        # the test steps use continue-on-error so every suite runs; fail the job here instead so a
-        # green run means the tests actually passed
+        # test steps use continue-on-error so every suite runs; fail the job here instead
         if: always()
         run: |
           python - <<'EOF'
