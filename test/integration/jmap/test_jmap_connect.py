@@ -1,4 +1,5 @@
 from common.logger import log
+from urllib.parse import urlparse
 
 from const import (
     TEST_SERVER_HOST,
@@ -14,19 +15,26 @@ from const import (
 
 
 class TestJMAPConnect:
+    def check_url(self, url_type, actual_url, exp_url_path):
+        # on legacy ec2 cluster (stalwart 0.15x) the port is included in the urls; in the new k8's stalwart
+        # 0.16x infra the port is not included; have the test accept either so it will pass on both infras
+        exp_scheme = 'wss' if 'websocket' in url_type else 'https'
+        actual_parsed = urlparse(actual_url)
+        assert actual_parsed.scheme == exp_scheme, f'expected {url_type} url scheme to be correct'
+        assert actual_parsed.hostname == TEST_SERVER_HOST, f'expected {url_type} url hostname to be correct'
+        assert actual_parsed.path == exp_url_path, f'expected {url_type} url path to be correct'
+        assert actual_parsed.port in (JMAP_PORT, None), f'expected {url_type} url port to be correct'
+
     def test_get_session(self, jmap_acct_1):
         # jmap_acct_1 session is provided after authentication to the jmap_acct_1 server by the jmap_acct_1 client; the
         # session provides data and capabilities that the server can provide to the client for the given credentials
         session = jmap_acct_1.get_session()
         assert session.username == TEST_ACCT_1_USERNAME, 'expected jmap session.username to be correct'
 
-        exp_api_url = f'https://{TEST_SERVER_HOST}:{JMAP_PORT}/jmap/'
-        assert session.api_url == exp_api_url, 'expected jmap_acct_1 session api_url to be correct'
-        assert f'{exp_api_url}download/' in session.download_url, 'expected jmap session download_url to be correct'
-        assert f'{exp_api_url}upload/' in session.upload_url, 'expected jmap session upload_url to be correct'
-        assert f'{exp_api_url}eventsource/' in session.event_source_url, (
-            'expected jmap_acct_1 session event_source_url to be correct'
-        )
+        self.check_url('session api', session.api_url, '/jmap/')
+        self.check_url('download', session.download_url, '/jmap/download/{accountId}/{blobId}/{name}')
+        self.check_url('uplaod', session.upload_url, '/jmap/upload/{accountId}/')
+        self.check_url('event source', session.event_source_url, '/jmap/eventsource/')
 
         assert session.state, 'expected jmap_acct_1 session state'
 
@@ -58,9 +66,9 @@ class TestJMAPConnect:
         assert session.capabilities.extensions['urn:ietf:params:jmap:websocket']['url'], (
             'expected websocket extension to exist in jmap_acct_1 session capabilities'
         )
-        exp_ws_url = f'wss://{TEST_SERVER_HOST}:{JMAP_PORT}/jmap/ws'
-        assert session.capabilities.extensions['urn:ietf:params:jmap:websocket']['url'] == exp_ws_url, (
-            'expected websocket extension url to be correct'
+
+        self.check_url(
+            'websocket extension', session.capabilities.extensions['urn:ietf:params:jmap:websocket']['url'], '/jmap/ws'
         )
 
     def test_echo(self, jmap_acct_1):
