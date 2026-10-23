@@ -20,7 +20,12 @@ class TestJMAPConnect:
         session = jmap_acct_1.get_session()
         assert session.username == TEST_ACCT_1_USERNAME, 'expected jmap session.username to be correct'
 
-        exp_api_url = f'https://{TEST_SERVER_HOST}:{JMAP_PORT}/jmap/'
+        # on stage the port is in the api url, on dev it is not
+        if 'stage' in TEST_SERVER_HOST:
+            exp_api_url = f'https://{TEST_SERVER_HOST}:{JMAP_PORT}/jmap/'
+        else:
+            exp_api_url = f'https://{TEST_SERVER_HOST}/jmap/'
+
         assert session.api_url == exp_api_url, 'expected jmap_acct_1 session api_url to be correct'
         assert f'{exp_api_url}download/' in session.download_url, 'expected jmap session download_url to be correct'
         assert f'{exp_api_url}upload/' in session.upload_url, 'expected jmap session upload_url to be correct'
@@ -58,7 +63,13 @@ class TestJMAPConnect:
         assert session.capabilities.extensions['urn:ietf:params:jmap:websocket']['url'], (
             'expected websocket extension to exist in jmap_acct_1 session capabilities'
         )
-        exp_ws_url = f'wss://{TEST_SERVER_HOST}:{JMAP_PORT}/jmap/ws'
+
+        # on stage the port is in the api url, on dev it is not
+        if 'stage' in TEST_SERVER_HOST:
+            exp_ws_url = f'wss://{TEST_SERVER_HOST}:{JMAP_PORT}/jmap/ws'
+        else:
+            exp_ws_url = f'wss://{TEST_SERVER_HOST}/jmap/ws'
+
         assert session.capabilities.extensions['urn:ietf:params:jmap:websocket']['url'] == exp_ws_url, (
             'expected websocket extension url to be correct'
         )
