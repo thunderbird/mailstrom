@@ -82,3 +82,4 @@ jobs:
           failed = sum(int(s.get('failures', 0)) + int(s.get('errors', 0)) for s in suites)
           print(f'sanity: {failed} failed/errored')
           sys.exit(1 if failed else 0)
+          EOF

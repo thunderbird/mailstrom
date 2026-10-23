@@ -15,7 +15,7 @@ permissions:
   contents: read # required for actions checkout
 
 jobs:
-  nightly-integration-test-stage:
+  nightly-integration-tests-stage:
     name: nightly-integration-tests-stage
     # github actions ubuntu runners have known intermittent network timeout / connection issues
     # (i.e. https://github.com/actions/runner-images/issues/11886) that cause the integration tests
