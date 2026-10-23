@@ -1,13 +1,13 @@
-name: nightly-integration-tests-tb-dev
+name: nightly-integration-tests-stage
 
 concurrency:
-  group: mailstrom-tests-tb-dev
+  group: mailstrom-tests-stage
   cancel-in-progress: false
 
 on:
-  # schedule:
-    # run every day at 3am UTC (10PM EST)
-  #  - cron:  '0 3 * * *'
+  schedule:
+    # run every day at 2am UTC (9PM EST)
+    - cron:  '0 2 * * *'
   # allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
@@ -15,8 +15,8 @@ permissions:
   contents: read # required for actions checkout
 
 jobs:
-  nightly-integration-tests-tb-dev:
-    name: nightly-integration-tests-tb-dev
+  nightly-integration-tests-stage:
+    name: nightly-integration-tests-stage
     # github actions ubuntu runners have known intermittent network timeout / connection issues
     # (i.e. https://github.com/actions/runner-images/issues/11886) that cause the integration tests
     # to fail with intermittent connection reset issues; so we use macos runners instead
@@ -26,13 +26,13 @@ jobs:
       deployment: false
     env:
       IS_CI_AUTOMATION: "yes"
-      TEST_SERVER_HOST: ${{ secrets.TEST_SERVER_HOST_TB_DEV }}
-      TEST_ACCT_1_USERNAME: ${{ secrets.TEST_ACCT_1_USERNAME_TB_DEV }}
-      TEST_ACCT_1_PASSWORD: ${{ secrets.TEST_ACCT_1_PASSWORD_TB_DEV }}
-      TEST_ACCT_1_EMAIL: ${{ secrets.TEST_ACCT_1_EMAIL_TB_DEV }}
-      TEST_ACCT_2_USERNAME: ${{ secrets.TEST_ACCT_2_USERNAME_TB_DEV }}
-      TEST_ACCT_2_PASSWORD: ${{ secrets.TEST_ACCT_2_PASSWORD_TB_DEV }}
-      TEST_ACCT_2_EMAIL: ${{ secrets.TEST_ACCT_2_EMAIL_TB_DEV }}
+      TEST_SERVER_HOST: ${{ secrets.TEST_SERVER_HOST }}
+      TEST_ACCT_1_USERNAME: ${{ secrets.TEST_ACCT_1_USERNAME }}
+      TEST_ACCT_1_PASSWORD: ${{ secrets.TEST_ACCT_1_PASSWORD }}
+      TEST_ACCT_1_EMAIL: ${{ secrets.TEST_ACCT_1_EMAIL }}
+      TEST_ACCT_2_USERNAME: ${{ secrets.TEST_ACCT_2_USERNAME }}
+      TEST_ACCT_2_PASSWORD: ${{ secrets.TEST_ACCT_2_PASSWORD }}
+      TEST_ACCT_2_EMAIL: ${{ secrets.TEST_ACCT_2_EMAIL }}
 
     steps:
       - uses: actions/checkout@v5
@@ -97,7 +97,7 @@ jobs:
           path: test/integration/*test-results.xml
           summary: true
           fail-on-empty: false
-          title: Mailstrom Integration Test Results (tb-dev)
+          title: Mailstrom Integration Test Results (Stage)
 
       - name: Fail job if any tests failed
         # test steps use continue-on-error so every suite runs; fail the job here instead
