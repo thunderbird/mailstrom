@@ -1,7 +1,7 @@
-name: sanity-test-tb-dev
+name: sanity-test-dev
 
 concurrency:
-  group: mailstrom-tests-tb-dev
+  group: mailstrom-tests-dev
   cancel-in-progress: false
 
 on:
@@ -12,8 +12,8 @@ permissions:
   contents: read # required for actions checkout
 
 jobs:
-  stage-sanity-test-tb-dev:
-    name: stage-sanity-test-tb-dev
+  sanity-test-dev:
+    name: sanity-test-dev
     # github actions ubuntu runners have known intermittent network timeout / connection issues
     # (i.e. https://github.com/actions/runner-images/issues/11886) that cause the integration tests
     # to fail with intermittent connection reset issues; so we use macos runners instead
@@ -46,7 +46,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install ."[dev]"
 
-      - name: Run sanity test on stage
+      - name: Run sanity test on dev
         continue-on-error: true # we want all tests to run even if these or others fail
         run: |
           source .venv/bin/activate
@@ -59,7 +59,32 @@ jobs:
         if: always()
         uses: pmeier/pytest-results-action@main
         with:
-          path: test/integration/*test-results.xml
+          path: test/integration/sanity-test-results.xml
           summary: true
           fail-on-empty: false
-          title: Sanity Test Results (tb-dev)
+          title: Sanity Test Results (Dev)
+
+      - name: Fail job if any tests failed
+        # test steps use continue-on-error so every suite runs; fail the job here instead
+        if: always()
+        run: |
+          python - <<'EOF'
+          import sys
+          import xml.etree.ElementTree as ET
+
+          bad = 0
+
+          path = f'test/integration/sanity-test-results.xml'
+          try:
+              root = ET.parse(path).getroot()
+          except (OSError, ET.ParseError) as e:
+              print(f'::error::{suite}: no test results ({e})')
+              bad += 1
+              continue
+          suites = [root] if root.tag == 'testsuite' else root.findall('testsuite')
+          failed = sum(int(s.get('failures', 0)) + int(s.get('errors', 0)) for s in suites)
+          print(f'{suite}: {failed} failed/errored')
+          bad += failed
+
+          sys.exit(1 if bad else 0)
+          EOF

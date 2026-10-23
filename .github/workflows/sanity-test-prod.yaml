@@ -12,8 +12,8 @@ permissions:
   contents: read # required for actions checkout
 
 jobs:
-  prod-sanity-test:
-    name: prod-sanity-test
+  sanity-test-prod:
+    name: sanity-test-prod
     # github actions ubuntu runners have known intermittent network timeout / connection issues
     # (i.e. https://github.com/actions/runner-images/issues/11886) that cause the integration tests
     # to fail with intermittent connection reset issues; so we use macos runners instead
@@ -59,7 +59,32 @@ jobs:
         if: always()
         uses: pmeier/pytest-results-action@main
         with:
-          path: test/integration/*test-results.xml
+          path: test/integration/sanity-test-results.xml
           summary: true
           fail-on-empty: false
-          title: Production Sanity Test Results
+          title: Sanity Test Results (Prod)
+
+      - name: Fail job if any tests failed
+        # test steps use continue-on-error so every suite runs; fail the job here instead
+        if: always()
+        run: |
+          python - <<'EOF'
+          import sys
+          import xml.etree.ElementTree as ET
+
+          bad = 0
+
+          path = f'test/integration/sanity-test-results.xml'
+          try:
+              root = ET.parse(path).getroot()
+          except (OSError, ET.ParseError) as e:
+              print(f'::error::{suite}: no test results ({e})')
+              bad += 1
+              continue
+          suites = [root] if root.tag == 'testsuite' else root.findall('testsuite')
+          failed = sum(int(s.get('failures', 0)) + int(s.get('errors', 0)) for s in suites)
+          print(f'{suite}: {failed} failed/errored')
+          bad += failed
+
+          sys.exit(1 if bad else 0)
+          EOF
