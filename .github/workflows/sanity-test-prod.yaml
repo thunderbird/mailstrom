@@ -2,7 +2,7 @@ name: sanity-test-prod
 
 concurrency:
   group: sanity-test-prod
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 on:
   # run this workflow manually from the Actions tab
@@ -72,19 +72,13 @@ jobs:
           import sys
           import xml.etree.ElementTree as ET
 
-          bad = 0
-
-          path = f'test/integration/sanity-test-results.xml'
+          path = 'test/integration/sanity-test-results.xml'
           try:
               root = ET.parse(path).getroot()
           except (OSError, ET.ParseError) as e:
-              print(f'::error::{suite}: no test results ({e})')
-              bad += 1
-              continue
+              print(f'::error::sanity: no test results ({e})')
+              sys.exit(1)
           suites = [root] if root.tag == 'testsuite' else root.findall('testsuite')
           failed = sum(int(s.get('failures', 0)) + int(s.get('errors', 0)) for s in suites)
-          print(f'{suite}: {failed} failed/errored')
-          bad += failed
-
-          sys.exit(1 if bad else 0)
-          EOF
+          print(f'sanity: {failed} failed/errored')
+          sys.exit(1 if failed else 0)
