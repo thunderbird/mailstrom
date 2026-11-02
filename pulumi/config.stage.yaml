@@ -40,19 +40,14 @@ resources:
       endpoint_interfaces:
         - secretsmanager
       peering_connections: {}
-      peering_accepters:
-        mzla-tb-dev:
-          vpc_peering_connection_id: pcx-0ccde8cf3779401b9
-          accepter:
-            allow_remote_vpc_dns_resolution: True
-          auto_accept: True
+      peering_accepters: {}
 
       additional_routes:
-        private:
-          - cidr_block: 10.11.0.0/16  # accounts-stage
-            vpc_peering_connection_id: pcx-063f07eca0677a761
-          - cidr_block: 10.120.0.0/16  # tb-dev
-            vpc_peering_connection_id: pcx-0ccde8cf3779401b9
+        private: []
+          # - cidr_block: 10.11.0.0/16  # accounts-stage
+          #   vpc_peering_connection_id: pcx-063f07eca0677a761
+          # - cidr_block: 10.120.0.0/16  # tb-dev
+          #   vpc_peering_connection_id: pcx-0ccde8cf3779401b9
         public: []
 
   tb:ec2:SshableInstance:
