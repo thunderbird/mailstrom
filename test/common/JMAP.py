@@ -617,3 +617,273 @@ class JMAP:
                 break
 
         return arrived_msg_id
+
+    def create_address_book(self, ab_name):
+        """
+        Create a new address book with the given name and subscribe to it. Note: We are not using JMAPC module
+        because it doesn't support addressbook/contacts; so we build and send our JMAP request directly ourselves.
+        """
+        ab_set_payload = {
+            'using': ['urn:ietf:params:jmap:core', 'urn:ietf:params:jmap:contacts'],
+            'methodCalls': [
+                [
+                    'AddressBook/set',
+                    {
+                        'accountId': self.account_id,
+                        'create': {
+                            'newAddressBook': {
+                                'name': ab_name,
+                                'isSubscribed': True,
+                            }
+                        },
+                    },
+                    'createab1',
+                ]
+            ],
+        }
+
+        log.debug(f"creating address book '{ab_name}'")
+        result = self.request(ab_set_payload)
+
+        try:
+            ab_created = result['methodResponses'][0][1]['created']
+            log.debug(f"address book '{ab_name}' was created successfully: {ab_created}")
+            return ab_created
+
+        except Exception:
+            log.debug(f'error creating address book: {result}')
+            return None
+
+    def get_address_books(self):
+        """
+        Get all existing address books for our client / test account.
+        """
+        ab_get_payload = {
+            'using': ['urn:ietf:params:jmap:core', 'urn:ietf:params:jmap:contacts'],
+            'methodCalls': [
+                [
+                    'AddressBook/get',
+                    {
+                        'accountId': self.account_id,
+                    },
+                    'getabs',
+                ]
+            ],
+        }
+
+        log.debug('getting address books')
+        result = self.request(ab_get_payload)
+
+        try:
+            address_books = result['methodResponses'][0][1]['list']
+            log.debug(f'found {len(address_books)} address book(s):')
+            for next_ab in address_books:
+                print(next_ab)
+            return address_books
+
+        except Exception:
+            log.debug(f'error retrieving address books: {result}')
+            return []
+
+    def get_address_book_by_id(self, address_book_id):
+        """
+        Get an existing address book with the matching provided id.
+        """
+        ab_get_payload = {
+            'using': ['urn:ietf:params:jmap:core', 'urn:ietf:params:jmap:contacts'],
+            'methodCalls': [
+                [
+                    'AddressBook/get',
+                    {
+                        'accountId': self.account_id,
+                        'ids': [address_book_id],
+                    },
+                    'getab_byid',
+                ]
+            ],
+        }
+
+        log.debug(f'getting address book with id: {address_book_id}')
+        result = self.request(ab_get_payload)
+
+        try:
+            address_books = result['methodResponses'][0][1]['list']
+            log.debug(f'found {len(address_books)} address book(s):')
+            for next_ab in address_books:
+                print(next_ab)
+            assert len(address_books) == 1, 'expected only one address book be found with the given id'
+            return address_books[0]
+
+        except Exception:
+            log.debug(f'error retrieving address books: {result}')
+            return None
+
+    def rename_address_book(self, address_book_id, new_address_book_name):
+        """
+        Rename the given address book (by id) with the given name.
+        """
+        ab_set_payload = {
+            'using': ['urn:ietf:params:jmap:core', 'urn:ietf:params:jmap:contacts'],
+            'methodCalls': [
+                [
+                    'AddressBook/set',
+                    {
+                        'accountId': self.account_id,
+                        'update': {
+                            address_book_id: {
+                                'name': new_address_book_name,
+                            },
+                        },
+                    },
+                    'rename1',
+                ],
+            ],
+        }
+
+        log.debug(f"renaming address book with id '{address_book_id}' to '{new_address_book_name}'")
+        result = self.request(ab_set_payload)
+
+        try:
+            response = result['methodResponses'][0][1]
+            if address_book_id in (response.get('updated') or {}):
+                log.debug(f'address book {address_book_id} renamed successfully')
+            else:
+                log.debug(f'error renaming address book: {result}')
+            return response
+
+        except Exception:
+            log.debug(f'error renaming mailbox: {result}')
+            return None
+
+    def delete_address_book_by_id(self, address_book_id):
+        """
+        Delete an existing address book with the matching provided id.
+        """
+        ab_set_payload = {
+            'using': ['urn:ietf:params:jmap:core', 'urn:ietf:params:jmap:contacts'],
+            'methodCalls': [
+                [
+                    'AddressBook/set',
+                    {
+                        'accountId': self.account_id,
+                        'destroy': [address_book_id],
+                    },
+                    'delete1',
+                ]
+            ],
+        }
+
+        log.debug(f"deleting adress book with id '{address_book_id}'")
+        result = self.request(ab_set_payload)
+
+        try:
+            response = result['methodResponses'][0][1]
+            if address_book_id in (response.get('destroyed') or {}):
+                log.debug(f'address book {address_book_id} deleted successfully')
+            else:
+                log.debug(f'error deleting address book: {result}')
+            return response
+
+        except Exception:
+            log.debug(f"error deleting address book with id '{address_book_id}': {result}")
+            return result
+
+    def create_contact(self, ab_id, contact_details):
+        """
+        Create a new contact (with the given details) in the given pre-existing address book (by id).
+        """
+        ab_set_payload = {
+            'using': ['urn:ietf:params:jmap:core', 'urn:ietf:params:jmap:contacts'],
+            'methodCalls': [
+                [
+                    'ContactCard/set',
+                    {
+                        'accountId': self.account_id,
+                        'addressBookIds': [ab_id],
+                        'create': {
+                            'newContactCard': {
+                                **contact_details,
+                                'addressBookIds': {ab_id: True},
+                            },
+                        },
+                    },
+                    'createcon1',
+                ]
+            ],
+        }
+
+        log.debug(f"creating contact inside address book '{ab_id}': {contact_details}")
+        result = self.request(ab_set_payload)
+
+        try:
+            contact_created = result['methodResponses'][0][1]['created']
+            log.debug(f'contact created successfully: {contact_created}')
+            return contact_created
+
+        except Exception:
+            log.debug(f'error creating contact: {result}')
+            return None
+
+    def get_contacts(self, address_book_id):
+        """
+        Retrieve all existing contacts from the given address book.
+        """
+        ab_get_payload = {
+            'using': ['urn:ietf:params:jmap:core', 'urn:ietf:params:jmap:contacts'],
+            'methodCalls': [
+                [
+                    'ContactCard/get',
+                    {
+                        'accountId': self.account_id,
+                    },
+                    'getcons1',
+                ]
+            ],
+        }
+
+        log.debug(f"getting contacts from address book with id '{address_book_id}'")
+        result = self.request(ab_get_payload)
+
+        try:
+            contacts = result['methodResponses'][0][1]['list']
+            log.debug(f'found {len(contacts)} contact(s):')
+            for next_con in contacts:
+                print(f'\n{next_con}')
+            return contacts
+
+        except Exception:
+            log.debug(f'error retrieving contacts: {result}')
+            return []
+
+    def get_contact_by_id(self, address_book_id, contact_id):
+        """
+        Get an existing contact with the given contact id, from the given address book.
+        """
+        con_get_payload = {
+            'using': ['urn:ietf:params:jmap:core', 'urn:ietf:params:jmap:contacts'],
+            'methodCalls': [
+                [
+                    'ContactCard/get',
+                    {
+                        'accountId': self.account_id,
+                        'ids': [contact_id],
+                    },
+                    'getcon_byid',
+                ]
+            ],
+        }
+
+        log.debug(f"getting contact with id '{contact_id}' from address book '{address_book_id}'")
+        result = self.request(con_get_payload)
+
+        try:
+            contacts = result['methodResponses'][0][1]['list']
+            log.debug(f'found {len(contacts)} contact(s):')
+            for next_con in contacts:
+                print(next_con)
+            assert len(contacts) == 1, 'expected only one contact to be found with the given id'
+            return contacts[0]
+
+        except Exception:
+            log.debug(f'error retrieving contact: {result}')
+            return None

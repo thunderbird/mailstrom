@@ -52,17 +52,17 @@ class TestCarddavContacts:
     ]
 
     @pytest.mark.parametrize('contact_details', test_contacts)
-    def test_create_contact(self, carddav, test_address_book, contact_details):
+    def test_create_contact(self, carddav, test_address_book_carddav, contact_details):
         # create a new contact in our test address book and verify; before the tests started
         # a test address book was created (see the test_addresss_book fixture in conftest.py)
-        success = carddav.create_contact(test_address_book['href'], contact_details)
+        success = carddav.create_contact(test_address_book_carddav['href'], contact_details)
         assert success, 'expected to be able to create a new contact'
 
         # get the new contact and verify details
         time.sleep(TEST_SLEEP_1_SECOND)
 
         contact_name = f'{contact_details["first_name"].lower()}-{contact_details["last_name"].lower()}'
-        contact_href = f'{test_address_book["href"]}{contact_name}.vcf'
+        contact_href = f'{test_address_book_carddav["href"]}{contact_name}.vcf'
         found_vcard = carddav.get_contact_details(contact_href)
 
         # now verify contact values are correct
@@ -120,17 +120,17 @@ class TestCarddavContacts:
             assert found_vcard.note.value == contact_details['note'], 'expected note to be correct'
 
     @pytest.mark.sanity
-    def test_get_contacts_list(self, carddav, test_address_book):
+    def test_get_contacts_list(self, carddav, test_address_book_carddav):
         # retrieve a list of all of the contacts that exist in our test address book; we know there
         # is at least one because when our test address book was created one contact was added
-        all_contacts = carddav.get_all_contacts(test_address_book['href'])
+        all_contacts = carddav.get_all_contacts(test_address_book_carddav['href'])
         assert all_contacts is not None, 'expected at least one contact to be found'
 
     @pytest.mark.sanity
-    def test_update_contact(self, carddav, test_address_book):
+    def test_update_contact(self, carddav, test_address_book_carddav):
         # edit an existing contact and verify changes were saved; we know at least one contact already
         # exists in our test address book that was created at the test start by our conftest.py fixture
-        all_contacts = carddav.get_all_contacts(test_address_book['href'])
+        all_contacts = carddav.get_all_contacts(test_address_book_carddav['href'])
         assert all_contacts is not None, 'expected at least one contact to be found'
 
         # retrieve the existing contact details (vCard)
@@ -142,14 +142,14 @@ class TestCarddavContacts:
         contact_vcard.fn.value = new_fn
 
         # submit the modified vCard to save the changes
-        carddav.update_contact(test_address_book['href'], contact_href, contact_vcard)
+        carddav.update_contact(test_address_book_carddav['href'], contact_href, contact_vcard)
         time.sleep(TEST_SLEEP_1_SECOND)
 
         # now retrieve the contact details again and verify it was updated correctly
         latest_contact_vcard = carddav.get_contact_details(contact_href)
         assert latest_contact_vcard.fn.value == new_fn, 'expected contact full name to have been updated correctly'
 
-    def test_delete_contact(self, carddav, test_address_book):
+    def test_delete_contact(self, carddav, test_address_book_carddav):
         # create a new contact, delete it and verify
         contact_data = {
             'first_name': 'Delete',
@@ -159,13 +159,13 @@ class TestCarddavContacts:
             'tel_cell': '15550000000',
         }
 
-        success = carddav.create_contact(test_address_book['href'], contact_data)
+        success = carddav.create_contact(test_address_book_carddav['href'], contact_data)
         assert success, 'expected to be able to create a new contact'
 
         # verify new contact exists
         time.sleep(TEST_SLEEP_1_SECOND)
         contact_name = f'{contact_data["first_name"].lower()}-{contact_data["last_name"].lower()}'
-        contact_href = f'{test_address_book["href"]}{contact_name}.vcf'
+        contact_href = f'{test_address_book_carddav["href"]}{contact_name}.vcf'
         found_vcard = carddav.get_contact_details(contact_href)
         assert found_vcard is not None, 'expected to be able to find newly created contact'
 
