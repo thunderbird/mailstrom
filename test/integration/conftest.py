@@ -197,7 +197,7 @@ def carddav():
 
 
 @pytest.fixture(scope='session')
-def test_address_book():
+def test_address_book_carddav():
     """
     This fixture runs only once per entire test session, when included in any test definition.
     Before the tests start login to the CardDAV server and create a test address book to be used
@@ -207,12 +207,12 @@ def test_address_book():
     login_success = carddav.login(TEST_ACCT_1_USERNAME, TEST_ACCT_1_PASSWORD)
     assert login_success, 'expected to be able to connect to carddav server'
 
-    ab_name = f'{ADDRESS_BOOK_PREFIX} created {datetime.now()}'
+    ab_name = f'{ADDRESS_BOOK_PREFIX} CardDAV {datetime.now()}'
     success = carddav.create_address_book(ab_name)
     assert success, 'expected to be able to create the test_address_book'
 
-    test_address_book = carddav.get_address_book_by_name(ab_name)
-    assert test_address_book is not None, 'expected test_address_book to exist'
+    test_address_book_carddav = carddav.get_address_book_by_name(ab_name)
+    assert test_address_book_carddav is not None, 'expected test_address_book to exist'
 
     # now create a contact in our new test address book so it's not empty
     contact_details = {
@@ -223,13 +223,48 @@ def test_address_book():
         'email': 'fake-email-flast@example.org',
     }
 
-    success = carddav.create_contact(test_address_book['href'], contact_details)
+    success = carddav.create_contact(test_address_book_carddav['href'], contact_details)
     assert success, 'expected to be able to create a new contact'
 
     # done with caldav here
     carddav.logout()
 
-    yield test_address_book
+    yield test_address_book_carddav
+
+
+@pytest.fixture(scope='session')
+def test_address_book_jmap():
+    """
+    This fixture runs only once per entire test session, when included in any test definition.
+    Before the tests start login to the JMAP server and create a test address book to be used
+    by all of the tests; the same address book will be used by all of the tests in the session.
+    """
+    jmap_acct = JMAP(TEST_SERVER_HOST, TEST_ACCT_1_USERNAME, TEST_ACCT_1_PASSWORD)
+    assert jmap_acct.client is not None, 'expected jmap client'
+
+    ab_name = f'{ADDRESS_BOOK_PREFIX} JMAP {datetime.now()}'
+    new_ab = jmap_acct.create_address_book(ab_name)
+    assert new_ab, 'expected addressbook to have been created successfully'
+    assert new_ab['newAddressBook']['id'], 'expected addressbook id to have been returned'
+
+    # now create a contact in our new test address book so it's not empty
+    contact_details = {
+        'name': {
+            'components': [{'kind': 'given', 'value': 'Thunder'}, {'kind': 'surname', 'value': 'Bird'}],
+            'isOrdered': True,
+        },
+        'emails': {
+            '0': {'contexts': {'work': True}, 'address': 'thunderbird@example.org'},
+        },
+        'notes': {'n1': {'note': f'Created by integration tests at {datetime.now()}'}},
+    }
+
+    # create contact in our address book via jmap
+    ab_id = new_ab['newAddressBook']['id']
+    success = jmap_acct.create_contact(ab_id, contact_details)
+    assert success, 'expected to be able to create a new contact'
+
+    yield new_ab['newAddressBook']
 
 
 @pytest.fixture(scope='session', autouse=True)
@@ -275,11 +310,11 @@ def cleanup_prev_test_data(test_acct_username, test_acct_password):
     caldav.cleanup_test_calendars(CALENDAR_PREFIX)
     caldav.logout()
 
-    log.debug(f'cleaning up {test_acct_username.split("@")[0]} carddav address books')
+    log.debug(f'cleaning up {test_acct_username.split("@")[0]} address books')
     carddav = CardDAV(TEST_CARDDAV_URL, CONNECT_TIMEOUT)
     login_success = carddav.login(test_acct_username, test_acct_password)
     assert login_success, 'expected to be able to connect to carddav server'
-    log.debug(f'cleaning up {test_acct_username.split("@")[0]} carddav test address books')
+    log.debug(f'cleaning up {test_acct_username.split("@")[0]} carddav and jmap test address books')
     carddav.cleanup_test_address_books(ADDRESS_BOOK_PREFIX)
 
 
