@@ -37,8 +37,8 @@ resources:
       nat_gateway_allocation_id: eipalloc-0fd0c117569440a4f  # 5.60.96.8
       nat_gateway_secondary_allocation_ids:
         - eipalloc-037682d640024609a  # 5.60.96.9
-        - eipalloc-014cf4b0ce1d34629  # 5.60.96.10
-        - eipalloc-0055539e4d56176f1  # 5.60.96.11
+        # 5.60.96.10 and .11 moved to the tb-prod Stalwart NAT gateways
+        # (thunderbird/platform-infrastructure#1600)
       endpoint_interfaces:
         - secretsmanager
       peering_connections: {}
