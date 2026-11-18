@@ -6,11 +6,27 @@ from dotenv import find_dotenv, load_dotenv
 # Load our env
 load_dotenv(find_dotenv('.env.test'), override=False)
 
+_REQUIRED_ENV_VARS = (
+    'TEST_SERVER_HOST',
+    'TEST_IMAP_PORT',
+    'TEST_SMTP_PORT',
+    'TEST_JMAP_PORT',
+    'TEST_ACCT_1_USERNAME',
+    'TEST_ACCT_1_PASSWORD',
+    'TEST_ACCT_1_EMAIL',
+    'TEST_ACCT_2_USERNAME',
+    'TEST_ACCT_2_PASSWORD',
+    'TEST_ACCT_2_EMAIL',
+)
+_missing_env_vars = [name for name in _REQUIRED_ENV_VARS if not os.getenv(name, '').strip()]
+if _missing_env_vars:
+    raise RuntimeError(f'Missing required integration test environment variables: {", ".join(_missing_env_vars)}')
+
 # Mailstrom test server connection info
-TEST_SERVER_HOST = str(os.getenv('TEST_SERVER_HOST')).strip()
-IMAP_PORT = int(os.getenv('TEST_IMAP_PORT'))
-SMTP_PORT = int(os.getenv('TEST_SMTP_PORT'))
-JMAP_PORT = int(os.getenv('TEST_JMAP_PORT'))
+TEST_SERVER_HOST = os.environ['TEST_SERVER_HOST'].strip()
+IMAP_PORT = int(os.environ['TEST_IMAP_PORT'])
+SMTP_PORT = int(os.environ['TEST_SMTP_PORT'])
+JMAP_PORT = int(os.environ['TEST_JMAP_PORT'])
 CONNECT_TIMEOUT = 60  # (seconds) requests take longer in CI/GHA test env
 
 # Expected JMAP capabilities
@@ -32,13 +48,13 @@ TEST_CARDDAV_URL = f'https://{TEST_SERVER_HOST}/dav/card'
 CARDDAV_EXP_DEFAULT_ADDRESS_BOOK_NAME = 'Thundermail Address Book'
 
 # Test accounts that already exist
-TEST_ACCT_1_USERNAME = str(os.getenv('TEST_ACCT_1_USERNAME')).strip()
-TEST_ACCT_1_PASSWORD = str(os.getenv('TEST_ACCT_1_PASSWORD')).strip()
-TEST_ACCT_1_EMAIL = str(os.getenv('TEST_ACCT_1_EMAIL')).strip()
+TEST_ACCT_1_USERNAME = os.environ['TEST_ACCT_1_USERNAME'].strip()
+TEST_ACCT_1_PASSWORD = os.environ['TEST_ACCT_1_PASSWORD'].strip()
+TEST_ACCT_1_EMAIL = os.environ['TEST_ACCT_1_EMAIL'].strip()
 
-TEST_ACCT_2_USERNAME = str(os.getenv('TEST_ACCT_2_USERNAME')).strip()
-TEST_ACCT_2_PASSWORD = str(os.getenv('TEST_ACCT_2_PASSWORD')).strip()
-TEST_ACCT_2_EMAIL = str(os.getenv('TEST_ACCT_2_EMAIL')).strip()
+TEST_ACCT_2_USERNAME = os.environ['TEST_ACCT_2_USERNAME'].strip()
+TEST_ACCT_2_PASSWORD = os.environ['TEST_ACCT_2_PASSWORD'].strip()
+TEST_ACCT_2_EMAIL = os.environ['TEST_ACCT_2_EMAIL'].strip()
 
 # Default mailboxes expected to exist (IMAP format)
 DEFAULT_IMAP_MAILBOX_LIST = [
