@@ -1,7 +1,7 @@
 name: sanity-test-prod
 
 concurrency:
-  group: sanity-test-prod
+  group: mailstrom-tests-prod
   cancel-in-progress: false
 
 on:
@@ -57,7 +57,7 @@ jobs:
       - name: Create results report
         continue-on-error: true # we always want this step to run
         if: always()
-        uses: pmeier/pytest-results-action@main
+        uses: pmeier/pytest-results-action@fdc7f18d9934e38aca411ca9557e6577bd25ca9c # v0.9.0
         with:
           path: test/integration/sanity-test-results.xml
           summary: true
