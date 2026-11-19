@@ -1,0 +1,3 @@
+# Local credentials and captured probe data -- never commit these.
+.env
+*.jsonl
