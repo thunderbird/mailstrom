@@ -32,13 +32,11 @@ resources:
       enable_internet_gateway: True
       egress_via_internet_gateway: True
       enable_dns_hostnames: True
-      enable_nat_gateway: True
-      egress_via_nat_gateway: True
-      nat_gateway_allocation_id: eipalloc-0fd0c117569440a4f  # 5.60.96.8
-      nat_gateway_secondary_allocation_ids:
-        - eipalloc-037682d640024609a  # 5.60.96.9
-        # 5.60.96.10 and .11 moved to the tb-prod Stalwart NAT gateways
-        # (thunderbird/platform-infrastructure#1600)
+      # The NAT gateway is gone: all four sending IPs (5.60.96.8-.11) are on the tb-prod
+      # Stalwart NAT gateways (thunderbird/platform-infrastructure#1602). The private
+      # subnets have no internet egress.
+      enable_nat_gateway: False
+      egress_via_nat_gateway: False
       endpoint_interfaces:
         - secretsmanager
       peering_connections: {}
