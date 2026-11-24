@@ -40,7 +40,11 @@ class JMAP:
         # grab our JMAP server's api_url and identity id for when we send JMAP api requests directly
         session = self.get_session()
         self.api_url = session.api_url
-        self.identity_id = self.get_identity()[0].id
+        # An account can have identities for multiple email addresses. Use the login address for submission.
+        identity = next((identity for identity in self.get_identity() if identity.email == username), None)
+        if identity is None:
+            raise ValueError(f'No JMAP identity matches username {username!r}')
+        self.identity_id = identity.id
 
     def _get_client(self, host, username, password):
         """
