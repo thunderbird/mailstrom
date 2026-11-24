@@ -88,18 +88,15 @@ class TestJMAPConnect:
         assert len(jmap_acct_1.account_id) > 0
 
     def test_get_identity(self, jmap_acct_1):
-        # identity id represents a specific identity (ie. an email address, a phone number) within a jmap_acct_1 acct;
-        # a user can have multiple identities associated with their account (ie. multiple email addresses)
         result = jmap_acct_1.get_identity()
         assert result is not None, 'expected getIdentity to return identity data'
 
-        # we only expect one identity to exist for our test account (one thundermail email address)
-        assert len(result) == 1, 'expected 1 jmap_acct_1 identity to be returned'
-        identity = result[0]
+        # An account can have identities for multiple email addresses. Validate the configured test address.
+        identity = next((identity for identity in result if identity.email == TEST_ACCT_1_EMAIL), None)
+        assert identity is not None, f'expected a JMAP identity for {TEST_ACCT_1_EMAIL}'
         log.debug(f'received jmap_acct_1 identity id: {identity.id}')
 
         assert identity.name == TEST_ACCT_1_USERNAME, 'expected identity.name to be correct'
-        assert identity.email == TEST_ACCT_1_EMAIL, 'expected identity.email to be correct'
         assert identity.reply_to is None, 'expected identity.reply_to to be none'
         assert identity.bcc is None, 'expected identity.bcc to be none'
         assert len(identity.text_signature) == 0, 'expected identity.text_signature to be empty'
